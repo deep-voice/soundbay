@@ -1,0 +1,32 @@
+# IPython
+__pycache__/
+*.ipynb_checkpoints*
+
+# VS code
+.vscode/
+
+# common env and venv
+venv/
+env/
+.env
+.venv
+
+# PycharmProjects
+.pytest_cache
+.vscode
+.idea/*
+*/.idea/*
+
+# pipeline files
+src/runs
+src/logs
+*last.pth
+*best.pth
+src/outputs/*
+.misc
+
+# redundant formats
+*.zip
+
+# outputs
+outputs/

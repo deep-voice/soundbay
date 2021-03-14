@@ -1,0 +1,9 @@
+# @package _global_
+optim:
+  epochs: 100
+  optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.001
+  scheduler:
+    _target_: torch.optim.lr_scheduler.ExponentialLR
+    gamma: 0.995

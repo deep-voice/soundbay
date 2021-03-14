@@ -1,0 +1,13 @@
+numpy
+librosa
+tqdm
+hydra-core
+pytest
+scikit-learn
+omegaconf
+soundfile
+pandas
+wandb
+joblib
+lxml
+future-fstrings
