@@ -171,9 +171,10 @@ def main(args):
         model_args=args.model.model,
         logger=logger,
     )
-    upload_experiment_to_s3(experiment_id=logger.log_writer.run.id, dir_path=output_dirpath,
-                            bucket_name=args.experiment.bucket_name, include_parent=True)
-    print(f'experiment {logger.log_writer.run.id} has been successfully uploaded to {args.experiment.bucket_name} bucket')
+    if args.experiment.bucket_name and not args.experiment.debug:
+        upload_experiment_to_s3(experiment_id=logger.log_writer.run.id, dir_path=output_dirpath,
+                                bucket_name=args.experiment.bucket_name, include_parent=True)
+        print(f'experiment {logger.log_writer.run.id} has been successfully uploaded to {args.experiment.bucket_name} bucket')
 
 
 if __name__ == "__main__":
