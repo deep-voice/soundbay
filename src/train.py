@@ -22,11 +22,10 @@ import wandb
 from functools import partial
 from pathlib import Path
 from trainers import Trainer
-import logging
 import hydra
 from hydra.utils import instantiate
 import random
-from utils import Logger
+from utils import Logger, upload_experiment_to_s3
 from unittest.mock import Mock
 import os
 from utils import App
@@ -172,6 +171,9 @@ def main(args):
         model_args=args.model.model,
         logger=logger,
     )
+    upload_experiment_to_s3(experiment_id=logger.log_writer.id, dir_path=output_dirpath,
+                            bucket_name=args.experiment.bucket_name, include_parent=True)
+    print(f'experiment {logger.log_writer.id} has been successfully uploaded to {args.experiment.bucket_name} bucket')
 
 
 if __name__ == "__main__":
