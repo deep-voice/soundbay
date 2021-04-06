@@ -17,7 +17,8 @@ class ClassifierDataset(Dataset):
     class for storing and loading data.
     '''
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
-                 seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100, mode="train",
+                 seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100,
+                 margin_ratio=0.5, mode="train",
                  equalize_data=False, slice_flag=False):
         """
         __init__ method initiates ClassifierDataset instance:
@@ -42,6 +43,7 @@ class ClassifierDataset(Dataset):
         self._preprocess_metadata(len_buffer, equalize_data, slice_flag)
         self.augmenter = self._set_augmentations(augmentations, augmentations_p)
         self.preprocessor = self.set_preprocessor(preprocessors)
+        self.margin_ratio = margin_ratio
 
     def _create_audio_dict(self, data_path: Path) -> dict:
         """
@@ -140,11 +142,15 @@ class ClassifierDataset(Dataset):
         audio - pytorch tensor (1-D array)
         """
         if self.mode == "train":
-            start_time = random.randint(begin_time, end_time - self.seq_length * self.data_sample_rate)
+            if self.margin_ratio != 0:
+                margin_len_begin = (self.seq_length * self.data_sample_rate) * self.margin_ratio
+                margin_len_end = (self.seq_length * self.data_sample_rate) * (1 - self.margin_ratio)
+                start_time = random.randint(begin_time - margin_len_begin, end_time - margin_len_end)
+            else:
+                start_time = random.randint(begin_time, end_time - self.seq_length * self.data_sample_rate)
         else:
             start_time = begin_time
         data, _ = sf.read(path_to_file, start=start_time, stop=start_time + self.seq_length * self.data_sample_rate)
-        # TODO support in the future batching of long samples into short seq_len samples, might need this during inference
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
         return audio
 
