@@ -8,7 +8,7 @@ Soundbay is an intuitive and comprehensive Python-based framework for training d
 ### Cloning the repo
 
 ```
-$ git clone https://github.com/mosheman5/soundbay.git
+$ git clone https://github.com/deep-voice/soundbay.git
 $ cd soundbay
 ```
 
