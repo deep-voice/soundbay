@@ -1,0 +1,36 @@
+# @package _global_
+data:
+  batch_size: 64
+  num_workers: 10
+  sample_rate: 16000
+  data_sample_rate: 20000
+  train_dataset:
+    _target_: data.ClassifierDataset
+    data_path: '../datasets/orcasound/train_data/wav'
+    mode: train
+    metadata_path: '../datasets/orcasound/orcasound_podcast_round3.csv'
+    augmentations_p: 0.8
+    augmentations: ${_augmentations}
+    preprocessors: ${_preprocessors}
+    seq_length: 1
+    len_buffer: 0.1
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    equalize_data: true
+    slice_flag: false
+    metadata_by_split: yes
+  val_dataset:
+    _target_: data.ClassifierDataset
+    data_path: '../datasets/orcasound/train_data/wav'
+    mode: val
+    metadata_path: '../datasets/orcasound/orcasound_podcast_round3.csv'
+    augmentations_p: 0
+    augmentations: null
+    preprocessors: ${_preprocessors}
+    seq_length: 1
+    len_buffer: 0.1
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    equalize_data: false
+    slice_flag: true
+    metadata_by_split: yes
