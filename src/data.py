@@ -18,7 +18,7 @@ class ClassifierDataset(Dataset):
     '''
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100, mode="train",
-                 equalize_data=False, slice_flag=False):
+                 equalize_data=False, slice_flag=False, metadata_by_split=False):
         """
         __init__ method initiates ClassifierDataset instance:
         Input:
@@ -33,7 +33,8 @@ class ClassifierDataset(Dataset):
         """
         self.audio_dict = self._create_audio_dict(Path(data_path))
         self.metadata_path = metadata_path
-        self.metadata = pd.read_csv(self.metadata_path)
+        metadata = pd.read_csv(self.metadata_path)
+        self.metadata = self._update_metadata_by_mode(metadata, mode, metadata_by_split)
         self.mode = mode
         self.seq_length = seq_length
         self.sample_rate = sample_rate
@@ -42,6 +43,12 @@ class ClassifierDataset(Dataset):
         self._preprocess_metadata(len_buffer, equalize_data, slice_flag)
         self.augmenter = self._set_augmentations(augmentations, augmentations_p)
         self.preprocessor = self.set_preprocessor(preprocessors)
+
+    @staticmethod
+    def _update_metadata_by_mode(metadata, mode, metadata_by_split):
+        if metadata_by_split:
+            metadata = metadata[metadata['split_type'] == mode]
+        return metadata
 
     def _create_audio_dict(self, data_path: Path) -> dict:
         """
