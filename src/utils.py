@@ -1,52 +1,12 @@
 import librosa
 import numpy as np
 import torch
-import soundfile as sf
 from sklearn import metrics
 from unittest.mock import Mock
 import boto3
 from pathlib import Path
 from typing import Union
 from tqdm import tqdm
-
-def load_audio(filepath: str, sr: int, max_val=0.9):
-    """
-    load audio signal from file using librosa load function, and normalize the vector
-    Args:
-        filepath: location of audio file directory
-        sr: sampling rate
-        max_val: maximum value for normalization
-
-    Returns:
-
-    """
-    audio, sr = librosa.core.load(filepath, sr)
-    return norm_audio(audio, max_val)
-
-
-def norm_audio(audio, max_val=0.9):
-    """
-    This function normalizes audio segment to a specified value range
-    Args:
-        audio: signal vector to be normalized
-        max_val: maximum value
-
-    Returns:
-        normalized audio vector
-    """
-    if max_val:
-        if len(audio.shape) == 2:
-            audio = audio / audio.abs().max(dim=1)[0].view(-1, 1) * max_val
-        elif len(audio.shape) == 1:
-            audio = audio / np.max([audio.max(), abs(audio.min())]) * max_val
-        else:
-            raise Exception('accepts only dims == 1 or 2!')
-    return audio
-
-
-def write_torch_audio(filename, audio_tensor, sr):
-    audio_tensor = audio_tensor.detach().squeeze().cpu().numpy()
-    sf.write(filename, audio_tensor, sr)
 
 
 class LossMeter(object):
