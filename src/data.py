@@ -150,7 +150,7 @@ class ClassifierDataset(Dataset):
                 start_time = random.randint(begin_time, end_time - self.seq_length * self.data_sample_rate)
         else:
             start_time = begin_time
-        data, _ = sf.read(path_to_file, start=start_time, stop=start_time + self.seq_length * self.data_sample_rate)
+        data, _ = sf.read(path_to_file, start=start_time, stop=start_time + int(self.seq_length * self.data_sample_rate))
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
         return audio
 
@@ -277,7 +277,7 @@ class InferenceDataset(Dataset):
         audio - pytorch tensor (1-D array)
         """
         data, _ = sf.read(self.file_path, start=begin_time,
-                          stop=begin_time + self.seq_length * self.data_sample_rate)
+                          stop=begin_time + int(self.seq_length * self.data_sample_rate))
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
         return audio
 
