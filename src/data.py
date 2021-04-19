@@ -143,11 +143,11 @@ class ClassifierDataset(Dataset):
         """
         if self.mode == "train":
             if self.margin_ratio != 0:
-                margin_len_begin = (self.seq_length * self.data_sample_rate) * self.margin_ratio
-                margin_len_end = (self.seq_length * self.data_sample_rate) * (1 - self.margin_ratio)
+                margin_len_begin = int((self.seq_length * self.data_sample_rate) * self.margin_ratio)
+                margin_len_end = int((self.seq_length * self.data_sample_rate) * (1 - self.margin_ratio))
                 start_time = random.randint(begin_time - margin_len_begin, end_time - margin_len_end)
             else:
-                start_time = random.randint(begin_time, end_time - self.seq_length * self.data_sample_rate)
+                start_time = random.randint(begin_time, end_time - int(self.seq_length * self.data_sample_rate))
         else:
             start_time = begin_time
         data, _ = sf.read(path_to_file, start=start_time, stop=start_time + int(self.seq_length * self.data_sample_rate))
