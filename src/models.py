@@ -227,6 +227,7 @@ class PCENTransform(nn.Module):
         self.eps = eps
         self.trainable = trainable
 
+    @staticmethod
     def pcen(x, eps=1E-6, s=0.025, alpha=0.98, delta=2, r=0.5, training=False):
         frames = x.split(1, -2)
         m_frames = []
