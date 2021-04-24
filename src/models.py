@@ -193,6 +193,19 @@ class ChristophCNNwithPCEN(PCENMixin, ChristophCNN):
         return out
 
 
+class GoogleResNet50withPCEN(PCENMixin, GoogleResNet50):
+    '''
+    same as ChristophCNN with first PCEN layer
+    '''
+
+    def __init__(self, num_classes=2, eps=1E-6, s=0.025, alpha=0.98, delta=2, r=0.5, trainable=False):
+        super().__init__(num_classes=num_classes, eps=eps, s=s, alpha=alpha, delta=delta, r=r, trainable=trainable)
+
+    def forward(self, x):
+        out = super().forward(x)
+        return out
+
+
 class PCENTransform(nn.Module):
     '''PCEN transform layer for learned parameters - a layer that inherits from nn.Module
     incorporated as a first layer of a module usually
