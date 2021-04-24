@@ -3,5 +3,5 @@ model:
   criterion:
     _target_: torch.nn.CrossEntropyLoss
   model:
-    _target_: models.GoogleResNet50
+    _target_: models.GoogleResNet50withPCEN
     num_classes: 2
