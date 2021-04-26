@@ -6,5 +6,9 @@ _preprocessors:
     hop_length: 256
   amplitude_2_db:
     _target_: torchaudio.transforms.AmplitudeToDB
-  peak_norm:
-    _target_: data.PeakNormalize
+  sliding_window_norm:
+    _target_: data.SlidingWindowNormalize
+    n_fft: 1024
+    sr: ${data.sample_rate}
+#  peak_norm:
+#    _target_: data.PeakNormalize
