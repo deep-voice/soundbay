@@ -1,5 +1,9 @@
+numba==0.48
 numpy
-librosa
+torch
+torchaudio
+torchvision
+librosa==0.7.2
 tqdm
 hydra-core
 pytest
@@ -8,6 +12,8 @@ omegaconf
 soundfile
 pandas
 wandb
+captum
+beautifulsoup4
 joblib
 lxml
 future-fstrings
