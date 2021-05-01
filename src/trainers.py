@@ -77,6 +77,8 @@ class Trainer:
             if self.verbose:  # show batch metrics in progress bar
                 s = 'epoch: ' + str(epoch) + ', ' + str(self.logger.metrics_dict)
                 iterator.set_postfix_str(s)
+            if self.debug:
+                break
 
     def train_epoch(self, epoch):
         self.model.train()
