@@ -4,11 +4,11 @@ _preprocessors:
     _target_: torchaudio.transforms.Spectrogram
     n_fft: 1024
     hop_length: 256
-  amplitude_2_db:
-    _target_: torchaudio.transforms.AmplitudeToDB
   sliding_window_norm:
     _target_: data.SlidingWindowNormalize
     n_fft: 1024
     sr: ${data.sample_rate}
+  amplitude_2_db:
+    _target_: torchaudio.transforms.AmplitudeToDB
 #  peak_norm:
 #    _target_: data.PeakNormalize

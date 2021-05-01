@@ -261,7 +261,7 @@ class SlidingWindowNormalize:
                     Q: 2-D numpy array image with vertically-enhanced contrast
 
         '''
-        min_f_ind = int(((self.sr / 2) / self.lower_cutoff) * self.n_fft)
+        min_f_ind = int((self.lower_cutoff / (self.sr / 2)) * self.n_fft)
         Q = P.cpu().clone().numpy()
         Q_shape = Q.shape
         Q = Q.squeeze()
@@ -301,7 +301,7 @@ class SlidingWindowNormalize:
         Q = P.cpu().clone().numpy()
         Q_shape = Q.shape
         Q = Q.squeeze()
-        min_f_ind = int(((self.sr / 2) / self.lower_cutoff) * self.n_fft)
+        min_f_ind = int((self.lower_cutoff / (self.sr / 2)) * self.n_fft)
         if self.norm:
             # Cut off extreme values
             mval, sval = np.mean(Q[min_f_ind:, :]), np.std(Q[min_f_ind:, :])
