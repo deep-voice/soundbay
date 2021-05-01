@@ -3,7 +3,7 @@ defaults:
   - data: defaults
   - data: _augmentations
   - data: _preprocessors
-  - model: Christoph_CNN
+  - model: defaults
   - optim: defaults
   - experiment: defaults
   - checkpoint: defaults
