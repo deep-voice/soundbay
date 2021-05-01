@@ -6,7 +6,7 @@ data:
   data_sample_rate: 44100
   train_dataset:
     _target_: data.ClassifierDataset
-    data_path: '../../data/'
+    data_path: '../datasets/recordings_2018/'
     mode: train
     metadata_path: '../annotations/combined_annotations_filtered_train.csv'
     augmentations_p: 0.8
@@ -21,7 +21,7 @@ data:
     slice_flag: false
   val_dataset:
     _target_: data.ClassifierDataset
-    data_path: '../../data/'
+    data_path: '../datasets/recordings_2018/'
     mode: val
     metadata_path: '../annotations/combined_annotations_filtered_val.csv'
     augmentations_p: 0
