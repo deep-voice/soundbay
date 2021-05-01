@@ -119,8 +119,10 @@ def main(args):
 
     # Set device
     if not torch.cuda.is_available():
+        print('CPU!!!!!!!!!!!')
         device = torch.device("cpu")
     else:
+        print('GPU!!!!!!!!!')
         device = torch.device("cuda")
 
     # Convert filepaths, convenient if you wish to use relative paths
