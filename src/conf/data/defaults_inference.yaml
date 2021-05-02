@@ -6,9 +6,9 @@ data:
   data_sample_rate: 44100
   test_dataset:
     _target_: data.ClassifierDataset
-    data_path: '../data/'
+    data_path: '../../finding_willy/data/'
     mode: val
-    metadata_path: '../annotations_test.csv'
+    metadata_path: '../../finding_willy/EDA/combined_annotations_filtered_test.csv '
     augmentations_p: 0
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
