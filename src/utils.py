@@ -4,6 +4,7 @@ import torch
 import soundfile as sf
 from sklearn import metrics
 from unittest.mock import Mock
+from omegaconf import OmegaConf
 import boto3
 from pathlib import Path
 from typing import Union
@@ -236,6 +237,25 @@ class App:
 
 
 app = App()
+
+
+def merge_with_checkpoint(run_args, checkpoint_args):
+    """
+    Merge into current args the needed arguments from checkpoint
+    Right now we select the specific modules needed, can make it more generic if we'll see the need for it
+    Input:
+        run_args: dict_config of run args
+        checkpoint_args: dict_config of checkpoint args
+    Output:
+        run_args: updated dict_config of run args
+    """
+
+    OmegaConf.set_struct(run_args, False)
+    run_args.model = checkpoint_args.model
+    run_args.data.test_dataset.preprocessors = checkpoint_args.data.train_dataset.preprocessors
+    run_args.data.sample_rate = checkpoint_args.data.sample_rate
+    OmegaConf.set_struct(run_args, True)
+    return run_args
 
 
 def walk(input_path):
