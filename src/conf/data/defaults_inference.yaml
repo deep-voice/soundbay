@@ -8,7 +8,7 @@ data:
     _target_: data.ClassifierDataset
     data_path: '../../finding_willy/data/'
     mode: val
-    metadata_path: './combined_annotations_filtered_test.csv '
+    metadata_path: '../combined_annotations_filtered_test.csv '
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
