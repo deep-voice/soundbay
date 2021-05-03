@@ -276,8 +276,10 @@ class InferenceDataset(Dataset):
         output:
         audio - pytorch tensor (1-D array)
         """
-        data, _ = sf.read(self.file_path, start=begin_time,
+        data, orig_sample_rate = sf.read(self.file_path, start=begin_time,
                           stop=begin_time + int(self.seq_length * self.data_sample_rate))
+        assert orig_sample_rate == self.data_sample_rate, \
+            f'sample rate is {orig_sample_rate}, should be {self.data_sample_rate}'
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
         return audio
 
