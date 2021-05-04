@@ -238,13 +238,13 @@ class SlidingWindowNormalize:
     """
 
     def __init__(self, sr: float, n_fft: int, lower_cutoff: float = 50, norm=True,
-                 inner: int = 3, outer: int = 32):
+                 inner_ratio: float = 0.06, outer_ratio: float = 0.5):
         self.sr = sr
         self.n_fft = n_fft
         self.lower_cutoff = lower_cutoff
         self.norm = norm
-        self.inner = inner
-        self.outer = outer
+        self.inner_ratio = inner_ratio
+        self.outer_ratio = outer_ratio
 
     # slidingWindowV Function from: https://github.com/nmkridler/moby2/blob/master/metrics.py
     def slidingWindowV(self, P):
@@ -273,13 +273,13 @@ class SlidingWindowNormalize:
             Q[Q < mval - fact_ * sval] = mval - fact_ * sval
             Q[:min_f_ind, :] = mval
         # Set up the local mean window
-        wInner = np.ones(self.inner)
+        wInner = np.ones(int(self.inner_ratio * Q.shape[0]))
         # Set up the overall mean window
-        wOuter = np.ones(self.outer)
+        wOuter = np.ones(int(self.outer_ratio * Q.shape[0]))
         # Remove overall mean and local mean using np.convolve
         for i in range(Q.shape[1]):
             Q[:, i] = Q[:, i] - (np.convolve(Q[:, i], wOuter, 'same') - np.convolve(Q[:, i], wInner, 'same')) / (
-                        self.outer - self.inner)
+                        wOuter.shape[0] - wInner.shape[0])
         Q[Q < 0] = 0.
         return torch.from_numpy(Q).reshape(Q_shape)
 
@@ -308,16 +308,16 @@ class SlidingWindowNormalize:
             fact_ = 1.5
             Q[Q > mval + fact_ * sval] = mval + fact_ * sval
             Q[Q < mval - fact_ * sval] = mval - fact_ * sval
-            Q[:, :] = mval
+            Q[:min_f_ind, :] = mval
         # Set up the local mean window
-        wInner = np.ones(self.inner)
+        wInner = np.ones(int(self.inner_ratio * Q.shape[1]))
         # Set up the overall mean window
-        wOuter = np.ones(self.outer)
+        wOuter = np.ones(int(self.outer_ratio * Q.shape[1]))
         # Remove overall mean and local mean using np.convolve
-        for i in range(Q.shape[1]):
+        for i in range(Q.shape[0]):
             Q[i, :] = Q[i, :] - (
                         np.convolve(Q[i, :], wOuter, 'same') - np.convolve(Q[i, :], wInner, 'same')) / (
-                                      self.outer - self.inner)
+                                      wOuter.shape[0] - wInner.shape[0])
         Q[Q < 0] = 0.
         return torch.from_numpy(Q).reshape(Q_shape)
 
