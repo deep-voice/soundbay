@@ -10,7 +10,7 @@ data:
     mode: train
     metadata_path: '../../finding_willy/EDA/combined_annotations_filtered_train.csv'
     augmentations_p: 0.8
-    augmentations: ${_augmentations}
+    augmentations: null
     preprocessors: ${_preprocessors}
     seq_length: 1
     len_buffer: 0.1
