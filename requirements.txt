@@ -17,3 +17,4 @@ beautifulsoup4
 joblib
 lxml
 future-fstrings
+boto3
