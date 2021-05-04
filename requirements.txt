@@ -1,8 +1,5 @@
 numba
 numpy
-torch
-torchaudio
-torchvision
 librosa
 tqdm
 hydra-core
