@@ -6,9 +6,9 @@ data:
   data_sample_rate: 44100
   train_dataset:
     _target_: data.ClassifierDataset
-    data_path: '../tests/assets/data/'
+    data_path: '../../finding_willy/data/'
     mode: train
-    metadata_path: '../tests/assets/annotations/sample_annotations.csv'
+    metadata_path: '../../finding_willy/EDA/combined_annotations_filtered_train.csv'
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
@@ -21,9 +21,9 @@ data:
     slice_flag: false
   val_dataset:
     _target_: data.ClassifierDataset
-    data_path: '../tests/assets/data'
+    data_path: '../../finding_willy/data/'
     mode: val
-    metadata_path: '../tests/assets/annotations/sample_annotations.csv'
+    metadata_path: '../finding_willy/EDA/combined_annotations_filtered_val.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}

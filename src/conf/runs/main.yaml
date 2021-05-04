@@ -3,7 +3,7 @@ defaults:
   - data: defaults
   - data: null
   - data: _preprocessors
-  - model: jasco_resnet_50
-  - optim: defaults
+  - model: jasco_vgg_19
+  - optim: jasco_vgg_19
   - experiment: defaults
   - checkpoint: defaults
