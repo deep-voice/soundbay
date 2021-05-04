@@ -23,7 +23,7 @@ data:
     _target_: data.ClassifierDataset
     data_path: '../../finding_willy/data/'
     mode: val
-    metadata_path: '../finding_willy/EDA/combined_annotations_filtered_val.csv'
+    metadata_path: '../../finding_willy/EDA/combined_annotations_filtered_val.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
