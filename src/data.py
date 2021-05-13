@@ -234,7 +234,7 @@ class SlidingWindowNormalize:
         Translated to torch
         Has 50/50 chance of activating H sliding window or V sliding window
 
-        Must come after spectrogram and AmplitudeToDB
+        Must come after spectrogram and before AmplitudeToDB
     """
 
     def __init__(self, sr: float, n_fft: int, lower_cutoff: float = 50, norm=True,
