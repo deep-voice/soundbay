@@ -195,7 +195,7 @@ class ChristophCNNwithPCEN(PCENMixin, ChristophCNN):
 
 class GoogleResNet50withPCEN(PCENMixin, GoogleResNet50):
     '''
-    same as ChristophCNN with first PCEN layer
+    same as GoogleResNet50 with first (non-trainable) PCEN layer
     '''
 
     def __init__(self, num_classes=2, eps=1E-6, s=0.025, alpha=0.98, delta=2, r=0.5, trainable=False):
