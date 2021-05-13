@@ -246,87 +246,64 @@ class SlidingWindowNormalize:
         self.inner_ratio = inner_ratio
         self.outer_ratio = outer_ratio
 
+    def spectrogram_norm(self, spect):
+
+        min_f_ind = int((self.lower_cutoff / (self.sr / 2)) * self.n_fft)
+
+        mval, sval = np.mean(spect[min_f_ind:, :]), np.std(spect[min_f_ind:, :])
+        fact_ = 1.5
+        spect[spect > mval + fact_ * sval] = mval + fact_ * sval
+        spect[spect < mval - fact_ * sval] = mval - fact_ * sval
+        spect[:min_f_ind, :] = mval
+
+        return spect
+
     # slidingWindowV Function from: https://github.com/nmkridler/moby2/blob/master/metrics.py
-    def slidingWindowV(self, P):
-        ''' slidingWindowV Method
-                Enhance the contrast vertically (along frequency dimension)
+    def slidingWindow(self, torch_spectrogram, dim=0):
+        ''' slidingWindow Method
+                Enhance the contrast vertically (along frequency dimension) for dim=0 and
+                horizontally (along temporal dimension) for dim=1
 
                 Args:
-                    P: 2-D numpy array image
-                    inner: int length of inner exclusion region (to calculate local mean)
-                    outer: int length of the window (to calculate overall mean)
-                    maxM: int size of the output image in the y-dimension
-                    norm: boolean indicating whether or not to cut off extreme values
+                    torch_spectrogram: 2-D numpy array image
+                    dim: dimension to do the sliding window across
                 Returns:
                     Q: 2-D numpy array image with vertically-enhanced contrast
 
         '''
-        min_f_ind = int((self.lower_cutoff / (self.sr / 2)) * self.n_fft)
-        Q = P.cpu().clone().numpy()
-        Q_shape = Q.shape
-        Q = Q.squeeze()
+        if dim not in {0, 1}:
+            raise ValueError('dim must be 0 or 1')
+
+        spect = torch_spectrogram.cpu().clone().numpy()
+        spect_shape = spect.shape
+        spect = spect.squeeze()
         if self.norm:
-            # Cut off extreme values
-            mval, sval = np.mean(Q[min_f_ind:, :]), np.std(Q[min_f_ind:, :])
-            fact_ = 1.5
-            Q[Q > mval + fact_ * sval] = mval + fact_ * sval
-            Q[Q < mval - fact_ * sval] = mval - fact_ * sval
-            Q[:min_f_ind, :] = mval
+            spect = self.spectrogram_norm(spect)
+
         # Set up the local mean window
-        wInner = np.ones(int(self.inner_ratio * Q.shape[0]))
+        wInner = np.ones(int(self.inner_ratio * spect.shape[dim]))
         # Set up the overall mean window
-        wOuter = np.ones(int(self.outer_ratio * Q.shape[0]))
+        wOuter = np.ones(int(self.outer_ratio * spect.shape[dim]))
         # Remove overall mean and local mean using np.convolve
-        for i in range(Q.shape[1]):
-            Q[:, i] = Q[:, i] - (np.convolve(Q[:, i], wOuter, 'same') - np.convolve(Q[:, i], wInner, 'same')) / (
-                        wOuter.shape[0] - wInner.shape[0])
-        Q[Q < 0] = 0.
-        return torch.from_numpy(Q).reshape(Q_shape)
-
-    # slidingWindowH Function from: https://github.com/nmkridler/moby2/blob/master/metrics.py
-    def slidingWindowH(self, P):
-        ''' slidingWindowH Method
-                Enhance the contrast horizontally (along temporal dimension)
-
-                Args:
-                    P: 2-D numpy array image
-                    inner: int length of inner exclusion region (to calculate local mean)
-                    outer: int length of the window (to calculate overall mean)
-                    maxM: int size of the output image in the y-dimension
-                    norm: boolean indicating whether or not to cut off extreme values
-                Returns:
-                    Q: 2-D numpy array image with horizontally-enhanced contrast
-
-        '''
-        Q = P.cpu().clone().numpy()
-        Q_shape = Q.shape
-        Q = Q.squeeze()
-        min_f_ind = int((self.lower_cutoff / (self.sr / 2)) * self.n_fft)
-        if self.norm:
-            # Cut off extreme values
-            mval, sval = np.mean(Q[min_f_ind:, :]), np.std(Q[min_f_ind:, :])
-            fact_ = 1.5
-            Q[Q > mval + fact_ * sval] = mval + fact_ * sval
-            Q[Q < mval - fact_ * sval] = mval - fact_ * sval
-            Q[:min_f_ind, :] = mval
-        # Set up the local mean window
-        wInner = np.ones(int(self.inner_ratio * Q.shape[1]))
-        # Set up the overall mean window
-        wOuter = np.ones(int(self.outer_ratio * Q.shape[1]))
-        # Remove overall mean and local mean using np.convolve
-        for i in range(Q.shape[0]):
-            Q[i, :] = Q[i, :] - (
-                        np.convolve(Q[i, :], wOuter, 'same') - np.convolve(Q[i, :], wInner, 'same')) / (
+        for i in range(spect.shape[1-dim]):
+            if dim == 0:
+                spect[:, i] = spect[:, i] - (
+                        np.convolve(spect[:, i], wOuter, 'same') - np.convolve(spect[:, i], wInner, 'same')) / (
+                            wOuter.shape[0] - wInner.shape[0])
+            elif dim == 1:
+                spect[i, :] = spect[i, :] - (
+                        np.convolve(spect[i, :], wOuter, 'same') - np.convolve(spect[i, :], wInner, 'same')) / (
                                       wOuter.shape[0] - wInner.shape[0])
-        Q[Q < 0] = 0.
-        return torch.from_numpy(Q).reshape(Q_shape)
+
+        spect[spect < 0] = 0.
+        return torch.from_numpy(spect).reshape(spect_shape)
 
     def __call__(self, x):
 
         if random.random() < 0.5:
-            return self.slidingWindowV(x)
+            return self.slidingWindow(x, dim=0)
         else:
-            return self.slidingWindowH(x)
+            return self.slidingWindow(x, dim=1)
 
 
 class InferenceDataset(Dataset):
