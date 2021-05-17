@@ -4,15 +4,18 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 import sys
+
 sys.path.append('../src')
-from models import ResNet1Channel, GoogleResNet50, OrcaLabResNet18, ChristophCNN, ChristophCNNwithPCEN
+from models import ResNet1Channel, GoogleResNet50, OrcaLabResNet18, ChristophCNN, ChristophCNNwithPCEN, \
+    GoogleResNet50withPCEN
 
 
 @pytest.fixture(scope="module", params=[ResNet1Channel('torchvision.models.resnet.Bottleneck', [3, 4, 6, 3]),
                                         GoogleResNet50(),
                                         OrcaLabResNet18(),
                                         ChristophCNN(),
-                                        ChristophCNNwithPCEN()])
+                                        ChristophCNNwithPCEN(),
+                                        GoogleResNet50withPCEN()])
 def own_model(request):
     return request.param
 

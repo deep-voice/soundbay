@@ -169,9 +169,13 @@ class GenericClassifier(nn.Module):
         return self.fc(x)
 
 
-class PCENMixin(nn.Module):
-    def __init__(self, eps=1E-6, s=0.025, alpha=0.98, delta=2, r=0.5, trainable=True, **kwargs):
-        super().__init__(**kwargs)
+class ChristophCNNwithPCEN(ChristophCNN):
+    '''
+    same as ChristophCNN with first PCEN layer
+    '''
+
+    def __init__(self, num_classes=2, eps=1E-6, s=0.025, alpha=0.98, delta=2, r=0.5, trainable=True):
+        super().__init__(num_classes=num_classes)
         self.pcen_model = PCENTransform(eps, s, alpha, delta, r, trainable)
 
     def forward(self, x):
@@ -180,29 +184,18 @@ class PCENMixin(nn.Module):
         return out
 
 
-class ChristophCNNwithPCEN(PCENMixin, ChristophCNN):
-    '''
-    same as ChristophCNN with first PCEN layer
-    '''
-
-    def __init__(self, num_classes=2, eps=1E-6, s=0.025, alpha=0.98, delta=2, r=0.5, trainable=True):
-        super().__init__(num_classes=num_classes, eps=eps, s=s, alpha=alpha, delta=delta, r=r, trainable=trainable)
-
-    def forward(self, x):
-        out = super().forward(x)
-        return out
-
-
-class GoogleResNet50withPCEN(PCENMixin, GoogleResNet50):
+class GoogleResNet50withPCEN(GoogleResNet50):
     '''
     same as GoogleResNet50 with first (non-trainable) PCEN layer
     '''
 
     def __init__(self, num_classes=2, eps=1E-6, s=0.025, alpha=0.98, delta=2, r=0.5, trainable=False):
-        super().__init__(num_classes=num_classes, eps=eps, s=s, alpha=alpha, delta=delta, r=r, trainable=trainable)
+        super().__init__(num_classes=num_classes)
+        self.pcen_model = PCENTransform(eps, s, alpha, delta, r, trainable)
 
     def forward(self, x):
-        out = super().forward(x)
+        out = self.pcen_model.forward(x)
+        out = super().forward(out)
         return out
 
 
