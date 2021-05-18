@@ -179,7 +179,7 @@ class ChristophCNNwithPCEN(ChristophCNN):
         self.pcen_model = PCENTransform(eps, s, alpha, delta, r, trainable)
 
     def forward(self, x):
-        out = self.pcen_model.forward(x)
+        out = self.pcen_model(x)
         out = super().forward(out)
         return out
 
@@ -194,7 +194,7 @@ class GoogleResNet50withPCEN(GoogleResNet50):
         self.pcen_model = PCENTransform(eps, s, alpha, delta, r, trainable)
 
     def forward(self, x):
-        out = self.pcen_model.forward(x)
+        out = self.pcen_model(x)
         out = super().forward(out)
         return out
 
