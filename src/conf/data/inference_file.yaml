@@ -2,7 +2,7 @@
 data:
   test_dataset:
     _target_: data.InferenceDataset
-    file_path: '../../finding_willy/recordings_2018_filtered_new/180914_150127.wav'
+    file_path: '../data/file1.wav'
     preprocessors: ${_preprocessors}
     seq_length: 1
     data_sample_rate: ${data.data_sample_rate}
