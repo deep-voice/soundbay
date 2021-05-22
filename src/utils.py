@@ -299,12 +299,17 @@ def upload_experiment_to_s3(experiment_id: str,
         s3_client.upload_file(upload_file, bucket_name, upload_file.replace(current_global, object_global))
 
 
-def raven_to_csv_annotations(annotations_path: str, recording_path: str):
+def raven_to_csv_annotations(annotations_path: str,
+                             recording_path: str,
+                             dataset_name: str = 'recordings_2018_filtered'):
+
     """
     Takes annotation files (selection table) created in Raven and turns it to a compatible annotations csv.
     """
     #create dataframe
-    filelist = list(annotations_path.glob('*selections.txt')) #ignore irrelevent files
+    annotations=Path(annotations_path)
+    recording=Path(recording_path)
+    filelist = list(annotations.glob('*selections.txt')) #ignore irrelevent files
     metadata = []
     for file in filelist:
         dfTemp = pd.read_csv(file, sep="\t")
@@ -318,7 +323,7 @@ def raven_to_csv_annotations(annotations_path: str, recording_path: str):
     print('Number of Labels:', metadata.shape[0])
     metadata['Annotation'] = metadata['Annotation'].replace(np.nan, 'w', regex=True)
     #add recording length to dataframe
-    wav_filelist = list(recording_path.glob('*.wav'))
+    wav_filelist = list(recording.glob('*.wav'))
     wav_filedict = {re.search(r'18\d{4,4}_\d{6,6}', file.as_posix()).group(): {'path': file} for file in wav_filelist
                     if re.search(r'18\d{4,4}_\d{6,6}', file.as_posix())}
     for key, value in wav_filedict.items():
@@ -356,7 +361,8 @@ def raven_to_csv_annotations(annotations_path: str, recording_path: str):
     non_overlap_calls['label'] = np.ones(non_overlap_calls.shape[0], dtype=int)
     # combine to a csv
     combined_annotations = pd.concat([bg_segments, non_overlap_calls])
-    combined_annotations.to_csv('combined_annotations.csv', index=False)
+    filename = 'combined_annotations_'+dataset_name+'.csv'
+    combined_annotations.to_csv(filename, index=False)
 
 def merge_calls(sorted_list):
     merged = [sorted_list[0]]
@@ -373,6 +379,7 @@ def merge_calls(sorted_list):
 
 
 def non_overlap_df(input_df):
+    unique_files, idx = np.unique(input_df['filename'], return_index=True)
     non_overlap = []
     for file in unique_files:
         file_df = input_df[input_df['filename'] == file]
