@@ -5,6 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from scipy.special import softmax
 import hydra
+from models import ResNet1Channel
 from pathlib import Path
 import os
 import pandas

@@ -6,11 +6,11 @@ data:
   data_sample_rate: 44100
   test_dataset:
     _target_: data.ClassifierDataset
-    data_path: '../../finding_willy/data/'
+    data_path: '../data/'
     mode: val
-    metadata_path: '../combined_annotations_filtered_test.csv'
+    metadata_path: '../annotations_test.csv'
     augmentations_p: 0
-    augmentations: null
+    augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
     seq_length: 1
     len_buffer: 0.1

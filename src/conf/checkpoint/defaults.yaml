@@ -1,3 +1,3 @@
 # @package _global_
 checkpoint:
-  path: '../models/02_05_21/best.pth'
+  path: null
