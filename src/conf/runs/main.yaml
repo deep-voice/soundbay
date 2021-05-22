@@ -1,9 +1,9 @@
 # @package _global_
 defaults:
   - data: defaults
-  - data: null
+  - data: _augmentations
   - data: _preprocessors
-  - model: jasco_resnet_50
+  - model: defaults
   - optim: defaults
   - experiment: defaults
   - checkpoint: defaults

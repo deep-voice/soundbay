@@ -1,5 +1,6 @@
 # @package _global_
 defaults:
-  - data: '../../finding_willy/recordings_2018_filtered_new'
-  - checkpoint: '../../finding_willy/src/outputs/2021-05-02/best.pth'
+  - data: inference_file
+  - data: _preprocessors
+  - checkpoint: defaults
   - experiment: null_hydra
