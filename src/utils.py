@@ -7,6 +7,8 @@ import boto3
 from pathlib import Path
 from typing import Union
 from tqdm import tqdm
+from omegaconf import OmegaConf
+
 
 
 class LossMeter(object):
@@ -235,3 +237,24 @@ def upload_experiment_to_s3(experiment_id: str,
     for upload_file in tqdm(upload_files):
         upload_file = str(upload_file)
         s3_client.upload_file(upload_file, bucket_name, upload_file.replace(current_global, object_global))
+
+
+
+def merge_with_checkpoint(run_args, checkpoint_args):
+    """
+    Merge into current args the needed arguments from checkpoint
+    Right now we select the specific modules needed, can make it more generic if we'll see the need for it
+    Input:
+        run_args: dict_config of run args
+        checkpoint_args: dict_config of checkpoint args
+    Output:
+        run_args: updated dict_config of run args
+    """
+
+    OmegaConf.set_struct(run_args, False)
+    run_args.model = checkpoint_args.model
+    run_args.data.test_dataset.preprocessors = checkpoint_args.data.train_dataset.preprocessors
+    run_args.data.test_dataset.seq_length = checkpoint_args.data.train_dataset.seq_length
+    run_args.data.sample_rate = checkpoint_args.data.sample_rate
+    OmegaConf.set_struct(run_args, True)
+    return run_args
