@@ -18,7 +18,8 @@ class ClassifierDataset(Dataset):
     '''
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100, mode="train",
-                 equalize_data=False, slice_flag=False, metadata_by_split=False):
+                 equalize_data=False, slice_flag=False, margin_ratio=0.5,
+                 metadata_by_split=False):
         """
         __init__ method initiates ClassifierDataset instance:
         Input:
@@ -43,6 +44,7 @@ class ClassifierDataset(Dataset):
         self._preprocess_metadata(len_buffer, equalize_data, slice_flag)
         self.augmenter = self._set_augmentations(augmentations, augmentations_p)
         self.preprocessor = self.set_preprocessor(preprocessors)
+        self.margin_ratio = margin_ratio
 
     @staticmethod
     def _update_metadata_by_mode(metadata, mode, metadata_by_split):
@@ -147,11 +149,15 @@ class ClassifierDataset(Dataset):
         audio - pytorch tensor (1-D array)
         """
         if self.mode == "train":
-            start_time = random.randint(begin_time, end_time - self.seq_length * self.data_sample_rate)
+            if self.margin_ratio != 0:
+                margin_len_begin = int((self.seq_length * self.data_sample_rate) * self.margin_ratio)
+                margin_len_end = int((self.seq_length * self.data_sample_rate) * (1 - self.margin_ratio))
+                start_time = random.randint(begin_time - margin_len_begin, end_time - margin_len_end)
+            else:
+                start_time = random.randint(begin_time, end_time - int(self.seq_length * self.data_sample_rate))
         else:
             start_time = begin_time
-        data, _ = sf.read(path_to_file, start=start_time, stop=start_time + self.seq_length * self.data_sample_rate)
-        # TODO support in the future batching of long samples into short seq_len samples, might need this during inference
+        data, _ = sf.read(path_to_file, start=start_time, stop=start_time + int(self.seq_length * self.data_sample_rate))
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
         return audio
 
@@ -220,12 +226,91 @@ class PeakNormalize:
 
         return (sample - sample.min()) / (sample.max() - sample.min())
 
+
 class UnitNormalize:
     """Remove mean and divide by std to normalize samples"""
 
     def __call__(self, sample):
 
         return (sample - sample.mean()) / (sample.std() + 1e-8)
+
+
+class SlidingWindowNormalize:
+    """ Based on Sliding window augmentations of
+    https://github.com/cchinchristopherj/Right-Whale-Convolutional-Neural-Network/blob/master/whale_cnn.py
+        Translated to torch
+        Has 50/50 chance of activating H sliding window or V sliding window
+
+        Must come after spectrogram and before AmplitudeToDB
+    """
+
+    def __init__(self, sr: float, n_fft: int, lower_cutoff: float = 50, norm=True,
+                 inner_ratio: float = 0.06, outer_ratio: float = 0.5):
+        self.sr = sr
+        self.n_fft = n_fft
+        self.lower_cutoff = lower_cutoff
+        self.norm = norm
+        self.inner_ratio = inner_ratio
+        self.outer_ratio = outer_ratio
+
+    def spectrogram_norm(self, spect):
+
+        min_f_ind = int((self.lower_cutoff / (self.sr / 2)) * self.n_fft)
+
+        mval, sval = np.mean(spect[min_f_ind:, :]), np.std(spect[min_f_ind:, :])
+        fact_ = 1.5
+        spect[spect > mval + fact_ * sval] = mval + fact_ * sval
+        spect[spect < mval - fact_ * sval] = mval - fact_ * sval
+        spect[:min_f_ind, :] = mval
+
+        return spect
+
+    # slidingWindowV Function from: https://github.com/nmkridler/moby2/blob/master/metrics.py
+    def slidingWindow(self, torch_spectrogram, dim=0):
+        ''' slidingWindow Method
+                Enhance the contrast vertically (along frequency dimension) for dim=0 and
+                horizontally (along temporal dimension) for dim=1
+
+                Args:
+                    torch_spectrogram: 2-D numpy array image
+                    dim: dimension to do the sliding window across
+                Returns:
+                    Q: 2-D numpy array image with vertically-enhanced contrast
+
+        '''
+        if dim not in {0, 1}:
+            raise ValueError('dim must be 0 or 1')
+
+        spect = torch_spectrogram.cpu().clone().numpy()
+        spect_shape = spect.shape
+        spect = spect.squeeze()
+        if self.norm:
+            spect = self.spectrogram_norm(spect)
+
+        # Set up the local mean window
+        wInner = np.ones(int(self.inner_ratio * spect.shape[dim]))
+        # Set up the overall mean window
+        wOuter = np.ones(int(self.outer_ratio * spect.shape[dim]))
+        # Remove overall mean and local mean using np.convolve
+        for i in range(spect.shape[1-dim]):
+            if dim == 0:
+                spect[:, i] = spect[:, i] - (
+                        np.convolve(spect[:, i], wOuter, 'same') - np.convolve(spect[:, i], wInner, 'same')) / (
+                            wOuter.shape[0] - wInner.shape[0])
+            elif dim == 1:
+                spect[i, :] = spect[i, :] - (
+                        np.convolve(spect[i, :], wOuter, 'same') - np.convolve(spect[i, :], wInner, 'same')) / (
+                                      wOuter.shape[0] - wInner.shape[0])
+
+        spect[spect < 0] = 0.
+        return torch.from_numpy(spect).reshape(spect_shape)
+
+    def __call__(self, x):
+
+        if random.random() < 0.5:
+            return self.slidingWindow(x, dim=0)
+        else:
+            return self.slidingWindow(x, dim=1)
 
 
 class InferenceDataset(Dataset):
@@ -277,8 +362,10 @@ class InferenceDataset(Dataset):
         output:
         audio - pytorch tensor (1-D array)
         """
-        data, _ = sf.read(self.file_path, start=begin_time,
-                          stop=begin_time + self.seq_length * self.data_sample_rate)
+        data, orig_sample_rate = sf.read(self.file_path, start=begin_time,
+                          stop=begin_time + int(self.seq_length * self.data_sample_rate))
+        assert orig_sample_rate == self.data_sample_rate, \
+            f'sample rate is {orig_sample_rate}, should be {self.data_sample_rate}'
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
         return audio
 

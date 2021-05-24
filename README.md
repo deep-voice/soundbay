@@ -8,7 +8,7 @@ Soundbay is an intuitive and comprehensive Python-based framework for training d
 ### Cloning the repo
 
 ```
-$ git clone https://github.com/mosheman5/soundbay.git
+$ git clone https://github.com/deep-voice/soundbay.git
 $ cd soundbay
 ```
 
@@ -39,7 +39,7 @@ Each raw in a run configuration file calls a (hopefully) stand-alone group of pa
 ### Data structure
 Path to the datafolder should be passed as an argument for training. The data folder or subfolders should contain `.wav` files. 
 A `.csv` file should accompany the data, serve as metadata from which the training pipeline takes samples with their corresponding labels.
-A toy example is available for [data](tests/data) and the respective [annotations](tests/annotations/samples_annotations.csv)
+A toy example is available for [data](tests/assets/data) and the respective [annotations](tests/assets/annotations/sample_annotations.csv)
 
 ### Training Example
 

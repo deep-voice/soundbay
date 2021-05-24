@@ -1,3 +1,4 @@
+numba
 numpy
 librosa
 tqdm
@@ -8,6 +9,9 @@ omegaconf
 soundfile
 pandas
 wandb
+captum
+beautifulsoup4
 joblib
 lxml
 future-fstrings
+boto3
