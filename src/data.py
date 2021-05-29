@@ -61,7 +61,7 @@ class ClassifierDataset(Dataset):
             audio_dict contains references to audio paths given name from metadata
         """
         audio_paths = data_path.rglob('*.wav')
-        return {x.name.strip('.wav'): x for x in audio_paths}
+        return {x.name.replace('.wav', ''): x for x in audio_paths}
 
     def _preprocess_metadata(self, len_buffer, equalize=False, slice_flag=False):
         """
