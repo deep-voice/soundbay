@@ -18,7 +18,7 @@ class ClassifierDataset(Dataset):
     '''
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100, mode="train",
-                 equalize_data=False, slice_flag=False, margin_ratio=0.5,
+                 equalize_data=False, slice_flag=False, margin_ratio=0,
                  metadata_by_split=False):
         """
         __init__ method initiates ClassifierDataset instance:
