@@ -19,6 +19,7 @@ data:
     equalize_data: true
     slice_flag: false
     metadata_by_split: yes
+    margin_ratio: 0
   val_dataset:
     _target_: data.ClassifierDataset
     data_path: '../datasets/orcasound/train_data/wav'
@@ -34,3 +35,4 @@ data:
     equalize_data: false
     slice_flag: true
     metadata_by_split: yes
+    margin_ratio: 0
