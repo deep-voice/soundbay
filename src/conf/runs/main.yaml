@@ -4,6 +4,6 @@ defaults:
   - data: null
   - data: _preprocessors
   - model: jasco_resnet_50
-  - optim: defaults
+  - optim: jasco_resnet_50
   - experiment: defaults
   - checkpoint: defaults
