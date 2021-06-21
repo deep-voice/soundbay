@@ -299,9 +299,9 @@ def upload_experiment_to_s3(experiment_id: str,
         s3_client.upload_file(upload_file, bucket_name, upload_file.replace(current_global, object_global))
 
 
-def raven_to_csv_annotations(annotations_path: str,
+def raven_to_df_annotations(annotations_path: str,
                              recording_path: str,
-                             dataset_name: str = 'recordings_2018_filtered'):
+                             positive_tag_names: list = ['w','sc']):
 
     """
     Takes annotation files (selection table) created in Raven and turns it to a compatible annotations csv.
@@ -313,19 +313,20 @@ def raven_to_csv_annotations(annotations_path: str,
     metadata = []
     for file in filelist:
         dfTemp = pd.read_csv(file, sep="\t")
-        dfTemp['filename'] = re.search(r'18\d{4,4}_\d{6,6}', file.as_posix()).group()
-        dfTemp['StartMicInWater'] = np.amin(dfTemp['Begin Time (s)'])
-        dfTemp['EndMicInWater'] = np.amax(dfTemp['End Time (s)'])
+        dfTemp['filename'] = re.search("\.Table.1.selections", file.as_posix()).group()
+        dfTemp['FirstCallTime'] = np.amin(dfTemp['Begin Time (s)'])
+        dfTemp['LastCallTime'] = np.amax(dfTemp['End Time (s)'])
         metadata.append(dfTemp)
 
     metadata = pd.concat(metadata)
     metadata.rename(columns={'Begin Time (s)': 'begin_time', 'End Time (s)': 'end_time'}, inplace=True)
     print('Number of Labels:', metadata.shape[0])
-    metadata['Annotation'] = metadata['Annotation'].replace(np.nan, 'w', regex=True)
+    for tag in positive_tag_names:
+        metadata['Annotation'] = metadata['Annotation'].replace(np.nan, tag, regex=True)
     #add recording length to dataframe
     wav_filelist = list(recording.glob('*.wav'))
-    wav_filedict = {re.search(r'18\d{4,4}_\d{6,6}', file.as_posix()).group(): {'path': file} for file in wav_filelist
-                    if re.search(r'18\d{4,4}_\d{6,6}', file.as_posix())}
+    wav_filedict = {re.search("\.Table.1.selections", file.as_posix()).group(): {'path': file} for file in wav_filelist
+                    if re.search("\.Table.1.selections", file.as_posix())}
     for key, value in wav_filedict.items():
         record_length = sf.info(value['path']).duration
         value.update({'length': record_length})
@@ -335,7 +336,7 @@ def raven_to_csv_annotations(annotations_path: str,
         annotation_lengths.append(wav_filedict[filename_txt]['length'])
     metadata['TotalRecordLength'] = annotation_lengths
     # filter metadata to contain only desired call types
-    filters = ['w', 'sc']
+    filters = positive_tag_names
     metadata_calls = metadata[metadata.Annotation.isin(filters)]
     unique_files, idx = np.unique(metadata['filename'], return_index=True)
     # Find true length of call sequences ( get rid of over lapping-sequences)
@@ -361,8 +362,13 @@ def raven_to_csv_annotations(annotations_path: str,
     non_overlap_calls['label'] = np.ones(non_overlap_calls.shape[0], dtype=int)
     # combine to a csv
     combined_annotations = pd.concat([bg_segments, non_overlap_calls])
-    filename = 'combined_annotations_'+dataset_name+'.csv'
-    combined_annotations.to_csv(filename, index=False)
+    return combined_annotations
+
+
+def annotations_df_to_csv(annotations_dataset, dataset_name: str = 'recordings_2018_filtered'):
+    filename = 'combined_annotations_' + dataset_name + '.csv'
+    annotations_dataset.to_csv(filename, index=False)
+
 
 def merge_calls(sorted_list):
     merged = [sorted_list[0]]
