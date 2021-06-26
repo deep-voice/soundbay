@@ -86,31 +86,31 @@ class ChristophCNN(nn.Module):
 
     def __init__(self, num_classes=2):
         super(ChristophCNN, self).__init__()
-        self.drop_out = nn.Dropout()
+        self.drop_out = nn.Dropout(0.2)
         self.layer1 = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=5, stride=1, padding=2),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(1, 15, kernel_size=7, stride=1),
+            nn.BatchNorm2d(15),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2))
+            nn.MaxPool2d(kernel_size=2))
         self.layer2 = nn.Sequential(
-            nn.Conv2d(32, 64, kernel_size=5, stride=1, padding=2),
-            nn.BatchNorm2d(64),
+            nn.Conv2d(15, 30, kernel_size=7, stride=1),
+            nn.BatchNorm2d(30),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2))
-        self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
-        self.fc1 = nn.Linear(7 * 7 * 64, 1000)
-        self.drop_out = nn.Dropout()
-        self.fc2 = nn.Linear(1000, num_classes)
+            nn.MaxPool2d(kernel_size=2))
+        self.fc1 = nn.Linear(7 * 7 * 30, 200)
+        self.drop_out = nn.Dropout(0.5)
+        # This is dense is the deviation from the cchinchristopherj repo which has 1 instead of num_classes
+        self.fc2 = nn.Linear(200, num_classes)
 
     def forward(self, x):
         out = self.drop_out(x)
         out = self.layer1(out)
         out = self.layer2(out)
-        out = self.avgpool(out)
         out = torch.flatten(out, 1)
-        out = self.drop_out(out)
         out = self.fc1(out)
+        out = self.drop_out(out)
         out = self.fc2(out)
+        out = torch.sigmoid(out)
         return out
 
 
