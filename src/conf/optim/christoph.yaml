@@ -6,6 +6,3 @@ optim:
     lr: 0.1
     weight_decay: 0.005
     nesterov: False
-  scheduler:
-    _target_: torch.optim.lr_scheduler.ExponentialLR
-    gamma: 1
