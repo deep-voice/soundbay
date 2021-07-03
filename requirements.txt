@@ -10,4 +10,5 @@ pandas
 wandb
 joblib
 lxml
+PyQt5
 future-fstrings
