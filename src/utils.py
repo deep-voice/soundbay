@@ -97,8 +97,9 @@ class Logger:
         self.loss_meter_keys = ['loss']
         self.init_losses_meter()
         self.pred_list = []
+        self.pred_proba_list = []
         self.label_list = []
-        self.metrics_dict = {'accuracy': [], 'f1score': [], 'precision': [], 'recall': []}
+        self.metrics_dict = {'accuracy': [], 'f1score': [], 'precision': [], 'recall': [], 'auc': []}
 
     def log(self, log_num: int, flag: str):
         """logging losses using writer"""
@@ -135,26 +136,30 @@ class Logger:
         _, predicted = torch.max(pred_tuple[0].data, 1)
         label = pred_tuple[1].data
         self.pred_list += predicted.cpu().numpy().tolist()  # add current batch prediction to full epoch pred list
+        self.pred_proba_list += torch.softmax(pred_tuple[0].data, 1).cpu().numpy()[:, 1].tolist()
         self.label_list += label.cpu().numpy().tolist()
 
     def calc_metrics(self, epoch):
         """calculates metrics, saves to tensorboard log & flush prediction list"""
-        self.metrics_dict = self.get_metrics_dict(self.label_list, self.pred_list)
+        self.metrics_dict = self.get_metrics_dict(self.label_list, self.pred_list, self.pred_proba_list)
         self.log_writer.log({'Accuracy': self.metrics_dict['accuracy']}, step=epoch)
         self.log_writer.log({'f1score': self.metrics_dict['f1score']}, step=epoch)
         self.log_writer.log({'precision': self.metrics_dict['precision']}, step=epoch)
         self.log_writer.log({'recall': self.metrics_dict['recall']}, step=epoch)
+        self.log_writer.log({'auc': self.metrics_dict['auc']}, step=epoch)
         self.pred_list = []  # flush
         self.label_list = []
+        self.pred_proba_list = []
 
     @staticmethod
-    def get_metrics_dict(label_list, pred_list):
+    def get_metrics_dict(label_list, pred_list, pred_proba_list):
         """calculate the metrics comparing the predictions to the ground-truth labels, and return them in dict format"""
         accuracy = metrics.accuracy_score(label_list, pred_list)  # calculate accuracy using sklearn.metrics
         f1score = metrics.f1_score(label_list, pred_list)
         precision = metrics.precision_score(label_list, pred_list)
         recall = metrics.recall_score(label_list, pred_list)
-        metrics_dict = {'accuracy': accuracy, 'f1score': f1score, 'precision': precision, 'recall': recall}
+        auc = metrics.roc_auc_score(label_list, pred_proba_list)
+        metrics_dict = {'accuracy': accuracy, 'f1score': f1score, 'precision': precision, 'recall': recall, 'auc': auc}
         return metrics_dict
 
 
