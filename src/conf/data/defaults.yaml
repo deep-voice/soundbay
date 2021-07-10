@@ -6,13 +6,13 @@ data:
   data_sample_rate: 44100
   train_dataset:
     _target_: data.ClassifierDataset
-    data_path: '../tests/assets/data/'
-    mode: train
-    metadata_path: '../tests/assets/annotations/sample_annotations.csv'
+    data_path: '../tests/assets/data/' 
+    mode: train 
+    metadata_path: '../annotations/combined_annotations_filtered_train.csv'
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
-    seq_length: 1
+    seq_length: 1 
     len_buffer: 0.1
     margin_ratio: 0.5
     data_sample_rate: ${data.data_sample_rate}
@@ -21,9 +21,9 @@ data:
     slice_flag: false
   val_dataset:
     _target_: data.ClassifierDataset
-    data_path: '../tests/assets/data'
-    mode: val
-    metadata_path: '../tests/assets/annotations/sample_annotations.csv'
+    data_path: '../tests/assets/data/'
+    mode: val 
+    metadata_path: '../annotations/combined_annotations_filtered_val.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
