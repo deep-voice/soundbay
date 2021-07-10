@@ -1,9 +1,6 @@
-numba==0.48
+numba
 numpy
-torch
-torchaudio
-torchvision
-librosa==0.7.2
+librosa
 tqdm
 hydra-core
 pytest
@@ -16,4 +13,6 @@ captum
 beautifulsoup4
 joblib
 lxml
+PyQt5
 future-fstrings
+boto3

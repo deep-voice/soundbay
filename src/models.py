@@ -86,21 +86,23 @@ class ChristophCNN(nn.Module):
 
     def __init__(self, num_classes=2):
         super(ChristophCNN, self).__init__()
-        self.drop_out = nn.Dropout()
+        self.drop_out = nn.Dropout(0.2)
         self.layer1 = nn.Sequential(
-            nn.Conv2d(1, 32, kernel_size=5, stride=1, padding=2),
-            nn.BatchNorm2d(32),
+            nn.Conv2d(1, 15, kernel_size=7, stride=1),
+            nn.BatchNorm2d(15),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2))
+            nn.MaxPool2d(kernel_size=2))
         self.layer2 = nn.Sequential(
-            nn.Conv2d(32, 64, kernel_size=5, stride=1, padding=2),
-            nn.BatchNorm2d(64),
+            nn.Conv2d(15, 30, kernel_size=7, stride=1),
+            nn.BatchNorm2d(30),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2, stride=2))
-        self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
-        self.fc1 = nn.Linear(7 * 7 * 64, 1000)
-        self.drop_out = nn.Dropout()
-        self.fc2 = nn.Linear(1000, num_classes)
+            nn.MaxPool2d(kernel_size=2))
+        # These are deviations from the cchinchristopherj repo
+        # First, had to do AdaptiveAvgPool2d to allow different image sizes
+        # Second, this dense has num_classes outputs instead of 1
+        self.avgpool = nn.AdaptiveAvgPool2d((3, 3))
+        self.fc2 = nn.Linear(3 * 3 * 30, num_classes)
+        self.drop_out = nn.Dropout(0.5)
 
     def forward(self, x):
         out = self.drop_out(x)
@@ -108,9 +110,9 @@ class ChristophCNN(nn.Module):
         out = self.layer2(out)
         out = self.avgpool(out)
         out = torch.flatten(out, 1)
-        out = self.drop_out(out)
-        out = self.fc1(out)
         out = self.fc2(out)
+        out = self.drop_out(out)
+        out = torch.sigmoid(out)
         return out
 
 
@@ -169,27 +171,33 @@ class GenericClassifier(nn.Module):
         return self.fc(x)
 
 
-class PCENMixin(nn.Module):
-    def __init__(self, eps=1E-6, s=0.025, alpha=0.98, delta=2, r=0.5, trainable=True, **kwargs):
-        super().__init__(**kwargs)
-        self.pcen_model = PCENTransform(eps, s, alpha, delta, r, trainable)
-
-    def forward(self, x):
-        out = self.pcen_model.forward(x)
-        out = super().forward(out)
-        return out
-
-
-class ChristophCNNwithPCEN(PCENMixin, ChristophCNN):
+class ChristophCNNwithPCEN(ChristophCNN):
     '''
     same as ChristophCNN with first PCEN layer
     '''
 
     def __init__(self, num_classes=2, eps=1E-6, s=0.025, alpha=0.98, delta=2, r=0.5, trainable=True):
-        super().__init__(num_classes=num_classes, eps=eps, s=s, alpha=alpha, delta=delta, r=r, trainable=trainable)
+        super().__init__(num_classes=num_classes)
+        self.pcen_model = PCENTransform(eps, s, alpha, delta, r, trainable)
 
     def forward(self, x):
-        out = super().forward(x)
+        out = self.pcen_model(x)
+        out = super().forward(out)
+        return out
+
+
+class GoogleResNet50withPCEN(GoogleResNet50):
+    '''
+    same as GoogleResNet50 with first (non-trainable) PCEN layer
+    '''
+
+    def __init__(self, num_classes=2, eps=1E-6, s=0.025, alpha=0.98, delta=2, r=0.5, trainable=False):
+        super().__init__(num_classes=num_classes)
+        self.pcen_model = PCENTransform(eps, s, alpha, delta, r, trainable)
+
+    def forward(self, x):
+        out = self.pcen_model(x)
+        out = super().forward(out)
         return out
 
 
@@ -214,6 +222,7 @@ class PCENTransform(nn.Module):
         self.eps = eps
         self.trainable = trainable
 
+    @staticmethod
     def pcen(x, eps=1E-6, s=0.025, alpha=0.98, delta=2, r=0.5, training=False):
         frames = x.split(1, -2)
         m_frames = []
