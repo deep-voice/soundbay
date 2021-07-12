@@ -100,18 +100,20 @@ class ChristophCNN(nn.Module):
         # These are deviations from the cchinchristopherj repo
         # First, had to do AdaptiveAvgPool2d to allow different image sizes
         # Second, this dense has num_classes outputs instead of 1
-        self.avgpool = nn.AdaptiveAvgPool2d((3, 3))
-        self.fc2 = nn.Linear(3 * 3 * 30, num_classes)
+        self.avgpool = nn.AdaptiveAvgPool2d((11, 11))
+        self.fc1 = nn.Linear(11 * 11 * 30, 200)
+        self.fc2 = nn.Linear(200, num_classes)
         self.drop_out = nn.Dropout(0.5)
 
     def forward(self, x):
         out = self.drop_out(x)
         out = self.layer1(out)
         out = self.layer2(out)
-        out = self.avgpool(out)
+        # out = self.avgpool(out)
         out = torch.flatten(out, 1)
-        out = self.fc2(out)
+        out = self.fc1(out)
         out = self.drop_out(out)
+        out = self.fc2(out)
         out = torch.sigmoid(out)
         return out
 
