@@ -13,6 +13,13 @@ from tqdm import tqdm
 import pandas as pd
 import re
 
+import collections
+
+try:
+    collectionsAbc = collections.abc
+except AttributeError:
+    collectionsAbc = collections
+
 
 def load_audio(filepath: str, sr: int, max_val=0.9):
     """
@@ -58,6 +65,7 @@ class LossMeter(object):
     """
     A class for managing the losses for all the epochs
     """
+
     def __init__(self, name):
         """
         __init__ function initializes the loss meter
@@ -87,6 +95,7 @@ class Logger:
     """
     A class for computing performance metrics, logging them and displaying them throughout the train
     """
+
     def __init__(self,
                  log_writer=Mock()
                  ):
@@ -102,17 +111,18 @@ class Logger:
         self.pred_list = []
         self.pred_proba_list = []
         self.label_list = []
-        self.metrics_dict = {'accuracy': [], 'f1score': [], 'precision': [], 'recall': [], 'auc': []}
+        self.metrics_dict = {'accuracy': [], 'f1score': [],
+                             'precision': [], 'recall': [], 'auc': []}
 
     def log(self, log_num: int, flag: str):
         """logging losses using writer"""
         for key in self.loss_meter_keys:
             if flag == 'train':
                 self.log_writer.log({f"{key}_train":
-                                           self.loss_meter_train[key].summarize_epoch()}, step=log_num)
+                                     self.loss_meter_train[key].summarize_epoch()}, step=log_num)
             elif flag == 'val':
                 self.log_writer.log({f"{key}_val":
-                                           self.loss_meter_val[key].summarize_epoch()}, step=log_num)
+                                     self.loss_meter_val[key].summarize_epoch()}, step=log_num)
 
     def init_losses_meter(self):
         for key in self.loss_meter_keys:
@@ -128,9 +138,11 @@ class Logger:
         losses = [loss]
         for key, current_loss in zip(self.loss_meter_keys, losses):
             if flag == 'train':
-                self.loss_meter_train[key].add(current_loss.data.cpu().numpy().mean())
+                self.loss_meter_train[key].add(
+                    current_loss.data.cpu().numpy().mean())
             elif flag == 'val':
-                self.loss_meter_val[key].add(current_loss.data.cpu().numpy().mean())
+                self.loss_meter_val[key].add(
+                    current_loss.data.cpu().numpy().mean())
             else:
                 raise ValueError('accept train or flag only!')
 
@@ -138,25 +150,34 @@ class Logger:
         """update prediction and label list from current batch/iteration"""
         _, predicted = torch.max(pred_tuple[0].data, 1)
         label = pred_tuple[1].data
-        self.pred_list += predicted.cpu().numpy().tolist()  # add current batch prediction to full epoch pred list
-        self.pred_proba_list.append(torch.softmax(pred_tuple[0].data, 1).cpu().numpy())
+        # add current batch prediction to full epoch pred list
+        self.pred_list += predicted.cpu().numpy().tolist()
+        self.pred_proba_list.append(torch.softmax(
+            pred_tuple[0].data, 1).cpu().numpy())
         self.label_list += label.cpu().numpy().tolist()
 
     def calc_metrics(self, epoch):
         """calculates metrics, saves to tensorboard log & flush prediction list"""
         pred_proba_array = np.concatenate(self.pred_proba_list)
-        self.metrics_dict = self.get_metrics_dict(self.label_list, self.pred_list, pred_proba_array)
-        self.log_writer.log({'Accuracy': self.metrics_dict['accuracy']}, step=epoch)
-        self.log_writer.log({'f1score': self.metrics_dict['f1score']}, step=epoch)
-        self.log_writer.log({'precision': self.metrics_dict['precision']}, step=epoch)
-        self.log_writer.log({'recall': self.metrics_dict['recall']}, step=epoch)
+        self.metrics_dict = self.get_metrics_dict(
+            self.label_list, self.pred_list, pred_proba_array)
+        self.log_writer.log(
+            {'Accuracy': self.metrics_dict['accuracy']}, step=epoch)
+        self.log_writer.log(
+            {'f1score': self.metrics_dict['f1score']}, step=epoch)
+        self.log_writer.log(
+            {'precision': self.metrics_dict['precision']}, step=epoch)
+        self.log_writer.log(
+            {'recall': self.metrics_dict['recall']}, step=epoch)
         self.log_writer.log({'auc': self.metrics_dict['auc']}, step=epoch)
         self.log_writer.log(
-            {'ROC Curve': wandb.plot.roc_curve(self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
+            {'ROC Curve': wandb.plot.roc_curve(
+                self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
             step=epoch
         )
         self.log_writer.log(
-            {'PR Curve': wandb.plot.pr_curve(self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
+            {'PR Curve': wandb.plot.pr_curve(
+                self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
             step=epoch
         )
         self.pred_list = []  # flush
@@ -166,12 +187,14 @@ class Logger:
     @staticmethod
     def get_metrics_dict(label_list, pred_list, pred_proba_array):
         """calculate the metrics comparing the predictions to the ground-truth labels, and return them in dict format"""
-        accuracy = metrics.accuracy_score(label_list, pred_list)  # calculate accuracy using sklearn.metrics
+        accuracy = metrics.accuracy_score(
+            label_list, pred_list)  # calculate accuracy using sklearn.metrics
         f1score = metrics.f1_score(label_list, pred_list)
         precision = metrics.precision_score(label_list, pred_list)
         recall = metrics.recall_score(label_list, pred_list)
         auc = metrics.roc_auc_score(label_list, pred_proba_array[:, 1])
-        metrics_dict = {'accuracy': accuracy, 'f1score': f1score, 'precision': precision, 'recall': recall, 'auc': auc}
+        metrics_dict = {'accuracy': accuracy, 'f1score': f1score,
+                        'precision': precision, 'recall': recall, 'auc': auc}
         return metrics_dict
 
 
@@ -188,6 +211,7 @@ class LibrosaMelSpectrogram:
     Output:
         melspectrogram: numpy array with size n_mels*t (signal length)
     """
+
     def __init__(self, sr, n_mels, fmin):
         self.sr = sr
         self.n_mels = n_mels
@@ -198,7 +222,7 @@ class LibrosaMelSpectrogram:
 
     def __call__(self,  sample):
         slice_len = 1
-        sample_numpy = sample.numpy().ravel() # convert to numpy and flatten
+        sample_numpy = sample.numpy().ravel()  # convert to numpy and flatten
         melspectrogram = librosa.feature.melspectrogram(sample_numpy, sr=self.sr, n_mels=self.n_mels, n_fft=self.n_fft,
                                                         hop_length=self.hop_length, fmin=self.fmin, fmax=self.fmax)
         return melspectrogram
@@ -217,6 +241,7 @@ class LibrosaPcen:
     Output:
          pcen: per-channel energy normalized version of signal - torch tensor
     """
+
     def __init__(self, sr, n_mels, fmin):
         self.sr = sr
         self.n_mels = n_mels
@@ -225,14 +250,14 @@ class LibrosaPcen:
         self.fmin = fmin
         self.fmax = sr//2
 
-
     # sample,
+
     def __call__(self,  sample, gain=0.6, bias=0.1, power=0.2, time_constant=0.4, eps=1e-9):
         hop_length = int(self.sr / (self.n_mels / self.slice_len))
         pcen_librosa = librosa.core.pcen(sample, sr=self.sr, hop_length=self.hop_length, gain=gain, bias=bias, power=power,
                                          time_constant=time_constant, eps=eps)
-        pcen_librosa = np.expand_dims(pcen_librosa, 0)  # expand dims to greyscale
-
+        pcen_librosa = np.expand_dims(
+            pcen_librosa, 0)  # expand dims to greyscale
 
         return torch.from_numpy(pcen_librosa).float()
 
@@ -292,7 +317,7 @@ def walk(input_path):
 
 
 def upload_experiment_to_s3(experiment_id: str,
-                            dir_path: Union[Path,str],
+                            dir_path: Union[Path, str],
                             bucket_name: str,
                             include_parent: bool = True):
     """
@@ -312,35 +337,39 @@ def upload_experiment_to_s3(experiment_id: str,
     s3_client = boto3.client('s3')
     for upload_file in tqdm(upload_files):
         upload_file = str(upload_file)
-        s3_client.upload_file(upload_file, bucket_name, upload_file.replace(current_global, object_global))
+        s3_client.upload_file(upload_file, bucket_name, upload_file.replace(
+            current_global, object_global))
 
 
 # <<<<<<< feature/EDA_script
 def raven_to_df_annotations(annotations_path: str,
-                             recording_path: str,
-                             positive_tag_names: list = ['w','sc']):
-
+                            recording_path: str,
+                            positive_tag_names: list = ['w', 'sc']):
     """
     Takes annotation files (selection table) created in Raven and turns it to a compatible annotations csv.
     """
-    #create dataframe
-    annotations=Path(annotations_path)
-    recording=Path(recording_path)
-    filelist = list(annotations.glob('*selections.txt')) #ignore irrelevent files
+    # create dataframe
+    annotations = Path(annotations_path)
+    recording = Path(recording_path)
+    # ignore irrelevent files
+    filelist = list(annotations.glob('*selections.txt'))
     metadata = []
     for file in filelist:
         dfTemp = pd.read_csv(file, sep="\t")
-        dfTemp['filename'] = re.search("\.Table.1.selections", file.as_posix()).group()
+        dfTemp['filename'] = re.search(
+            "\.Table.1.selections", file.as_posix()).group()
         dfTemp['FirstCallTime'] = np.amin(dfTemp['Begin Time (s)'])
         dfTemp['LastCallTime'] = np.amax(dfTemp['End Time (s)'])
         metadata.append(dfTemp)
 
     metadata = pd.concat(metadata)
-    metadata.rename(columns={'Begin Time (s)': 'begin_time', 'End Time (s)': 'end_time'}, inplace=True)
+    metadata.rename(columns={'Begin Time (s)': 'begin_time',
+                    'End Time (s)': 'end_time'}, inplace=True)
     print('Number of Labels:', metadata.shape[0])
     for tag in positive_tag_names:
-        metadata['Annotation'] = metadata['Annotation'].replace(np.nan, tag, regex=True)
-    #add recording length to dataframe
+        metadata['Annotation'] = metadata['Annotation'].replace(
+            np.nan, tag, regex=True)
+    # add recording length to dataframe
     wav_filelist = list(recording.glob('*.wav'))
     wav_filedict = {re.search("\.Table.1.selections", file.as_posix()).group(): {'path': file} for file in wav_filelist
                     if re.search("\.Table.1.selections", file.as_posix())}
@@ -371,8 +400,10 @@ def raven_to_df_annotations(annotations_path: str,
                 break
             next_beginning = np.min(next_beginning)
             bg_segments.append([item, next_beginning, file])
-    bg_segments = pd.DataFrame(bg_segments, columns=['begin_time', 'end_time', 'filename'])
-    bg_segments['call_length'] = bg_segments['end_time'] - bg_segments['begin_time']
+    bg_segments = pd.DataFrame(bg_segments, columns=[
+                               'begin_time', 'end_time', 'filename'])
+    bg_segments['call_length'] = bg_segments['end_time'] - \
+        bg_segments['begin_time']
     bg_segments.sort_values(by=['call_length'])
     # add labels: 0 for background and 1 for call. TODO: modify if there are different call types
     bg_segments['label'] = np.zeros(bg_segments.shape[0], dtype=int)
@@ -414,14 +445,16 @@ def non_overlap_df(input_df):
 
         merged = merge_calls(sorted_by_lower_bound)
 
-        p = pd.DataFrame({'begin_time': np.array(merged)[:, 0], 'end_time': np.array(merged)[:, 1], 'filename': file})
+        p = pd.DataFrame({'begin_time': np.array(merged)[
+                         :, 0], 'end_time': np.array(merged)[:, 1], 'filename': file})
         non_overlap.append(p)
 
     non_overlap = pd.concat(non_overlap)
-    non_overlap['call_length'] = non_overlap['end_time'] - non_overlap['begin_time']
+    non_overlap['call_length'] = non_overlap['end_time'] - \
+        non_overlap['begin_time']
     return non_overlap
 
-  
+
 def merge_with_checkpoint(run_args, checkpoint_args):
     """
     Merge into current args the needed arguments from checkpoint
@@ -440,3 +473,14 @@ def merge_with_checkpoint(run_args, checkpoint_args):
     run_args.data.sample_rate = checkpoint_args.data.sample_rate
     OmegaConf.set_struct(run_args, True)
     return run_args
+
+
+def flatten(d, parent_key='', sep='_'):
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, collectionsAbc.MutableMapping):
+            items.extend(flatten(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)

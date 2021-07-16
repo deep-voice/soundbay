@@ -25,11 +25,10 @@ from trainers import Trainer
 import hydra
 from hydra.utils import instantiate
 import random
-from utils import Logger, upload_experiment_to_s3
+from utils import Logger, upload_experiment_to_s3, flatten
 from unittest.mock import Mock
 import os
 from utils import App
-
 
 
 def modeling(
@@ -44,7 +43,6 @@ def modeling(
     model_args,
     logger,
 ):
-
     """
     modeling function takes all the variables and parameters defined in the main script
     (either through hydra configuration files or overwritten in the command line
@@ -76,19 +74,19 @@ def modeling(
 
     # Define dataloader for training and validation datasets as well as optimizers arguments
     train_dataloader = DataLoader(
-            dataset=train_dataset,
-            shuffle=True,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            pin_memory=True,
-        )
+        dataset=train_dataset,
+        shuffle=True,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        pin_memory=True,
+    )
     val_dataloader = DataLoader(
-            dataset=val_dataset,
-            shuffle=False,
-            batch_size=batch_size,
-            num_workers=num_workers,
-            pin_memory=True,
-        )
+        dataset=val_dataset,
+        shuffle=False,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        pin_memory=True,
+    )
 
     optimizer = instantiate(optimizer_args, model.parameters())
     scheduler = instantiate(scheduler_args, optimizer)
@@ -109,12 +107,14 @@ def modeling(
     return
 
 
-@hydra.main(config_name="runs/main", config_path="conf")  # TODO check how to use hydra without path override
+# TODO check how to use hydra without path override
+@hydra.main(config_name="runs/main", config_path="conf")
 def main(args):
 
     # Set logger
-    _logger = wandb if not args.experiment.debug else Mock()
-    _logger.init(project="finding_willy", name=args.experiment.name)
+    # if not args.experiment.debug else Mock()
+    _logger = wandb
+    _logger.init(project="testing", name=args.experiment.name)
 
     # Set device
     if not torch.cuda.is_available():
@@ -138,6 +138,7 @@ def main(args):
 
     # Logging
     logger = Logger(_logger)
+    args = flatten(args)
     logger.log_writer.config.update(args)
     App.init(args)
 
@@ -176,7 +177,8 @@ def main(args):
     if args.experiment.bucket_name and not args.experiment.debug:
         upload_experiment_to_s3(experiment_id=logger.log_writer.run.id, dir_path=output_dirpath,
                                 bucket_name=args.experiment.bucket_name, include_parent=True)
-        print(f'experiment {logger.log_writer.run.id} has been successfully uploaded to {args.experiment.bucket_name} bucket')
+        print(
+            f'experiment {logger.log_writer.run.id} has been successfully uploaded to {args.experiment.bucket_name} bucket')
 
 
 if __name__ == "__main__":
