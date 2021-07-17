@@ -19,7 +19,7 @@ class ClassifierDataset(Dataset):
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100,
                  margin_ratio=0.5, mode="train",
-                 equalize_data=False, slice_flag=False):
+                 equalize_data=False, slice_flag=False, partial_positive=False):
         """
         __init__ method initiates ClassifierDataset instance:
         Input:
@@ -37,6 +37,7 @@ class ClassifierDataset(Dataset):
         self.metadata = pd.read_csv(self.metadata_path)
         self.mode = mode
         self.seq_length = seq_length
+        self.partial_positive = partial_positive
         self.sample_rate = sample_rate
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
@@ -118,6 +119,11 @@ class ClassifierDataset(Dataset):
         """
         self.metadata = self.metadata.reset_index(drop=True)
         sliced_times = list(starmap(np.arange, zip(self.metadata['begin_time'], self.metadata['end_time'], repeat(self.seq_length))))
+        if self.partial_positive:
+            calls_only_idx = self.metadata[self.metadata['label'] == 1].index
+            sliced_times_positive = [sliced_times[x] for x in list(calls_only_idx)]
+
+
         new_begin_time = list(x[:-1] for x in sliced_times)
         duplicate_size_vector = [len(list_elem) for list_elem in new_begin_time] # vector to duplicate original dataframe
         new_begin_time = np.concatenate(new_begin_time) # vectorize to array
