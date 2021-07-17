@@ -12,13 +12,14 @@ data:
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
-    seq_length: 1 
+    seq_length: 0.5
     len_buffer: 0.1
     margin_ratio: 0.5
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     equalize_data: true
-    slice_flag: false
+    slice_flag: true
+    partial_positive: true
   val_dataset:
     _target_: data.ClassifierDataset
     data_path: '../tests/assets/data/'
