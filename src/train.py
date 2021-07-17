@@ -113,7 +113,7 @@ def main(args):
 
     # Set logger
     # if not args.experiment.debug else Mock()
-    _logger = wandb
+    _logger = wandb if not args.experiment.debug else Mock()
     _logger.init(project="finding_willy", name=args.experiment.name)
 
     # Set device
