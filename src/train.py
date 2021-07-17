@@ -114,7 +114,7 @@ def main(args):
     # Set logger
     # if not args.experiment.debug else Mock()
     _logger = wandb
-    _logger.init(project="testing", name=args.experiment.name)
+    _logger.init(project="finding_willy", name=args.experiment.name)
 
     # Set device
     if not torch.cuda.is_available():
@@ -138,8 +138,8 @@ def main(args):
 
     # Logging
     logger = Logger(_logger)
-    args = flatten(args)
-    logger.log_writer.config.update(args)
+    flattenArgs = flatten(args)
+    logger.log_writer.config.update(flattenArgs)
     App.init(args)
 
     # Define criterion
