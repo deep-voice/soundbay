@@ -475,7 +475,7 @@ def merge_with_checkpoint(run_args, checkpoint_args):
     return run_args
 
 
-def flatten(d, parent_key='', sep='_'):
+def flatten(d, parent_key='', sep='.'):
     items = []
     for k, v in d.items():
         new_key = parent_key + sep + k if parent_key else k
