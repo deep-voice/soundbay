@@ -74,19 +74,19 @@ def modeling(
 
     # Define dataloader for training and validation datasets as well as optimizers arguments
     train_dataloader = DataLoader(
-        dataset=train_dataset,
-        shuffle=True,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        pin_memory=True,
-    )
+            dataset=train_dataset,
+            shuffle=True,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            pin_memory=True,
+        )
     val_dataloader = DataLoader(
-        dataset=val_dataset,
-        shuffle=False,
-        batch_size=batch_size,
-        num_workers=num_workers,
-        pin_memory=True,
-    )
+            dataset=val_dataset,
+            shuffle=False,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            pin_memory=True,
+        )
 
     optimizer = instantiate(optimizer_args, model.parameters())
     scheduler = instantiate(scheduler_args, optimizer)
@@ -112,7 +112,6 @@ def modeling(
 def main(args):
 
     # Set logger
-    # if not args.experiment.debug else Mock()
     _logger = wandb if not args.experiment.debug else Mock()
     _logger.init(project="finding_willy", name=args.experiment.name)
 
@@ -177,8 +176,7 @@ def main(args):
     if args.experiment.bucket_name and not args.experiment.debug:
         upload_experiment_to_s3(experiment_id=logger.log_writer.run.id, dir_path=output_dirpath,
                                 bucket_name=args.experiment.bucket_name, include_parent=True)
-        print(
-            f'experiment {logger.log_writer.run.id} has been successfully uploaded to {args.experiment.bucket_name} bucket')
+        print(f'experiment {logger.log_writer.run.id} has been successfully uploaded to {args.experiment.bucket_name} bucket')
 
 
 if __name__ == "__main__":
