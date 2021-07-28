@@ -1,33 +1,33 @@
 # @package _global_
 data:
-  batch_size: 64
+  batch_size: 1024
   num_workers: 10
-  sample_rate: 16000
-  data_sample_rate: 44100
+  sample_rate: 2000
+  data_sample_rate: 2000
   train_dataset:
     _target_: data.ClassifierDataset
-    data_path: '../tests/assets/data/' 
-    mode: train 
-    metadata_path: '../annotations/combined_annotations_filtered_train.csv'
-    augmentations_p: 0.8
+    data_path: 'PATH_TO_ICML2013_WAV_FILES'
+    mode: train
+    metadata_path: 'PATH_TO_TRAIN_ANNOTATIONS'
+    augmentations_p: 0
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
-    seq_length: 1 
+    seq_length: 1.5
     len_buffer: 0.1
-    margin_ratio: 0.5
+    margin_ratio: 0
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     equalize_data: true
     slice_flag: false
   val_dataset:
     _target_: data.ClassifierDataset
-    data_path: '../tests/assets/data/'
-    mode: val 
-    metadata_path: '../annotations/combined_annotations_filtered_val.csv'
+    data_path: 'PATH_TO_ICML2013_WAV_FILES'
+    mode: val
+    metadata_path: 'PATH_TO_VAL_ANNOTATIONS'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
-    seq_length: 1
+    seq_length: 1.5
     len_buffer: 0.1
     margin_ratio: 0
     data_sample_rate: ${data.data_sample_rate}

@@ -2,7 +2,7 @@ numba
 numpy
 librosa
 tqdm
-hydra-core
+hydra-core==1.0.6
 pytest
 scikit-learn
 omegaconf
@@ -13,5 +13,6 @@ captum
 beautifulsoup4
 joblib
 lxml
+PyQt5
 future-fstrings
 boto3
