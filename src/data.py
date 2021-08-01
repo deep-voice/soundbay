@@ -7,6 +7,7 @@ from itertools import starmap, repeat
 from torchvision import transforms
 from data_augmentation import ChainedAugmentations
 import torchaudio
+from copy import deepcopy
 from hydra.utils import instantiate, DictConfig
 from pathlib import Path
 from copy import deepcopy
@@ -38,6 +39,7 @@ class ClassifierDataset(Dataset):
         self.mode = mode
         self.seq_length = seq_length
         self.partial_positive = partial_positive
+        self.partial_positive_coeff = 0.5
         self.sample_rate = sample_rate
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
@@ -122,7 +124,35 @@ class ClassifierDataset(Dataset):
         if self.partial_positive:
             calls_only_idx = self.metadata[self.metadata['label'] == 1].index
             sliced_times_positive = [sliced_times[x] for x in list(calls_only_idx)]
+            new_before_begin_call_time = [x[0] - self.partial_positive_coeff * self.seq_length for x in list(sliced_times_positive)]
+            new_after_begin_call_time = [x[0] + (1- self.partial_positive_coeff) * self.seq_length for x in list(sliced_times_positive)]
 
+
+            new_after_end_call_time = [x[-1] + self.partial_positive_coeff * self.seq_length for x in list(sliced_times_positive)]
+            new_before_end_call_time = [x[-1] - (1-self.partial_positive_coeff) * self.seq_length for x in list(sliced_times_positive)]
+
+            new_before_begin_call_time = np.array(new_before_begin_call_time)
+            new_after_end_call_time = np.array(new_after_end_call_time)
+            new_before_begin_call_time[new_before_begin_call_time < 0] = 0
+            new_after_end_call_time[new_after_end_call_time > np.max(self.metadata['end_time'])] = np.max(self.metadata['end_time'])
+            new_before_begin_call_time = list(new_before_begin_call_time)
+            new_after_end_call_time = list(new_after_end_call_time)
+
+            sliced_times_positive = [np.insert(x, 0, k, axis=0) for x,k in zip(sliced_times_positive, new_before_begin_call_time)]
+            for x,k in enumerate(new_after_begin_call_time):
+                sliced_times_positive[x][1] = k
+            for x,k in enumerate(new_before_end_call_time):
+                sliced_times_positive[x][-2] = k
+            for x,k in enumerate(new_after_end_call_time):
+                sliced_times_positive[x][-1] = k
+
+            # sliced_times_positive = [(x[1] = raw_input(k)) for x,k in zip(sliced_times_positive, new_after_begin_call_time)]
+
+            # sliced_times_positive = [np.insert(x, -2, k, axis=0) for x,k in zip(sliced_times_positive, new_before_end_call_time)]
+
+            # sliced_times_positive = [np.append(x, k) for x,k in zip(sliced_times_positive, new_after_end_call_time)]
+            for xi, ai in zip(list(calls_only_idx), sliced_times_positive):
+                sliced_times[xi] = ai
 
         new_begin_time = list(x[:-1] for x in sliced_times)
         duplicate_size_vector = [len(list_elem) for list_elem in new_begin_time] # vector to duplicate original dataframe
@@ -131,7 +161,8 @@ class ClassifierDataset(Dataset):
         self.metadata = self.metadata.iloc[self.metadata.index.repeat(duplicate_size_vector)].reset_index(drop=True)
         self.metadata['begin_time'] = new_begin_time
         self.metadata['end_time'] = new_end_time
-        self.metadata['call_length'] = np.shape(self.metadata)[0] * [self.seq_length]
+        new_call_length = self.metadata['end_time'] - self.metadata['begin_time']
+        self.metadata['call_length'] = new_call_length
         return
 
     def _get_audio(self, path_to_file, begin_time, end_time):
