@@ -1,3 +1,4 @@
+import torchvision
 from torch.utils.data import Dataset
 import torch
 import pandas as pd
@@ -304,6 +305,12 @@ class SlidingWindowNormalize:
             return self.slidingWindow(x, dim=0)
         else:
             return self.slidingWindow(x, dim=1)
+
+
+class Resize(torchvision.transforms.Resize):
+
+    def __init__(self, size):
+        super().__init__(list(size))
 
 
 class InferenceDataset(Dataset):
