@@ -14,12 +14,12 @@ data:
     preprocessors: ${_preprocessors}
     seq_length: 0.5
     len_buffer: 0.1
-    margin_ratio: 0
+    margin_ratio: 0.5
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     equalize_data: true
     slice_flag: true
-    partial_positive: true
+    partial_positive: false
   val_dataset:
     _target_: data.ClassifierDataset
     data_path: '../../finding_willy/recordings_2018_filtered/'
@@ -35,3 +35,4 @@ data:
     sample_rate: ${data.sample_rate}
     equalize_data: false
     slice_flag: true
+    partial_positive: false
