@@ -163,6 +163,7 @@ class ClassifierDataset(Dataset):
         self.metadata['end_time'] = new_end_time
         new_call_length = self.metadata['end_time'] - self.metadata['begin_time']
         self.metadata['call_length'] = new_call_length
+        self.metadata = self.metadata[self.metadata['call_length'] > self.seq_length]
         return
 
     def _get_audio(self, path_to_file, begin_time, end_time):
