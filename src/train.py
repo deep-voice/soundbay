@@ -25,11 +25,10 @@ from trainers import Trainer
 import hydra
 from hydra.utils import instantiate
 import random
-from utils import Logger, upload_experiment_to_s3
+from utils import Logger, upload_experiment_to_s3, flatten
 from unittest.mock import Mock
 import os
 from utils import App
-
 
 
 def modeling(
@@ -44,7 +43,6 @@ def modeling(
     model_args,
     logger,
 ):
-
     """
     modeling function takes all the variables and parameters defined in the main script
     (either through hydra configuration files or overwritten in the command line
@@ -109,7 +107,8 @@ def modeling(
     return
 
 
-@hydra.main(config_name="runs/main", config_path="conf")  # TODO check how to use hydra without path override
+# TODO check how to use hydra without path override
+@hydra.main(config_name="runs/main", config_path="conf")
 def main(args):
 
     # Set logger
@@ -138,7 +137,8 @@ def main(args):
 
     # Logging
     logger = Logger(_logger)
-    logger.log_writer.config.update(args)
+    flattenArgs = flatten(args)
+    logger.log_writer.config.update(flattenArgs)
     App.init(args)
 
     # Define criterion
