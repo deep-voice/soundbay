@@ -6,7 +6,7 @@ data:
   data_sample_rate: 44100
   train_dataset:
     _target_: data.ClassifierDataset
-    data_path: '../../finding_willy/recordings_2018_filtered/'
+    data_path: '../../../data/'
     mode: train 
     metadata_path: '../annotations/combined_annotations_filtered_train.csv'
     augmentations_p: 0.8
@@ -14,7 +14,7 @@ data:
     preprocessors: ${_preprocessors}
     seq_length: 0.5
     len_buffer: 0.1
-    margin_ratio: 0.5
+    margin_ratio: 0
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     equalize_data: true
@@ -22,7 +22,7 @@ data:
     partial_positive: true
   val_dataset:
     _target_: data.ClassifierDataset
-    data_path: '../../finding_willy/recordings_2018_filtered/'
+    data_path: '../../../data/'
     mode: val 
     metadata_path: '../annotations/combined_annotations_filtered_val.csv'
     augmentations_p: 0
