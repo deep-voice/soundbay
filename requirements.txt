@@ -16,3 +16,4 @@ lxml
 PyQt5
 future-fstrings
 boto3
+transformers
