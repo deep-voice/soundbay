@@ -101,6 +101,7 @@ class ChristophCNN(nn.Module):
         # This deviates from the cchinchristopherj repo because dense has num_classes outputs instead of 1
         self.fc2 = nn.Linear(200, num_classes)
         self.drop_out = nn.Dropout(0.5)
+        self.relu = nn.ReLU()
 
     def forward(self, x):
         out = self.drop_out(x)
@@ -108,7 +109,7 @@ class ChristophCNN(nn.Module):
         out = self.layer2(out)
         out = torch.flatten(out, 1)
         out = self.fc1(out)
-        out = torch.nn.ReLU()(out)
+        out = self.relu(out)
         out = self.drop_out(out)
         out = self.fc2(out)
         out = torch.sigmoid(out)
