@@ -434,33 +434,12 @@ def non_overlap_df(input_df):
     return non_overlap
 
 
-def merge_with_checkpoint(run_args, checkpoint_args):
-    """
-    Merge into current args the needed arguments from checkpoint
-    Right now we select the specific modules needed, can make it more generic if we'll see the need for it
-    Input:
-        run_args: dict_config of run args
-        checkpoint_args: dict_config of checkpoint args
-    Output:
-        run_args: updated dict_config of run args
-    """
-
-    OmegaConf.set_struct(run_args, False)
-    run_args.model = checkpoint_args.model
-    run_args.data.test_dataset.preprocessors = checkpoint_args.data.train_dataset.preprocessors
-    run_args.data.test_dataset.seq_length = checkpoint_args.data.train_dataset.seq_length
-    run_args.data.sample_rate = checkpoint_args.data.sample_rate
-    OmegaConf.set_struct(run_args, True)
-    return run_args
-
-
 def flatten(d, parent_key='', sep='.'):
-    items = []
+    items = {}
     for k, v in d.items():
         new_key = parent_key + sep + k if parent_key else k
         if isinstance(v, collectionsAbc.MutableMapping):
-            #items.extend(flatten(v, new_key, sep=sep).items())
             items.update(flatten(v, new_key, sep=sep))
         else:
-            items.append((new_key, v))
+            items.update({new_key: v})
     return dict(items)
