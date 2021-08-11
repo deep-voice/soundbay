@@ -78,8 +78,8 @@ class FrequencyMasking(RandomAugmenter):
                  attenuation_gain: int = 120, bandwidth_to_filter_out: int = 50):
         super().__init__(p)
         self.sr = sr
-        self.min_freq_in_segment = min_freq_in_segment
-        self.max_freq_in_segment = max_freq_in_segment
+        self.min_freq_in_segment = min_freq_in_segment + 1
+        self.max_freq_in_segment = max_freq_in_segment - 1
         self.attenuation_gain = attenuation_gain
         self.bandwidth_to_filter_out = bandwidth_to_filter_out
 
