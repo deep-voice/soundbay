@@ -2,7 +2,7 @@
 defaults:
   - data: defaults
   - data: _augmentations
-  - data: _preprocessors
+  - preprocessors: _preprocessors
   - model: defaults
   - optim: defaults
   - experiment: defaults
