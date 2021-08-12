@@ -113,7 +113,15 @@ def main(args):
 
     # Set logger
     _logger = wandb if not args.experiment.debug else Mock()
-    _logger.init(project="finding_willy", name=args.experiment.name)
+    if args.experiment.name:
+        experiment_name = args.experiment.name
+    elif args.experiment.run_id and args.experiment.group_name:
+        experiment_name = f'{args.experiment.group_name}-{args.experiment.run_id}'
+    elif args.experiment.group_name:
+        experiment_name = f'{args.experiment.group_name}-{wandb.util.generate_id()}'
+    else:
+        experiment_name = None
+    _logger.init(project="finding_willy", name=experiment_name, group=args.experiment.group_name)
 
     # Set device
     if not torch.cuda.is_available():
