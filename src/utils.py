@@ -13,6 +13,13 @@ from tqdm import tqdm
 import pandas as pd
 import re
 
+import collections
+
+try:
+    collectionsAbc = collections.abc
+except AttributeError:
+    collectionsAbc = collections
+
 
 def load_audio(filepath: str, sr: int, max_val=0.9):
     """
@@ -58,6 +65,7 @@ class LossMeter(object):
     """
     A class for managing the losses for all the epochs
     """
+
     def __init__(self, name):
         """
         __init__ function initializes the loss meter
@@ -87,6 +95,7 @@ class Logger:
     """
     A class for computing performance metrics, logging them and displaying them throughout the train
     """
+
     def __init__(self,
                  log_writer=Mock()
                  ):
@@ -109,10 +118,10 @@ class Logger:
         for key in self.loss_meter_keys:
             if flag == 'train':
                 self.log_writer.log({f"{key}_train":
-                                           self.loss_meter_train[key].summarize_epoch()}, step=log_num)
+                                     self.loss_meter_train[key].summarize_epoch()}, step=log_num)
             elif flag == 'val':
                 self.log_writer.log({f"{key}_val":
-                                           self.loss_meter_val[key].summarize_epoch()}, step=log_num)
+                                     self.loss_meter_val[key].summarize_epoch()}, step=log_num)
 
     def init_losses_meter(self):
         for key in self.loss_meter_keys:
@@ -188,6 +197,7 @@ class LibrosaMelSpectrogram:
     Output:
         melspectrogram: numpy array with size n_mels*t (signal length)
     """
+
     def __init__(self, sr, n_mels, fmin):
         self.sr = sr
         self.n_mels = n_mels
@@ -217,6 +227,7 @@ class LibrosaPcen:
     Output:
          pcen: per-channel energy normalized version of signal - torch tensor
     """
+
     def __init__(self, sr, n_mels, fmin):
         self.sr = sr
         self.n_mels = n_mels
@@ -225,8 +236,8 @@ class LibrosaPcen:
         self.fmin = fmin
         self.fmax = sr//2
 
-
     # sample,
+
     def __call__(self,  sample, gain=0.6, bias=0.1, power=0.2, time_constant=0.4, eps=1e-9):
         hop_length = int(self.sr / (self.n_mels / self.slice_len))
         pcen_librosa = librosa.core.pcen(sample, sr=self.sr, hop_length=self.hop_length, gain=gain, bias=bias, power=power,
@@ -292,7 +303,7 @@ def walk(input_path):
 
 
 def upload_experiment_to_s3(experiment_id: str,
-                            dir_path: Union[Path,str],
+                            dir_path: Union[Path, str],
                             bucket_name: str,
                             include_parent: bool = True):
     """
@@ -317,20 +328,21 @@ def upload_experiment_to_s3(experiment_id: str,
 
 # <<<<<<< feature/EDA_script
 def raven_to_df_annotations(annotations_path: str,
-                             recording_path: str,
-                             positive_tag_names: list = ['w','sc']):
-
+                            recording_path: str,
+                            positive_tag_names: list = ['w', 'sc']):
     """
     Takes annotation files (selection table) created in Raven and turns it to a compatible annotations csv.
     """
-    #create dataframe
-    annotations=Path(annotations_path)
-    recording=Path(recording_path)
-    filelist = list(annotations.glob('*selections.txt')) #ignore irrelevent files
+    # create dataframe
+    annotations = Path(annotations_path)
+    recording = Path(recording_path)
+    # ignore irrelevent files
+    filelist = list(annotations.glob('*selections.txt'))
     metadata = []
     for file in filelist:
         dfTemp = pd.read_csv(file, sep="\t")
-        dfTemp['filename'] = re.search("\.Table.1.selections", file.as_posix()).group()
+        dfTemp['filename'] = re.search(
+            "\.Table.1.selections", file.as_posix()).group()
         dfTemp['FirstCallTime'] = np.amin(dfTemp['Begin Time (s)'])
         dfTemp['LastCallTime'] = np.amax(dfTemp['End Time (s)'])
         metadata.append(dfTemp)
@@ -421,7 +433,7 @@ def non_overlap_df(input_df):
     non_overlap['call_length'] = non_overlap['end_time'] - non_overlap['begin_time']
     return non_overlap
 
-  
+
 def merge_with_checkpoint(run_args, checkpoint_args):
     """
     Merge into current args the needed arguments from checkpoint
@@ -440,3 +452,15 @@ def merge_with_checkpoint(run_args, checkpoint_args):
     run_args.data.sample_rate = checkpoint_args.data.sample_rate
     OmegaConf.set_struct(run_args, True)
     return run_args
+
+
+def flatten(d, parent_key='', sep='.'):
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, collectionsAbc.MutableMapping):
+            #items.extend(flatten(v, new_key, sep=sep).items())
+            items.update(flatten(v, new_key, sep=sep))
+        else:
+            items.append((new_key, v))
+    return dict(items)
