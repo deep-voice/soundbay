@@ -20,7 +20,7 @@ class ClassifierDataset(Dataset):
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100,
                  margin_ratio=0.5, mode="train",
-                 equalize_data=False, slice_flag=False, partial_positive=False):
+                 equalize_data=False, slice_flag=False):
         """
         __init__ method initiates ClassifierDataset instance:
         Input:
@@ -38,14 +38,15 @@ class ClassifierDataset(Dataset):
         self.metadata = pd.read_csv(self.metadata_path)
         self.mode = mode
         self.seq_length = seq_length
-        self.partial_positive = partial_positive
-        self.partial_positive_coeff = 0.5
+        # self.partial_positive = partial_positive
+        # self.partial_positive_coeff = 0.5
         self.sample_rate = sample_rate
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
         self._preprocess_metadata(len_buffer, equalize_data, slice_flag)
         self.augmenter = self._set_augmentations(augmentations, augmentations_p)
         self.preprocessor = self.set_preprocessor(preprocessors)
+        assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
 
     def _create_audio_dict(self, data_path: Path) -> dict:
@@ -121,38 +122,6 @@ class ClassifierDataset(Dataset):
         """
         self.metadata = self.metadata.reset_index(drop=True)
         sliced_times = list(starmap(np.arange, zip(self.metadata['begin_time'], self.metadata['end_time'], repeat(self.seq_length))))
-        if self.partial_positive:
-            calls_only_idx = self.metadata[self.metadata['label'] == 1].index
-            sliced_times_positive = [sliced_times[x] for x in list(calls_only_idx)]
-            new_before_begin_call_time = [x[0] - self.partial_positive_coeff * self.seq_length for x in list(sliced_times_positive)]
-            new_after_begin_call_time = [x[0] + (1- self.partial_positive_coeff) * self.seq_length for x in list(sliced_times_positive)]
-
-
-            new_after_end_call_time = [x[-1] + self.partial_positive_coeff * self.seq_length for x in list(sliced_times_positive)]
-            new_before_end_call_time = [x[-1] - (1-self.partial_positive_coeff) * self.seq_length for x in list(sliced_times_positive)]
-
-            new_before_begin_call_time = np.array(new_before_begin_call_time)
-            new_after_end_call_time = np.array(new_after_end_call_time)
-            new_before_begin_call_time[new_before_begin_call_time < 0] = 0
-            new_after_end_call_time[new_after_end_call_time > np.max(self.metadata['end_time'])] = np.max(self.metadata['end_time'])
-            new_before_begin_call_time = list(new_before_begin_call_time)
-            new_after_end_call_time = list(new_after_end_call_time)
-
-            sliced_times_positive = [np.insert(x, 0, k, axis=0) for x,k in zip(sliced_times_positive, new_before_begin_call_time)]
-            for x,k in enumerate(new_after_begin_call_time):
-                sliced_times_positive[x][1] = k
-            for x,k in enumerate(new_before_end_call_time):
-                sliced_times_positive[x][-2] = k
-            for x,k in enumerate(new_after_end_call_time):
-                sliced_times_positive[x][-1] = k
-
-            # sliced_times_positive = [(x[1] = raw_input(k)) for x,k in zip(sliced_times_positive, new_after_begin_call_time)]
-
-            # sliced_times_positive = [np.insert(x, -2, k, axis=0) for x,k in zip(sliced_times_positive, new_before_end_call_time)]
-
-            # sliced_times_positive = [np.append(x, k) for x,k in zip(sliced_times_positive, new_after_end_call_time)]
-            for xi, ai in zip(list(calls_only_idx), sliced_times_positive):
-                sliced_times[xi] = ai
 
         new_begin_time = list(x[:-1] for x in sliced_times)
         duplicate_size_vector = [len(list_elem) for list_elem in new_begin_time] # vector to duplicate original dataframe
@@ -161,12 +130,10 @@ class ClassifierDataset(Dataset):
         self.metadata = self.metadata.iloc[self.metadata.index.repeat(duplicate_size_vector)].reset_index(drop=True)
         self.metadata['begin_time'] = new_begin_time
         self.metadata['end_time'] = new_end_time
-        new_call_length = self.metadata['end_time'] - self.metadata['begin_time']
-        self.metadata['call_length'] = new_call_length
-        self.metadata = self.metadata[self.metadata['call_length'] > self.seq_length]
+        self.metadata['call_length'] = np.shape(self.metadata)[0] * [self.seq_length]
         return
 
-    def _get_audio(self, path_to_file, begin_time, end_time):
+    def _get_audio(self, path_to_file, begin_time, end_time, label):
         """
         _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
         and returns the audio segment in a torch.tensor
@@ -179,8 +146,8 @@ class ClassifierDataset(Dataset):
         output:
         audio - pytorch tensor (1-D array)
         """
-        if self.mode == "train":
-            if self.margin_ratio != 0:
+        if (self.mode == "train") and (label == 1):
+            if self.margin_ratio != 0:  # ranges from 0 to 1 - indicates the relative part from seq_len to exceed call_length
                 margin_len_begin = int((self.seq_length * self.data_sample_rate) * self.margin_ratio)
                 margin_len_end = int((self.seq_length * self.data_sample_rate) * (1 - self.margin_ratio))
                 start_time = random.randint(begin_time - margin_len_begin, end_time - margin_len_end)
@@ -234,7 +201,7 @@ class ClassifierDataset(Dataset):
         , int (if mode="train" only)
         '''
         path_to_file, begin_time, end_time, label = self._grab_fields(idx)
-        audio = self._get_audio(path_to_file, begin_time, end_time)
+        audio = self._get_audio(path_to_file, begin_time, end_time, label)
         audio = self.sampler(audio)
         audio = self.augmenter(audio)
         audio = self.preprocessor(audio)
