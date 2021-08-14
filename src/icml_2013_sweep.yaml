@@ -15,6 +15,8 @@ parameters:
       - defaults
       - jasco_resnet_50
       - christoph
+  optim.epochs:
+    value: 100
   data:
     value: icml2013
   preprocessors:
