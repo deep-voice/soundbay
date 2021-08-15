@@ -1,6 +1,5 @@
 import copy
 import os
-from unittest.mock import Mock
 
 import torch
 import sys
@@ -45,7 +44,7 @@ def test_trainer(model, optimizer, scheduler, data_loader, criterion):
 
     # basic training run of model
     pre_training_model = copy.deepcopy(model)
-    logger = Logger()
+    logger = Logger(debug_mode=True)
     trainer = Trainer(
         model=model,
         train_dataloader=data_loader,
@@ -61,7 +60,7 @@ def test_trainer(model, optimizer, scheduler, data_loader, criterion):
     trainer.train()
     check_variable_change(pre_training_model, model)
     assert trainer.epochs_trained == 2
-    assert len(trainer.logger.metrics_dict) == 4
+    assert len(trainer.logger.metrics_dict) == 5
     assert (0 <= trainer.logger.metrics_dict['accuracy'] <= 1)
 
     # check that can load from checkpoint
