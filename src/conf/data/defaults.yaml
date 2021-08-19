@@ -18,7 +18,7 @@ data:
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     equalize_data: true
-    slice_flag: true
+    slice_flag: false
   val_dataset:
     _target_: data.ClassifierDataset
     data_path: '../tests/assets/data/'

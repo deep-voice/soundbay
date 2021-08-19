@@ -8,7 +8,6 @@ from itertools import starmap, repeat
 from torchvision import transforms
 from data_augmentation import ChainedAugmentations
 import torchaudio
-from copy import deepcopy
 from hydra.utils import instantiate, DictConfig
 from pathlib import Path
 from copy import deepcopy
@@ -39,8 +38,6 @@ class ClassifierDataset(Dataset):
         self.metadata = pd.read_csv(self.metadata_path)
         self.mode = mode
         self.seq_length = seq_length
-        # self.partial_positive = partial_positive
-        # self.partial_positive_coeff = 0.5
         self.sample_rate = sample_rate
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
