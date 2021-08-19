@@ -81,7 +81,7 @@ class ClassifierDataset(Dataset):
             assert len(df_object[df_object['label'] == 1]) == len(df_object[df_object['label'] == 0])
             return df_object
 
-        self.metadata = self.metadata[self.metadata['call_length'] > (self.seq_length + len_buffer)]
+        self.metadata = self.metadata[self.metadata['call_length'] >= (self.seq_length + len_buffer)]
         if equalize:
             self.metadata = _equalize_distribution(self.metadata)
         if slice_flag:
