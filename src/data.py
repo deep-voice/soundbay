@@ -44,6 +44,7 @@ class ClassifierDataset(Dataset):
         self._preprocess_metadata(len_buffer, equalize_data, slice_flag)
         self.augmenter = self._set_augmentations(augmentations, augmentations_p)
         self.preprocessor = self.set_preprocessor(preprocessors)
+        assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
 
     def _create_audio_dict(self, data_path: Path) -> dict:
@@ -80,7 +81,7 @@ class ClassifierDataset(Dataset):
             assert len(df_object[df_object['label'] == 1]) == len(df_object[df_object['label'] == 0])
             return df_object
 
-        self.metadata = self.metadata[self.metadata['call_length'] > (self.seq_length + len_buffer)]
+        self.metadata = self.metadata[self.metadata['call_length'] >= (self.seq_length + len_buffer)]
         if equalize:
             self.metadata = _equalize_distribution(self.metadata)
         if slice_flag:
@@ -119,6 +120,7 @@ class ClassifierDataset(Dataset):
         """
         self.metadata = self.metadata.reset_index(drop=True)
         sliced_times = list(starmap(np.arange, zip(self.metadata['begin_time'], self.metadata['end_time'], repeat(self.seq_length))))
+
         new_begin_time = list(x[:-1] for x in sliced_times)
         duplicate_size_vector = [len(list_elem) for list_elem in new_begin_time] # vector to duplicate original dataframe
         new_begin_time = np.concatenate(new_begin_time) # vectorize to array
@@ -129,7 +131,7 @@ class ClassifierDataset(Dataset):
         self.metadata['call_length'] = np.shape(self.metadata)[0] * [self.seq_length]
         return
 
-    def _get_audio(self, path_to_file, begin_time, end_time):
+    def _get_audio(self, path_to_file, begin_time, end_time, label):
         """
         _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
         and returns the audio segment in a torch.tensor
@@ -142,8 +144,8 @@ class ClassifierDataset(Dataset):
         output:
         audio - pytorch tensor (1-D array)
         """
-        if self.mode == "train":
-            if self.margin_ratio != 0:
+        if (self.mode == "train") and (label == 1):
+            if self.margin_ratio != 0:  # ranges from 0 to 1 - indicates the relative part from seq_len to exceed call_length
                 margin_len_begin = int((self.seq_length * self.data_sample_rate) * self.margin_ratio)
                 margin_len_end = int((self.seq_length * self.data_sample_rate) * (1 - self.margin_ratio))
                 start_time = random.randint(begin_time - margin_len_begin, end_time - margin_len_end)
@@ -197,7 +199,7 @@ class ClassifierDataset(Dataset):
         , int (if mode="train" only)
         '''
         path_to_file, begin_time, end_time, label = self._grab_fields(idx)
-        audio = self._get_audio(path_to_file, begin_time, end_time)
+        audio = self._get_audio(path_to_file, begin_time, end_time, label)
         audio = self.sampler(audio)
         audio = self.augmenter(audio)
         audio = self.preprocessor(audio)
