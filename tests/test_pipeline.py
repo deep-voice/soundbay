@@ -3,6 +3,9 @@ import os
 
 import torch
 import sys
+
+import wandb
+
 sys.path.append('../src')
 from utils import Logger
 from inference import predict
@@ -38,6 +41,7 @@ def check_variable_change(model_before, model_after, vars_change=True, device=to
 
 def test_trainer(model, optimizer, scheduler, data_loader, criterion):
 
+    wandb.init(project=None, mode='disabled')
     args = DictConfig({'experiment': {'debug': False}})
     App.init(args)
     output_dirpath = Path.cwd()
@@ -53,7 +57,7 @@ def test_trainer(model, optimizer, scheduler, data_loader, criterion):
         scheduler=scheduler,
         epochs=2,
         logger=logger,
-        debug=True,
+        debug=False,
         criterion=criterion,
         output_path=output_dirpath
     )
@@ -73,7 +77,7 @@ def test_trainer(model, optimizer, scheduler, data_loader, criterion):
         scheduler=scheduler,
         epochs=4,
         logger=logger,
-        debug=True,
+        debug=False,
         criterion=criterion,
         checkpoint='last.pth',
         output_path=output_dirpath

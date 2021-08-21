@@ -3,6 +3,9 @@ data:
   batch_size: 64
   num_workers: 10
   data_sample_rate: 44100
+  max_freq: 8000
+  n_fft: 1024
+  hop_length: 256
   test_dataset:
     _target_: data.ClassifierDataset
     data_path: '../tests/assets/data'
