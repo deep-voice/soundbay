@@ -154,7 +154,7 @@ def main(args):
     trainer_partial = partial(
         Trainer,
         device=device,
-        epochs=args.optim.epochs,
+        epochs=args.setup.optim.epochs,
         debug=args.experiment.debug,
         criterion=criterion,
         checkpoint=checkpoint,
@@ -168,9 +168,9 @@ def main(args):
         num_workers=args.data.num_workers,
         train_dataset_args=args.data.train_dataset,
         val_dataset_args=args.data.val_dataset,
-        optimizer_args=args.optim.optimizer,
-        scheduler_args=args.optim.scheduler,
-        model_args=args.model.model,
+        optimizer_args=args.setup.optim.optimizer,
+        scheduler_args=args.setup.optim.scheduler,
+        model_args=args.setup.model.model,
         logger=logger,
     )
     if args.experiment.bucket_name and not args.experiment.debug:
