@@ -4,6 +4,9 @@ data:
   num_workers: 10
   sample_rate: 8000
   data_sample_rate: 8000
+  max_freq: 4000
+  n_fft: 256
+  hop_length: 64
   train_dataset:
     _target_: data.ClassifierDataset
     data_path: 'PATH_TO_AUDIO_MNIST_DATA'

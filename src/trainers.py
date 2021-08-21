@@ -123,7 +123,8 @@ class Trainer:
                 self.logger.update_predictions((estimated_label, label))
 
             # logging
-            self.logger.calc_metrics(epoch)
+            if not app.args.experiment.debug:
+                self.logger.calc_metrics(epoch)
             self.logger.log(epoch, 'val')
 
 
