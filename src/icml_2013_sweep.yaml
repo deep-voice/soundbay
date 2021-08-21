@@ -1,0 +1,46 @@
+method: bayes
+metric:
+  goal: maximize
+  name: auc
+parameters:
+  model:
+    distribution: categorical
+    values:
+      - defaults
+      - jasco_resnet_50
+      - Christoph_CNN
+  optim:
+    distribution: categorical
+    values:
+      - defaults
+      - jasco_resnet_50
+      - christoph
+  optim.epochs:
+    value: 100
+  data:
+    value: icml2013
+  preprocessors:
+    distribution: categorical
+    values:
+      - _preprocessors
+      - _preprocessors_sliding_window
+      - _preprocessors_unit
+  data.train_dataset.augmentations_p:
+    distribution: uniform
+    min: 0
+    max: 1
+  experiment.run_id:
+    distribution: int_uniform
+    min: 0
+    max: 100000000
+  experiment.group_name:
+    value: "ICML Sweep"
+early_terminate:
+  type: hyperband
+  min_iter: 10
+program: train.py
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - ${args_no_hyphens}

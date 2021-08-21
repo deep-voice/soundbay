@@ -97,8 +97,7 @@ class Logger:
     """
 
     def __init__(self,
-                 log_writer=Mock(),
-                 debug_mode=False
+                 log_writer=Mock()
                  ):
         """
         __init__ initializes the logger and all the associated arrays and variables
@@ -113,7 +112,6 @@ class Logger:
         self.pred_proba_list = []
         self.label_list = []
         self.metrics_dict = {'accuracy': [], 'f1score': [], 'precision': [], 'recall': [], 'auc': []}
-        self.debug_mode = debug_mode
 
     def log(self, log_num: int, flag: str):
         """logging losses using writer"""
@@ -161,16 +159,15 @@ class Logger:
         self.log_writer.log({'f1score': self.metrics_dict['f1score']}, step=epoch)
         self.log_writer.log({'precision': self.metrics_dict['precision']}, step=epoch)
         self.log_writer.log({'recall': self.metrics_dict['recall']}, step=epoch)
-        if not self.debug_mode:
-            self.log_writer.log({'auc': self.metrics_dict['auc']}, step=epoch)
-            self.log_writer.log(
-                {'ROC Curve': wandb.plot.roc_curve(self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
-                step=epoch
-            )
-            self.log_writer.log(
-                {'PR Curve': wandb.plot.pr_curve(self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
-                step=epoch
-            )
+        self.log_writer.log({'auc': self.metrics_dict['auc']}, step=epoch)
+        self.log_writer.log(
+            {'ROC Curve': wandb.plot.roc_curve(self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
+            step=epoch
+        )
+        self.log_writer.log(
+            {'PR Curve': wandb.plot.pr_curve(self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
+            step=epoch
+        )
         self.pred_list = []  # flush
         self.label_list = []
         self.pred_proba_list = []
@@ -437,33 +434,25 @@ def non_overlap_df(input_df):
     return non_overlap
 
 
-def merge_with_checkpoint(run_args, checkpoint_args):
-    """
-    Merge into current args the needed arguments from checkpoint
-    Right now we select the specific modules needed, can make it more generic if we'll see the need for it
-    Input:
-        run_args: dict_config of run args
-        checkpoint_args: dict_config of checkpoint args
-    Output:
-        run_args: updated dict_config of run args
-    """
-
-    OmegaConf.set_struct(run_args, False)
-    run_args.model = checkpoint_args.model
-    run_args.data.test_dataset.preprocessors = checkpoint_args.data.train_dataset.preprocessors
-    run_args.data.test_dataset.seq_length = checkpoint_args.data.train_dataset.seq_length
-    run_args.data.sample_rate = checkpoint_args.data.sample_rate
-    OmegaConf.set_struct(run_args, True)
-    return run_args
-
-
 def flatten(d, parent_key='', sep='.'):
-    items = []
+    items = {}
     for k, v in d.items():
         new_key = parent_key + sep + k if parent_key else k
         if isinstance(v, collectionsAbc.MutableMapping):
-            items.extend(flatten(v, new_key, sep=sep).items())
-            #items.update(flatten(v, new_key, sep=sep))
+            #items.extend(flatten(v, new_key, sep=sep).items())
+            items.update(flatten(v, new_key, sep=sep))
         else:
-            items.append((new_key, v))
+            items.update({new_key: v})
     return dict(items)
+
+
+def get_experiment_name(args) -> Union[str, None]:
+    if args.experiment.name:
+        experiment_name = args.experiment.name
+    elif args.experiment.run_id and args.experiment.group_name:
+        experiment_name = f'{args.experiment.group_name}-{args.experiment.run_id}'
+    elif args.experiment.group_name:
+        experiment_name = f'{args.experiment.group_name}-{wandb.util.generate_id()}'
+    else:
+        experiment_name = None
+    return experiment_name
