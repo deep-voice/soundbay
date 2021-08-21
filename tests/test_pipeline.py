@@ -1,6 +1,5 @@
 import copy
 import os
-from unittest.mock import Mock
 
 import torch
 import sys
@@ -49,7 +48,7 @@ def test_trainer(model, optimizer, scheduler, data_loader, criterion):
 
     # basic training run of model
     pre_training_model = copy.deepcopy(model)
-    logger = Logger()
+    logger = Logger(debug_mode=True)
     trainer = Trainer(
         model=model,
         train_dataloader=data_loader,
