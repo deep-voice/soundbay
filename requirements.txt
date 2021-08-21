@@ -9,7 +9,6 @@ omegaconf
 soundfile
 pandas
 wandb
-captum
 beautifulsoup4
 joblib
 lxml

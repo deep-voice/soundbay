@@ -2,36 +2,33 @@
 data:
   batch_size: 64
   num_workers: 10
-  sample_rate: 8000
-  data_sample_rate: 8000
-  max_freq: 4000
-  n_fft: 256
-  hop_length: 64
+  sample_rate: 16000
+  data_sample_rate: 44100
   train_dataset:
     _target_: data.ClassifierDataset
-    data_path: 'PATH_TO_AUDIO_MNIST_DATA'
+    data_path: '../datasets/deep-voice'
     mode: train 
-    metadata_path: 'PATH/digit_annotation_train.csv'
+    metadata_path: '../annotations/combined_annotations_filtered_train.csv'
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
-    seq_length: 0.139
-    len_buffer: 0
-    margin_ratio: 0
+    seq_length: 1 
+    len_buffer: 0.1
+    margin_ratio: 0.5
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     equalize_data: true
     slice_flag: false
   val_dataset:
     _target_: data.ClassifierDataset
-    data_path: 'PATH_TO_AUDIO_MNIST_DATA'
+    data_path: '../datasets/deep-voice'
     mode: val 
-    metadata_path: 'PATH/digit_annotation_test.csv'
+    metadata_path: '../annotations/combined_annotations_filtered_val.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
-    seq_length: 0.139
-    len_buffer: 0
+    seq_length: 1
+    len_buffer: 0.1
     margin_ratio: 0
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}

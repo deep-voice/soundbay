@@ -77,7 +77,7 @@ class Trainer:
             if self.verbose:  # show batch metrics in progress bar
                 s = 'epoch: ' + str(epoch) + ', ' + str(self.logger.metrics_dict)
                 iterator.set_postfix_str(s)
-            if self.debug:
+            if self.debug and epoch > 2:
                 break
 
     def train_epoch(self, epoch):
@@ -123,7 +123,8 @@ class Trainer:
                 self.logger.update_predictions((estimated_label, label))
 
             # logging
-            self.logger.calc_metrics(epoch)
+            if not app.args.experiment.debug:
+                self.logger.calc_metrics(epoch)
             self.logger.log(epoch, 'val')
 
 
