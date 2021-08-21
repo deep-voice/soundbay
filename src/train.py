@@ -25,7 +25,7 @@ from trainers import Trainer
 import hydra
 from hydra.utils import instantiate
 import random
-from utils import Logger, upload_experiment_to_s3, flatten
+from utils import Logger, upload_experiment_to_s3, flatten, get_experiment_name
 from unittest.mock import Mock
 import os
 from utils import App
@@ -113,14 +113,7 @@ def main(args):
 
     # Set logger
     _logger = wandb if not args.experiment.debug else Mock()
-    if args.experiment.name:
-        experiment_name = args.experiment.name
-    elif args.experiment.run_id and args.experiment.group_name:
-        experiment_name = f'{args.experiment.group_name}-{args.experiment.run_id}'
-    elif args.experiment.group_name:
-        experiment_name = f'{args.experiment.group_name}-{wandb.util.generate_id()}'
-    else:
-        experiment_name = None
+    experiment_name = get_experiment_name(args)
     _logger.init(project="finding_willy", name=experiment_name, group=args.experiment.group_name)
 
     # Set device

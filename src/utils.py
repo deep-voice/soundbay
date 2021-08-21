@@ -443,3 +443,15 @@ def flatten(d, parent_key='', sep='.'):
         else:
             items.update({new_key: v})
     return dict(items)
+
+
+def get_experiment_name(args) -> Union[str, None]:
+    if args.experiment.name:
+        experiment_name = args.experiment.name
+    elif args.experiment.run_id and args.experiment.group_name:
+        experiment_name = f'{args.experiment.group_name}-{args.experiment.run_id}'
+    elif args.experiment.group_name:
+        experiment_name = f'{args.experiment.group_name}-{wandb.util.generate_id()}'
+    else:
+        experiment_name = None
+    return experiment_name
