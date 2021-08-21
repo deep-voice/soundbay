@@ -4,11 +4,14 @@ data:
   num_workers: 10
   sample_rate: 16000
   data_sample_rate: 20000
+  max_freq: 1000
+  n_fft: 256
+  hop_length: 64
   train_dataset:
     _target_: data.ClassifierDataset
     data_path: '../datasets/orcasound/train_data/wav'
     mode: train
-    metadata_path: '../datasets/orcasound/orcasound_train_val_splits.csv'
+    metadata_path: '../datasets/orcasound/orcasound_bg_from_calls_train_val_splits.csv'
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
@@ -24,7 +27,7 @@ data:
     _target_: data.ClassifierDataset
     data_path: '../datasets/orcasound/train_data/wav'
     mode: val
-    metadata_path: '../datasets/orcasound/orcasound_train_val_splits.csv'
+    metadata_path: '../datasets/orcasound/orcasound_bg_from_calls_train_val_splits.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
