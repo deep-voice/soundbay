@@ -137,7 +137,7 @@ def main(args):
         checkpoint = None
 
     # Logging
-    logger = Logger(_logger)
+    logger = Logger(_logger, debug_mode=args.experiment.debug)
     flattenArgs = flatten(args)
     logger.log_writer.config.update(flattenArgs)
     App.init(args)
