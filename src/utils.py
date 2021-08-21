@@ -2,6 +2,7 @@ import librosa
 import numpy as np
 import torch
 import soundfile as sf
+import wandb
 from sklearn import metrics
 from unittest.mock import Mock
 from omegaconf import OmegaConf
@@ -11,6 +12,7 @@ from typing import Union
 from tqdm import tqdm
 import pandas as pd
 import re
+
 
 def load_audio(filepath: str, sr: int, max_val=0.9):
     """
@@ -98,8 +100,9 @@ class Logger:
         self.loss_meter_keys = ['loss']
         self.init_losses_meter()
         self.pred_list = []
+        self.pred_proba_list = []
         self.label_list = []
-        self.metrics_dict = {'accuracy': [], 'f1score': [], 'precision': [], 'recall': []}
+        self.metrics_dict = {'accuracy': [], 'f1score': [], 'precision': [], 'recall': [], 'auc': []}
 
     def log(self, log_num: int, flag: str):
         """logging losses using writer"""
@@ -140,22 +143,34 @@ class Logger:
 
     def calc_metrics(self, epoch):
         """calculates metrics, saves to tensorboard log & flush prediction list"""
-        self.metrics_dict = self.get_metrics_dict(self.label_list, self.pred_list)
+        pred_proba_array = np.concatenate(self.pred_proba_list)
+        self.metrics_dict = self.get_metrics_dict(self.label_list, self.pred_list, pred_proba_array)
         self.log_writer.log({'Accuracy': self.metrics_dict['accuracy']}, step=epoch)
         self.log_writer.log({'f1score': self.metrics_dict['f1score']}, step=epoch)
         self.log_writer.log({'precision': self.metrics_dict['precision']}, step=epoch)
         self.log_writer.log({'recall': self.metrics_dict['recall']}, step=epoch)
+        self.log_writer.log({'auc': self.metrics_dict['auc']}, step=epoch)
+        self.log_writer.log(
+            {'ROC Curve': wandb.plot.roc_curve(self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
+            step=epoch
+        )
+        self.log_writer.log(
+            {'PR Curve': wandb.plot.pr_curve(self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
+            step=epoch
+        )
         self.pred_list = []  # flush
         self.label_list = []
+        self.pred_proba_list = []
 
     @staticmethod
-    def get_metrics_dict(label_list, pred_list):
+    def get_metrics_dict(label_list, pred_list, pred_proba_array):
         """calculate the metrics comparing the predictions to the ground-truth labels, and return them in dict format"""
         accuracy = metrics.accuracy_score(label_list, pred_list)  # calculate accuracy using sklearn.metrics
         f1score = metrics.f1_score(label_list, pred_list)
         precision = metrics.precision_score(label_list, pred_list)
         recall = metrics.recall_score(label_list, pred_list)
-        metrics_dict = {'accuracy': accuracy, 'f1score': f1score, 'precision': precision, 'recall': recall}
+        auc = metrics.roc_auc_score(label_list, pred_proba_array[:, 1])
+        metrics_dict = {'accuracy': accuracy, 'f1score': f1score, 'precision': precision, 'recall': recall, 'auc': auc}
         return metrics_dict
 
 
@@ -299,6 +314,7 @@ def upload_experiment_to_s3(experiment_id: str,
         s3_client.upload_file(upload_file, bucket_name, upload_file.replace(current_global, object_global))
 
 
+# <<<<<<< feature/EDA_script
 def raven_to_df_annotations(annotations_path: str,
                              recording_path: str,
                              positive_tag_names: list = ['w','sc']):
@@ -403,3 +419,23 @@ def non_overlap_df(input_df):
     non_overlap = pd.concat(non_overlap)
     non_overlap['call_length'] = non_overlap['end_time'] - non_overlap['begin_time']
     return non_overlap
+
+
+def merge_with_checkpoint(run_args, checkpoint_args):
+    """
+    Merge into current args the needed arguments from checkpoint
+    Right now we select the specific modules needed, can make it more generic if we'll see the need for it
+    Input:
+        run_args: dict_config of run args
+        checkpoint_args: dict_config of checkpoint args
+    Output:
+        run_args: updated dict_config of run args
+    """
+
+    OmegaConf.set_struct(run_args, False)
+    run_args.model = checkpoint_args.model
+    run_args.data.test_dataset.preprocessors = checkpoint_args.data.train_dataset.preprocessors
+    run_args.data.test_dataset.seq_length = checkpoint_args.data.train_dataset.seq_length
+    run_args.data.sample_rate = checkpoint_args.data.sample_rate
+    OmegaConf.set_struct(run_args, True)
+    return run_args

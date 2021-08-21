@@ -13,5 +13,6 @@ captum
 beautifulsoup4
 joblib
 lxml
+PyQt5
 future-fstrings
 boto3
