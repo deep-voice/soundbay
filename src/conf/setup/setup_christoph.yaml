@@ -3,4 +3,4 @@ defaults:
   - data: _augmentations
   - data: _preprocessors_sliding_window
   - model: Christoph_CNN
-  - optim: defaults
+  - optim: christoph
