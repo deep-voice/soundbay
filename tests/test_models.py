@@ -13,8 +13,8 @@ from models import ResNet1Channel, GoogleResNet50, OrcaLabResNet18, ChristophCNN
 @pytest.fixture(scope="module", params=[ResNet1Channel('torchvision.models.resnet.Bottleneck', [3, 4, 6, 3]),
                                         GoogleResNet50(),
                                         OrcaLabResNet18(),
-                                        ChristophCNN(),
-                                        ChristophCNNwithPCEN(),
+                                        # ChristophCNN(),
+                                        # ChristophCNNwithPCEN(),
                                         GoogleResNet50withPCEN()])
 def own_model(request):
     return request.param
