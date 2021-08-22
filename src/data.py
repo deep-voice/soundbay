@@ -18,9 +18,9 @@ class ClassifierDataset(Dataset):
     class for storing and loading data.
     '''
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
-                 seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100,
-                 margin_ratio=0.5, mode="train",
-                 equalize_data=False, slice_flag=False):
+                 seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100, mode="train",
+                 equalize_data=False, slice_flag=False, margin_ratio=0,
+                 split_metadata_by_label=False):
         """
         __init__ method initiates ClassifierDataset instance:
         Input:
@@ -35,7 +35,8 @@ class ClassifierDataset(Dataset):
         """
         self.audio_dict = self._create_audio_dict(Path(data_path))
         self.metadata_path = metadata_path
-        self.metadata = pd.read_csv(self.metadata_path)
+        metadata = pd.read_csv(self.metadata_path)
+        self.metadata = self._update_metadata_by_mode(metadata, mode, split_metadata_by_label)
         self.mode = mode
         self.seq_length = seq_length
         self.sample_rate = sample_rate
@@ -47,6 +48,12 @@ class ClassifierDataset(Dataset):
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
 
+    @staticmethod
+    def _update_metadata_by_mode(metadata, mode, split_metadata_by_label):
+        if split_metadata_by_label:
+            metadata = metadata[metadata['split_type'] == mode]
+        return metadata
+
     def _create_audio_dict(self, data_path: Path) -> dict:
         """
             create reference dict to extract audio files from metadata annotation
@@ -56,7 +63,7 @@ class ClassifierDataset(Dataset):
             audio_dict contains references to audio paths given name from metadata
         """
         audio_paths = data_path.rglob('*.wav')
-        return {x.name.strip('.wav'): x for x in audio_paths}
+        return {x.name.replace('.wav', ''): x for x in audio_paths}
 
     def _preprocess_metadata(self, len_buffer, equalize=False, slice_flag=False):
         """

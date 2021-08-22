@@ -21,45 +21,6 @@ except AttributeError:
     collectionsAbc = collections
 
 
-def load_audio(filepath: str, sr: int, max_val=0.9):
-    """
-    load audio signal from file using librosa load function, and normalize the vector
-    Args:
-        filepath: location of audio file directory
-        sr: sampling rate
-        max_val: maximum value for normalization
-
-    Returns:
-
-    """
-    audio, sr = librosa.core.load(filepath, sr)
-    return norm_audio(audio, max_val)
-
-
-def norm_audio(audio, max_val=0.9):
-    """
-    This function normalizes audio segment to a specified value range
-    Args:
-        audio: signal vector to be normalized
-        max_val: maximum value
-
-    Returns:
-        normalized audio vector
-    """
-    if max_val:
-        if len(audio.shape) == 2:
-            audio = audio / audio.abs().max(dim=1)[0].view(-1, 1) * max_val
-        elif len(audio.shape) == 1:
-            audio = audio / np.max([audio.max(), abs(audio.min())]) * max_val
-        else:
-            raise Exception('accepts only dims == 1 or 2!')
-    return audio
-
-
-def write_torch_audio(filename, audio_tensor, sr):
-    audio_tensor = audio_tensor.detach().squeeze().cpu().numpy()
-    sf.write(filename, audio_tensor, sr)
-
 
 class LossMeter(object):
     """
@@ -97,7 +58,8 @@ class Logger:
     """
 
     def __init__(self,
-                 log_writer=Mock()
+                 log_writer=Mock(),
+                 debug_mode=False
                  ):
         """
         __init__ initializes the logger and all the associated arrays and variables
@@ -112,6 +74,7 @@ class Logger:
         self.pred_proba_list = []
         self.label_list = []
         self.metrics_dict = {'accuracy': [], 'f1score': [], 'precision': [], 'recall': [], 'auc': []}
+        self.debug_mode = debug_mode
 
     def log(self, log_num: int, flag: str):
         """logging losses using writer"""
@@ -159,15 +122,16 @@ class Logger:
         self.log_writer.log({'f1score': self.metrics_dict['f1score']}, step=epoch)
         self.log_writer.log({'precision': self.metrics_dict['precision']}, step=epoch)
         self.log_writer.log({'recall': self.metrics_dict['recall']}, step=epoch)
-        self.log_writer.log({'auc': self.metrics_dict['auc']}, step=epoch)
-        self.log_writer.log(
-            {'ROC Curve': wandb.plot.roc_curve(self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
-            step=epoch
-        )
-        self.log_writer.log(
-            {'PR Curve': wandb.plot.pr_curve(self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
-            step=epoch
-        )
+        if not self.debug_mode:
+            self.log_writer.log({'auc': self.metrics_dict['auc']}, step=epoch)
+            self.log_writer.log(
+                {'ROC Curve': wandb.plot.roc_curve(self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
+                step=epoch
+            )
+            self.log_writer.log(
+                {'PR Curve': wandb.plot.pr_curve(self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
+                step=epoch
+            )
         self.pred_list = []  # flush
         self.label_list = []
         self.pred_proba_list = []

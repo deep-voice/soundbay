@@ -1,0 +1,9 @@
+# @package _global_
+defaults:
+  - data: orcasound
+  - data: _augmentations
+  - data: _preprocessors
+  - model: defaults
+  - optim: defaults
+  - experiment: defaults
+  - checkpoint: defaults
