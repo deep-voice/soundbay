@@ -13,8 +13,8 @@ data:
     mode: train
     metadata_path: '../tests/assets/annotations/sample_annotations.csv'
     augmentations_p: 0.8
-    augmentations: ${_augmentations}
-    preprocessors: ${_preprocessors}
+    augmentations: setup.0.augmentation
+    preprocessors: setup.0.preprocessors
     seq_length: 1 
     len_buffer: 0.1
     margin_ratio: 0.5
@@ -29,7 +29,7 @@ data:
     metadata_path: '../tests/assets/annotations/sample_annotations.csv'
     augmentations_p: 0
     augmentations: null
-    preprocessors: ${_preprocessors}
+    preprocessors: setup.0.preprocessors
     seq_length: 1
     len_buffer: 0.1
     margin_ratio: 0

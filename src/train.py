@@ -143,7 +143,7 @@ def main(args):
     App.init(args)
 
     # Define criterion
-    criterion = instantiate(args.model.criterion)
+    criterion = instantiate(args.setup.model.criterion)
 
     # Seed script
     if args.experiment.manual_seed is None:
