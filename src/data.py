@@ -19,7 +19,7 @@ class ClassifierDataset(Dataset):
     '''
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100, mode="train",
-                 equalize_data=False, slice_flag=False, margin_ratio=0,
+                 equalize_data=False, slice_flag=False, margin_ratio=0, margin_probability=0.5,
                  split_metadata_by_label=False):
         """
         __init__ method initiates ClassifierDataset instance:
@@ -47,6 +47,7 @@ class ClassifierDataset(Dataset):
         self.preprocessor = self.set_preprocessor(preprocessors)
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
+        self.margin_probability = margin_probability
 
     @staticmethod
     def _update_metadata_by_mode(metadata, mode, split_metadata_by_label):
@@ -152,7 +153,7 @@ class ClassifierDataset(Dataset):
         audio - pytorch tensor (1-D array)
         """
         if (self.mode == "train") and (label == 1):
-            if self.margin_ratio != 0:  # ranges from 0 to 1 - indicates the relative part from seq_len to exceed call_length
+            if self.margin_ratio != 0 and self.margin_probability > random.random():  # ranges from 0 to 1 - indicates the relative part from seq_len to exceed call_length
                 margin_len_begin = int((self.seq_length * self.data_sample_rate) * self.margin_ratio)
                 margin_len_end = int((self.seq_length * self.data_sample_rate) * (1 - self.margin_ratio))
                 start_time = random.randint(begin_time - margin_len_begin, end_time - margin_len_end)
