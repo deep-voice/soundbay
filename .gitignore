@@ -16,6 +16,7 @@ env/
 .vscode
 .idea/*
 */.idea/*
+*.egg-info
 
 # pipeline files
 src/runs

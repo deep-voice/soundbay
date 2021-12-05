@@ -23,7 +23,7 @@ setup(
     license_files='LICENCE',
     description='Deep Learning Framework for Bioacoustics',
     author='soundbay',
-    author_email='deepvoicengo@gmail.com',
+    author_email='info@deepvoicefoundation.com',
     url='https://github.com/deep-voice/soundbay',
     keywords=['Bioacoustics', 'Machine Learning'],
     classifiers=[
