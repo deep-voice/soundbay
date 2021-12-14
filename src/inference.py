@@ -10,8 +10,8 @@ import os
 import pandas
 import datetime
 from hydra.utils import instantiate
-from utils import Logger, merge_with_checkpoint
-
+from utils.logging import Logger
+from utils.checkpoint_utils import merge_with_checkpoint
 
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
                   device: torch.device = torch.device('cpu'),
