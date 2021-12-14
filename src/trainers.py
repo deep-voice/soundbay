@@ -1,10 +1,10 @@
 from typing import Union, Generator, Tuple
 import torch
 import torch.utils.data
-from utils import Logger
+from utils.logging import Logger
 from tqdm import tqdm
 from pathlib import Path
-from utils import app
+from utils.app import app
 
 
 class Trainer:

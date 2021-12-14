@@ -25,10 +25,11 @@ from trainers import Trainer
 import hydra
 from hydra.utils import instantiate
 import random
-from utils import Logger, upload_experiment_to_s3, flatten, get_experiment_name
+from utils.logging import Logger, flatten, get_experiment_name
+from utils.checkpoint_utils import upload_experiment_to_s3
 from unittest.mock import Mock
 import os
-from utils import App
+from utils.app import App
 
 
 def modeling(

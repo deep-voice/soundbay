@@ -7,11 +7,11 @@ import sys
 import wandb
 
 sys.path.append('../src')
-from utils import Logger
+from utils.logging import Logger
 from inference import predict
 from trainers import Trainer
 from pathlib import Path
-from utils import App
+from utils.app import App
 from omegaconf import DictConfig
 
 
