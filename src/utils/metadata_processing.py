@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import re
 import soundfile as sf
+from typing import List
 
 
 # <<<<<<< feature/EDA_script
@@ -78,37 +79,43 @@ def annotations_df_to_csv(annotations_dataset, dataset_name: str = 'recordings_2
     annotations_dataset.to_csv(filename, index=False)
 
 
-def merge_calls(sorted_list):
-    merged = [sorted_list[0]]
-    for higher in sorted_list[1:]:
+def merge_calls(sorted_df: pd.DataFrame) -> List[pd.Series]:
+    """
+    Args:
+        sorted_df: DataFrame with sorted calls by begin_time field
+
+    Returns: List of non-overlapping merged calls from the DataFrame
+    """
+    merged = [sorted_df.iloc[0].copy()]
+    for _, higher in sorted_df.iterrows():
         lower = merged[-1]
         # test for intersection between lower and higher:
         # we know via sorting that lower[0] <= higher[0]
-        if higher[0] <= lower[1]:
-            upper_bound = max(lower[1], higher[1])
-            merged[-1] = (lower[0], upper_bound)  # replace by merged interval
+        if higher.begin_time <= lower.end_time:
+            max_end_time = max(lower.end_time, higher.end_time)
+            merged[-1].end_time = max_end_time  # replace by merged interval
         else:
-            merged.append(higher)
+            merged.append(higher.copy())
     return merged
 
 
-def non_overlap_df(input_df):
-    unique_files, idx = np.unique(input_df['filename'], return_index=True)
+def non_overlap_df(input_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Args:
+        input_df: DataFrame with possibly overlapping calls
+
+    Returns: a DataFrame object with non-overlapping calls (after merge).
+    """
     non_overlap = []
-    for file in unique_files:
-        file_df = input_df[input_df['filename'] == file]
-
-        begin = np.array(file_df['begin_time'])
-        end = np.array(file_df['end_time'])
-        begin_end = np.transpose(np.array((begin, end)))
-        sorted_by_lower_bound = sorted(begin_end, key=lambda tup: tup[0])
-
-        merged = merge_calls(sorted_by_lower_bound)
-
-        p = pd.DataFrame({'begin_time': np.array(merged)[:, 0], 'end_time': np.array(merged)[:, 1], 'filename': file})
-        non_overlap.append(p)
-
-    non_overlap = pd.concat(non_overlap)
+    for file_name, file_df in input_df.groupby(by='filename'):
+        file_df.sort_values(by='begin_time', inplace=True)
+        merged = merge_calls(file_df)
+        non_overlap.extend(merged)
+    non_overlap = pd.DataFrame(non_overlap)
     non_overlap['call_length'] = non_overlap['end_time'] - non_overlap['begin_time']
+
     return non_overlap
 
+
+def get_metadata_fields():
+    return ['begin_time', 'end_time', 'filename', 'call_length', 'label']
