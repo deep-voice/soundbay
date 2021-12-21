@@ -158,3 +158,27 @@ def correct_call_times_wrt_duration(df: pd.DataFrame, audio_files_path: str):
         print(f'removed {begin_time_to_long_ind.sum()} files with begin_time > duration, verify annotations please!')
 
     return df.drop('audio_length', axis=1)
+
+
+def bg_from_non_overlap_calls(df: pd.DataFrame):
+    """
+    Args:
+        df: a dataframe of the annotations metadata, with calls that don't overlap
+
+    Returns: a dataframe with bg calls taken from the gaps of the positive calls in a given file
+    """
+    bg_calls = []
+    for _, df_per_file in df.groupby(by='filename'):
+        # df_per_file is already sorted by begin_time!
+        df_per_file_copy = df_per_file.iloc[1:].copy()
+        if len(df_per_file_copy) < 1:
+            continue
+        bg_begin_times = np.array(df_per_file['end_time'])[:-1]
+        bg_call_len = np.array(df_per_file['begin_time'])[1:] - bg_begin_times
+        df_per_file_copy['begin_time'] = bg_begin_times
+        df_per_file_copy['call_length'] = bg_call_len
+        df_per_file_copy['end_time'] = df_per_file_copy['begin_time'] + df_per_file_copy['call_length']
+        bg_calls.append(df_per_file_copy)
+    bg_df = pd.concat(bg_calls)
+    bg_df['label'] = 0
+    return pd.concat([bg_df, df], ignore_index=True)
