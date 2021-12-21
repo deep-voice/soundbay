@@ -8,7 +8,7 @@ data:
   n_fft: 256
   hop_length: 64
   train_dataset:
-    _target_: data.ClassifierDataset
+    _target_: soundbay.data.ClassifierDataset
     data_path: 'PATH_TO_AUDIO_MNIST_DATA'
     mode: train 
     metadata_path: 'PATH/digit_annotation_train.csv'
@@ -23,7 +23,7 @@ data:
     equalize_data: true
     slice_flag: false
   val_dataset:
-    _target_: data.ClassifierDataset
+    _target_: soundbay.data.ClassifierDataset
     data_path: 'PATH_TO_AUDIO_MNIST_DATA'
     mode: val 
     metadata_path: 'PATH/digit_annotation_test.csv'

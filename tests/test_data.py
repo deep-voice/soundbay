@@ -1,7 +1,4 @@
-import sys
-sys.path.append('../soundbay')
 from hydra.experimental import compose, initialize
-import pytest
 from random import randint
 from random import seed
 from soundbay.data import ClassifierDataset

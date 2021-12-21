@@ -1,17 +1,12 @@
 import copy
 import os
-
 import torch
-import sys
-
 import wandb
-
-sys.path.append('../soundbay')
-from soundbay.logging.utils import Logger
+from soundbay.utils.logging import Logger
 from soundbay.inference import predict
 from soundbay.trainers import Trainer
 from pathlib import Path
-from soundbay.app.utils import App
+from soundbay.utils.app import App
 from omegaconf import DictConfig
 
 

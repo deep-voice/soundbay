@@ -8,7 +8,7 @@ data:
   n_fft: 256
   hop_length: 64
   train_dataset:
-    _target_: data.ClassifierDataset
+    _target_: soundbay.data.ClassifierDataset
     data_path: '../datasets/orcasound/train_data/wav'
     mode: train
     metadata_path: '../datasets/orcasound/orcasound_bg_from_calls_train_val_splits.csv'
@@ -24,7 +24,7 @@ data:
     split_metadata_by_label: yes
     margin_ratio: 0
   val_dataset:
-    _target_: data.ClassifierDataset
+    _target_: soundbay.data.ClassifierDataset
     data_path: '../datasets/orcasound/train_data/wav'
     mode: val
     metadata_path: '../datasets/orcasound/orcasound_bg_from_calls_train_val_splits.csv'
