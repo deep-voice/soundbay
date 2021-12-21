@@ -10,7 +10,7 @@ import os
 import pandas
 import datetime
 from hydra.utils import instantiate
-from utils import Logger, merge_with_checkpoint
+from soundbay.utils import Logger, merge_with_checkpoint
 
 
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
@@ -43,7 +43,7 @@ def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
                 if selected_class_idx in list(range(predicted_probability.shape[1])):
                     return predicted_probability[:, selected_class_idx]
                 else:
-                    raise(Exception(f'selected class index {selected_class_idx} not in output dimensions'))
+                    raise ValueError(f'selected class index {selected_class_idx} not in output dimensions')
         softmax_activation = softmax(all_predictions, 1)
         return softmax_activation
 
@@ -113,7 +113,7 @@ def inference_to_file(
     model = load_model(model_args, checkpoint_state_dict).to(device)
 
     test_dataloader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size, num_workers=0,
-                                  pin_memory=False)
+                                 pin_memory=False)
 
     # predict
     predict_prob = predict_proba(model, test_dataloader, device, None)
@@ -121,7 +121,8 @@ def inference_to_file(
     if hasattr(test_dataset, 'metadata'):
         concat_dataset = pandas.concat([test_dataset.metadata, results_df], axis=1)
         metrics_dict = Logger.get_metrics_dict(concat_dataset["label"].values.tolist(),
-                                               np.array(concat_dataset["class1_prob"].values.tolist()) >= 0.5)
+                                               np.array(concat_dataset["class1_prob"].values.tolist()) >= 0.5,
+                                               results_df.values)
         print(metrics_dict)
     else:
         concat_dataset = results_df
