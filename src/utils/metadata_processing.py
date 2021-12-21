@@ -117,5 +117,44 @@ def non_overlap_df(input_df: pd.DataFrame) -> pd.DataFrame:
     return non_overlap
 
 
-def get_metadata_fields():
-    return ['begin_time', 'end_time', 'filename', 'call_length', 'label']
+def reorder_columns_to_default_view(df: pd.DataFrame):
+    """
+    Args:
+        df: dataframe of the annotations metadata
+
+    Returns: a dataframe with reordered column, so the default order view will be kept
+    """
+    def get_metadata_fields():
+        return ['begin_time', 'end_time', 'filename', 'call_length', 'label']
+
+    orig_cols = df.columns.tolist()
+    default_cols = get_metadata_fields()
+    remaining = list(set(orig_cols) - set(default_cols))
+    new_cols = default_cols + remaining
+    return df[new_cols]
+
+
+def correct_call_times_wrt_duration(df: pd.DataFrame, audio_files_path: str):
+    """
+    Args:
+        df: dataframe of the annotations metadata
+        audio_files_path: str indicates the path to the folder of wav files (given flat hierarchy of audio files)
+
+    Returns:
+        df with 'end_time' no longer than the file duration
+        it also removes the calls with 'begin_time' longer than duration and prints out a warning
+    """
+
+    audio_lengths = [sf.info(f'{audio_files_path}/{file}.wav').duration for file in df['filename']]
+    df['audio_length'] = audio_lengths
+
+    end_time_to_long_ind = df['end_time'] > df['audio_length']
+    begin_time_to_long_ind = df['begin_time'] > df['audio_length']
+
+    df.loc[end_time_to_long_ind, 'end_time'] = df.loc[end_time_to_long_ind, 'audio_length']
+
+    if begin_time_to_long_ind.sum() > 0:
+        df = df[~begin_time_to_long_ind]
+        print(f'removed {begin_time_to_long_ind.sum()} files with begin_time > duration, verify annotations please!')
+
+    return df.drop('audio_length', axis=1)
