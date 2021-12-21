@@ -6,12 +6,12 @@ import sys
 
 import wandb
 
-sys.path.append('../src')
-from utils.logging import Logger
-from inference import predict
-from trainers import Trainer
+sys.path.append('../soundbay')
+from soundbay.logging.utils import Logger
+from soundbay.inference import predict
+from soundbay.trainers import Trainer
 from pathlib import Path
-from utils.app import App
+from soundbay.app.utils import App
 from omegaconf import DictConfig
 
 

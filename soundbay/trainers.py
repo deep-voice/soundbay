@@ -1,10 +1,10 @@
 from typing import Union, Generator, Tuple
 import torch
 import torch.utils.data
-from utils.logging import Logger
+from soundbay.utils.logging import Logger
 from tqdm import tqdm
 from pathlib import Path
-from utils.app import app
+from soundbay.utils.app import app
 
 
 class Trainer:

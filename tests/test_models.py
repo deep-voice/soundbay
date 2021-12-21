@@ -5,8 +5,8 @@ from torchvision import transforms
 from torchvision.datasets import ImageFolder
 import sys
 
-sys.path.append('../src')
-from models import ResNet1Channel, GoogleResNet50, OrcaLabResNet18, ChristophCNN, ChristophCNNwithPCEN, \
+sys.path.append('../soundbay')
+from soundbay.models import ResNet1Channel, GoogleResNet50, OrcaLabResNet18, ChristophCNN, ChristophCNNwithPCEN, \
     GoogleResNet50withPCEN
 
 

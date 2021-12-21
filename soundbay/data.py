@@ -6,7 +6,7 @@ import random
 import soundfile as sf
 from itertools import starmap, repeat
 from torchvision import transforms
-from data_augmentation import ChainedAugmentations
+from soundbay.data_augmentation import ChainedAugmentations
 import torchaudio
 from hydra.utils import instantiate, DictConfig
 from pathlib import Path
