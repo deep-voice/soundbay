@@ -16,13 +16,14 @@ env/
 .vscode
 .idea/*
 */.idea/*
+*.egg-info
 
 # pipeline files
-src/runs
-src/logs
+soundbay/runs
+soundbay/logs
 *last.pth
 *best.pth
-src/outputs/*
+soundbay/outputs/*
 .misc
 
 # redundant formats

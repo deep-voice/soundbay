@@ -4,30 +4,22 @@
 Soundbay is an intuitive and comprehensive Python-based framework for training deep learning models and apply them in bioacoustic research. We focus our efforts on marine mammals communication, however, we believe the framework is applicable for a broader scope.
 
 ## Installation
-
-### Cloning the repo
+Before installing, please verify you have a working Python environment, with pytorch, torchvision and torchaudio installed according to your local hardware.<br>
+More info on installing pytorchm torchaudio and torchvision can be found in the [guide](https://pytorch.org/get-started/locally/).
 
 ```
-$ git clone https://github.com/deep-voice/soundbay.git
-$ cd soundbay
-```
-
-### Dependencies
-The needed packages to run the framework are given in ```requirements.txt```
-
-Using a virtual enviroment is recommended:
-```
-virtualenv -p python3 .venv
-source .venv/bin/activate
+git clone https://github.com/deep-voice/soundbay
+cd soundbay
+pip install -e .
+# OR 
 pip install -r requirements.txt
 ```
-The framework uses torch, torchaudio and torchvision which can be installed manually, please refer the [guide](https://pytorch.org/get-started/locally/) 
 
 ## Usage
 
 ### Experiment management philosophy 
 The framework utilizes Hydra package for configuration and experiments mangement, we highly encourage you to refer their [tutorials](https://hydra.cc/docs/tutorials/intro/)
-We provide modular recipes inside [conf](src/conf/) to run experiments and to reproduce well established algorithms.
+We provide modular recipes inside [conf](soundbay/conf/) to run experiments and to reproduce well established algorithms.
 We have three levels of parameters control:
 - run-summarizing config files
 - parameters groups, represented by a row in the defaults of the config file
