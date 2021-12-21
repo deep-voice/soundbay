@@ -7,4 +7,4 @@ _preprocessors:
   amplitude_2_db:
     _target_: torchaudio.transforms.AmplitudeToDB
   unit_norm:
-    _target_: data.UnitNormalize
+    _target_: soundbay.data.UnitNormalize

@@ -1,7 +1,7 @@
 # @package _global_
 data:
   test_dataset:
-    _target_: data.InferenceDataset
+    _target_: soundbay.data.InferenceDataset
     file_path: '../data/file1.wav'
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
