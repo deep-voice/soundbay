@@ -2,7 +2,6 @@ from typing import List
 
 import torch
 from torchaudio import sox_effects
-import torchaudio
 
 import random
 import numpy as np
