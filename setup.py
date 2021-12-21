@@ -4,7 +4,7 @@ from distutils.util import convert_path
 import os
 
 main_ns = {}
-ver_path = convert_path('src/version.py')
+ver_path = convert_path('soundbay/version.py')
 with open(ver_path) as ver_file:
     exec(ver_file.read(), main_ns)
 VER = main_ns['__version__']

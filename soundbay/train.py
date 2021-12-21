@@ -8,7 +8,7 @@ to run the main training loop (models, data paths,
 augmentations, preprocessing etc..) - for more details about hydra package
 configuration please refer to https://hydra.cc/
 
-The configuration files are located in ./src/conf folder and it's possible to overwrite specific arguments
+The configuration files are located in ./soundbay/conf folder and it's possible to overwrite specific arguments
 using the command line when running main.py (e.g. "main.py experiment.debug=True")
 
 * prior to running this script make sure to define the data paths, annotations and output accordingly
@@ -21,14 +21,13 @@ from torch.utils.data import DataLoader
 import wandb
 from functools import partial
 from pathlib import Path
-from trainers import Trainer
+from soundbay.trainers import Trainer
 import hydra
 from hydra.utils import instantiate
 import random
-from utils import Logger, upload_experiment_to_s3, flatten, get_experiment_name
+from soundbay.utils import Logger, upload_experiment_to_s3, flatten, get_experiment_name, App
 from unittest.mock import Mock
 import os
-from utils import App
 
 
 def modeling(
