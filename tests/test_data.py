@@ -1,16 +1,16 @@
 import sys
-sys.path.append('../src')
+sys.path.append('../soundbay')
 from hydra.experimental import compose, initialize
 import pytest
 from random import randint
 from random import seed
-from data import ClassifierDataset
+from soundbay.data import ClassifierDataset
 import numpy as np
 
 
 def test_dataloader() -> None:
     seed(1)
-    with initialize(config_path="../src/conf"):
+    with initialize(config_path="../soundbay/conf"):
         # config is relative to a module
         cfg = compose(config_name="runs/main")
         data_loader = ClassifierDataset(cfg.data.train_dataset.data_path, cfg.data.train_dataset.metadata_path,
