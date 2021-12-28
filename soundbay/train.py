@@ -21,15 +21,15 @@ from torch.utils.data import DataLoader
 import wandb
 from functools import partial
 from pathlib import Path
-from soundbay.trainers import Trainer
 import hydra
 from hydra.utils import instantiate
 import random
-from soundbay.utils.logging import Logger, flatten, get_experiment_name
-from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
 from unittest.mock import Mock
 import os
 from soundbay.utils.app import App
+from soundbay.utils.logging import Logger, flatten, get_experiment_name
+from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
+from soundbay.trainers import Trainer
 
 
 def modeling(
