@@ -136,7 +136,7 @@ def reorder_columns_to_default_view(df: pd.DataFrame):
     return df[new_cols]
 
 
-def correct_call_times_wrt_duration(df: pd.DataFrame, audio_files_path: str):
+def correct_call_times_with_duration(df: pd.DataFrame, audio_files_path: str):
     """
     Args:
         df: dataframe of the annotations metadata
