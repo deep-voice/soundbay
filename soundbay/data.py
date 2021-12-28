@@ -1,17 +1,18 @@
 import torchvision
 from torch.utils.data import Dataset
 import torch
+from torchvision import transforms
+import torchaudio
 import pandas as pd
 import random
 import soundfile as sf
 from itertools import starmap, repeat
-from torchvision import transforms
-from soundbay.data_augmentation import ChainedAugmentations
-import torchaudio
 from hydra.utils import instantiate, DictConfig
 from pathlib import Path
 from copy import deepcopy
 import numpy as np
+from soundbay.data_augmentation import ChainedAugmentations
+
 
 class ClassifierDataset(Dataset):
     '''
