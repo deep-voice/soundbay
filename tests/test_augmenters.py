@@ -1,8 +1,5 @@
 import pytest
-import sys
 import soundfile as sf
-sys.path.append('../soundbay')
-import torch
 from soundbay.data_augmentation import *
 
 

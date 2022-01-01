@@ -8,7 +8,7 @@ data:
   n_fft: 1024
   hop_length: 256
   train_dataset:
-    _target_: data.ClassifierDataset
+    _target_: soundbay.data.ClassifierDataset
     data_path: '../datasets/deep-voice'
     mode: train 
     metadata_path: '../annotations/combined_annotations_filtered_train.csv'
@@ -23,7 +23,7 @@ data:
     equalize_data: true
     slice_flag: false
   val_dataset:
-    _target_: data.ClassifierDataset
+    _target_: soundbay.data.ClassifierDataset
     data_path: '../datasets/deep-voice'
     mode: val 
     metadata_path: '../annotations/combined_annotations_filtered_val.csv'

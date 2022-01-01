@@ -7,7 +7,7 @@ data:
   n_fft: 1024
   hop_length: 256
   test_dataset:
-    _target_: data.ClassifierDataset
+    _target_: soundbay.data.ClassifierDataset
     data_path: '../tests/assets/data'
     mode: val
     metadata_path: '../tests/assets/annotations/sample_annotations.csv'
