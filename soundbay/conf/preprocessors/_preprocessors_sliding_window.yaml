@@ -5,7 +5,7 @@ _preprocessors:
     n_fft: 256
     hop_length: 64
   sliding_window_norm:
-    _target_: data.SlidingWindowNormalize
+    _target_: soundbay.data.SlidingWindowNormalize
     n_fft: ${_preprocessors.spectrogram.n_fft}
     sr: ${data.sample_rate}
 #  amplitude_2_db:

@@ -1,17 +1,17 @@
 # @package _global_
 _augmentations:
   random_noise:
-    _target_: data_augmentation.AddGaussianNoise
+    _target_: soundbay.data_augmentation.AddGaussianNoise
     p: 0.5
     sr: ${data.sample_rate}
     snr: 15
   time_masking:
-    _target_: data_augmentation.TemporalMasking
+    _target_: soundbay.data_augmentation.TemporalMasking
     p: 0.5
     sr: ${data.sample_rate}
     max_secs: 0.2
   frequency_masking:
-    _target_: data_augmentation.FrequencyMasking
+    _target_: soundbay.data_augmentation.FrequencyMasking
     p: 0.5
     sr: ${data.sample_rate}
     min_freq_in_segment: 200
