@@ -5,13 +5,12 @@ import numpy as np
 from tqdm import tqdm
 from scipy.special import softmax
 import hydra
-from models import ResNet1Channel
 from pathlib import Path
 import os
 import pandas
 import datetime
 from hydra.utils import instantiate
-from utils import Logger
+from utils import Logger, merge_with_checkpoint
 
 
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
@@ -74,17 +73,18 @@ def predict(model: torch.nn.Module, data_loader: Generator[torch.tensor, None, N
         return (predicted_probability > threshold).reshape((-1, 1))
 
 
-def load_model(path):
+def load_model(model_params, checkpoint_state_dict):
     """
-    load_model recieves a path to a .pth file and loads the model into the variable model
+    load_model receives model params and state dict, instantiating a model and loading trained parameters.
     Input:
-        path: directory of the model
+        model_params: config arguments of model object
+        checkpoint_state_dict: dict including the train parameters to be loaded to the model
+    Output:
+        model: nn.Module object of the model
     """
 
-    run_dict = torch.load(path, map_location=torch.device('cpu'))
-    model = ResNet1Channel('torchvision.models.resnet.Bottleneck', layers=[3, 4, 6, 3], num_classes=2)
-    model.load_state_dict(run_dict['model'])
-
+    model = instantiate(model_params)
+    model.load_state_dict(checkpoint_state_dict)
     return model
 
 
@@ -92,8 +92,10 @@ def inference_to_file(
     device,
     batch_size,
     dataset_args,
-    model_path,
-    output_path
+    model_args,
+    checkpoint_state_dict,
+    output_path,
+    model_name
 ):
     """
     This functions takes the dataset and produces the model prediction to a file
@@ -108,7 +110,7 @@ def inference_to_file(
     test_dataset = instantiate(dataset_args)
 
     # load model
-    model = load_model(model_path).to(device)
+    model = load_model(model_args, checkpoint_state_dict).to(device)
 
     test_dataloader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size, num_workers=0,
                                   pin_memory=False)
@@ -126,7 +128,6 @@ def inference_to_file(
         print("Notice: The dataset has no ground truth labels")
 
     #save file
-    model_name = model_path.stem #takes model file name without path and extension
     dataset_name = Path(test_dataset.metadata_path).stem
     filename = f"Inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.csv"
     output_file = output_path / filename
@@ -153,13 +154,19 @@ def inference_main(args) -> None:
     os.chdir(working_dirpath)
     output_dirpath = working_dirpath
 
+    ckpt_dict = torch.load(args.checkpoint.path, map_location=torch.device('cpu'))
+    ckpt_args = ckpt_dict['args']
+    args = merge_with_checkpoint(args, ckpt_args)
+    ckpt = ckpt_dict['model']
 
     inference_to_file(
-         device=device,
-         batch_size=args.data.batch_size,
-         dataset_args=args.data.test_dataset,
-         model_path=Path(args.checkpoint.path),
-         output_path=output_dirpath
+        device=device,
+        batch_size=args.data.batch_size,
+        dataset_args=args.data.test_dataset,
+        model_args=args.model.model,
+        checkpoint_state_dict=ckpt,
+        output_path=output_dirpath,
+        model_name=Path(args.checkpoint.path).stem,
     )
     print("Finished inference")
 

@@ -1,0 +1,12 @@
+# @package _global_
+_preprocessors:
+  spectrogram:
+    _target_: torchaudio.transforms.Spectrogram
+    n_fft: 1024
+    hop_length: 256
+  sliding_window_norm:
+    _target_: data.SlidingWindowNormalize
+    n_fft: ${_preprocessors.spectrogram.n_fft}
+    sr: ${data.sample_rate}
+  amplitude_2_db:
+    _target_: torchaudio.transforms.AmplitudeToDB
