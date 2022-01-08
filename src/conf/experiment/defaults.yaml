@@ -1,6 +1,0 @@
-# @package _global_
-experiment:
-  debug: False
-  manual_seed: 1234
-  name: null
-  bucket_name: deepvoice-experiments
