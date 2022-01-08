@@ -1,15 +1,12 @@
 import copy
 import os
-from unittest.mock import Mock
-
 import torch
-import sys
-sys.path.append('../src')
-from utils import Logger
-from inference import predict
-from trainers import Trainer
+import wandb
+from soundbay.utils.logging import Logger
+from soundbay.inference import predict
+from soundbay.trainers import Trainer
 from pathlib import Path
-from utils import App
+from soundbay.utils.app import App
 from omegaconf import DictConfig
 
 
@@ -39,13 +36,14 @@ def check_variable_change(model_before, model_after, vars_change=True, device=to
 
 def test_trainer(model, optimizer, scheduler, data_loader, criterion):
 
+    wandb.init(project=None, mode='disabled')
     args = DictConfig({'experiment': {'debug': False}})
     App.init(args)
     output_dirpath = Path.cwd()
 
     # basic training run of model
     pre_training_model = copy.deepcopy(model)
-    logger = Logger()
+    logger = Logger(debug_mode=True)
     trainer = Trainer(
         model=model,
         train_dataloader=data_loader,
@@ -54,14 +52,14 @@ def test_trainer(model, optimizer, scheduler, data_loader, criterion):
         scheduler=scheduler,
         epochs=2,
         logger=logger,
-        debug=True,
+        debug=False,
         criterion=criterion,
         output_path=output_dirpath
     )
     trainer.train()
     check_variable_change(pre_training_model, model)
     assert trainer.epochs_trained == 2
-    assert len(trainer.logger.metrics_dict) == 4
+    assert len(trainer.logger.metrics_dict) == 5
     assert (0 <= trainer.logger.metrics_dict['accuracy'] <= 1)
 
     # check that can load from checkpoint
@@ -74,7 +72,7 @@ def test_trainer(model, optimizer, scheduler, data_loader, criterion):
         scheduler=scheduler,
         epochs=4,
         logger=logger,
-        debug=True,
+        debug=False,
         criterion=criterion,
         checkpoint='last.pth',
         output_path=output_dirpath

@@ -1,0 +1,26 @@
+name: Christoph model grid
+method: grid
+parameters:
+  model:
+    value: Christoph_CNN
+  optim:
+    value: christoph
+  optim.epochs:
+    value: 100
+  data:
+    values:
+      - defaults
+      - icml2013
+      - orcasound
+  preprocessors:
+    value: _preprocessors_sliding_window
+  data.train_dataset.augmentations_p:
+    value: 0
+  experiment.group_name:
+    value: "Data Model Sweep - Christoph"
+program: train.py
+command:
+  - ${env}
+  - ${interpreter}
+  - ${program}
+  - ${args_no_hyphens}

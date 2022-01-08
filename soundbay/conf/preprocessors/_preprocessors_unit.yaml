@@ -1,0 +1,10 @@
+# @package _global_
+_preprocessors:
+  spectrogram:
+    _target_: torchaudio.transforms.Spectrogram
+    n_fft: 1024
+    hop_length: 256
+  amplitude_2_db:
+    _target_: torchaudio.transforms.AmplitudeToDB
+  unit_norm:
+    _target_: soundbay.data.UnitNormalize
