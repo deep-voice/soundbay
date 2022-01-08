@@ -1,6 +1,6 @@
 # @package _global_
 defaults:
-  - data: orcasound
+  - data: Manatees
   - data: _augmentations
   - data: _preprocessors
   - model: defaults
