@@ -9,9 +9,9 @@ data:
   hop_length: 256
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../../datasets/Manatees/train_data/wav'
+    data_path: '../datasets/Manatees/train_data/wav'
     mode: train
-    metadata_path: '../../datasets/Manatees/Manatee_train_val_splits.csv'
+    metadata_path: '../datasets/Manatees/Manatee_train_val_splits.csv'
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
@@ -25,9 +25,9 @@ data:
     margin_ratio: 0
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../../datasets/Manatees/train_data/wav'
+    data_path: '../datasets/Manatees/train_data/wav'
     mode: val
-    metadata_path: '../../datasets/Manatees/Manatee_train_val_splits.csv'
+    metadata_path: '../datasets/Manatees/Manatee_train_val_splits.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
