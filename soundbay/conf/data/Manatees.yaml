@@ -15,7 +15,7 @@ data:
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
-    seq_length: 1
+    seq_length: 0.1
     len_buffer: 0.1
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
