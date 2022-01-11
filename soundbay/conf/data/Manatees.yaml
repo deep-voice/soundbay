@@ -4,7 +4,7 @@ data:
   num_workers: 10
   sample_rate: 96000
   data_sample_rate: 96000
-  max_freq: 57000
+  max_freq: 44100
   n_fft: 1024
   hop_length: 256
   train_dataset:
