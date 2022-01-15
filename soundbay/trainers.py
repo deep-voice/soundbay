@@ -98,8 +98,11 @@ class Trainer:
 
             # update losses
             self.logger.update_losses(loss.detach(), flag='train')
+            self.logger.update_predictions((estimated_label, label))
 
         # logging
+        if not app.args.experiment.debug:
+            self.logger.calc_metrics(epoch, 'train')
         self.logger.log(epoch, 'train')
         if self.scheduler is not None:
             self.scheduler.step()
@@ -124,7 +127,7 @@ class Trainer:
 
             # logging
             if not app.args.experiment.debug:
-                self.logger.calc_metrics(epoch)
+                self.logger.calc_metrics(epoch ,'val')
             self.logger.log(epoch, 'val')
 
 
