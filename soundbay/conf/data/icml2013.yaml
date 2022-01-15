@@ -9,10 +9,10 @@ data:
   hop_length: 64
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: 'PATH_TO_ICML2013_WAV_FILES'
+    data_path: 'PATH_TO_ICML2013_WAV_FILES'  # Data can be found at s3://deepvoice-external/ICML2013_right_whale_redux/
     mode: train
-    metadata_path: 'PATH_TO_TRAIN_ANNOTATIONS'
-    augmentations_p: 0
+    metadata_path: '../datasets/ICML_2013/annotation_train.csv'
+    augmentations_p: 0.5
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
     seq_length: 1.5
@@ -24,9 +24,9 @@ data:
     slice_flag: false
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: 'PATH_TO_ICML2013_WAV_FILES'
+    data_path: 'PATH_TO_ICML2013_WAV_FILES'  # Data can be found at s3://deepvoice-external/ICML2013_right_whale_redux/
     mode: val
-    metadata_path: 'PATH_TO_VAL_ANNOTATIONS'
+    metadata_path: '../datasets/ICML_2013/annotation_val.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
