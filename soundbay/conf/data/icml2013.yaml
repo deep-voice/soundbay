@@ -11,7 +11,7 @@ data:
     _target_: soundbay.data.ClassifierDataset
     data_path: 'PATH_TO_ICML2013_WAV_FILES'
     mode: train
-    metadata_path: '../annotations/ICML_2013_annotations/annotation_train2_train.csv'
+    metadata_path: '../datasets/ICML_2013/annotation_train.csv'
     augmentations_p: 0.5
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
@@ -26,7 +26,7 @@ data:
     _target_: soundbay.data.ClassifierDataset
     data_path: 'PATH_TO_ICML2013_WAV_FILES'
     mode: val
-    metadata_path: '../annotations/ICML_2013_annotations/annotation_train2_val.csv'
+    metadata_path: '../datasets/ICML_2013/annotation_val.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
