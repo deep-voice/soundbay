@@ -20,6 +20,6 @@ without_7_11_12
 for index in ${!METADATAS[*]}; do
   python train.py --config-name runs/orcasound data.train_dataset.metadata_path=${METADATAS[$index]} \
   data.val_dataset.metadata_path=${METADATAS[$index]} ${array2[$index]} experiment.name=${NAMES[$index]} \
-  experiment.run_id=${NAMES[$index]} experiment.group_name="Orcasound_Splits";
+  experiment.run_id=${NAMES[$index]} experiment.group_name="Orcasound_Splits" optim.epochs=20;
   sleep 30;
 done
