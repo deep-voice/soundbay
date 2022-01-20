@@ -154,6 +154,8 @@ def correct_call_times_with_duration(df: pd.DataFrame, audio_files_path: str):
     begin_time_to_long_ind = df['begin_time'] > df['audio_length']
 
     df.loc[end_time_to_long_ind, 'end_time'] = df.loc[end_time_to_long_ind, 'audio_length']
+    df.loc[end_time_to_long_ind, 'call_length'] = \
+        df.loc[end_time_to_long_ind, 'end_time'] - df.loc[end_time_to_long_ind, 'begin_time']
 
     if begin_time_to_long_ind.sum() > 0:
         df = df[~begin_time_to_long_ind]
