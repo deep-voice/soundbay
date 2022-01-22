@@ -7,7 +7,8 @@ import pandas as pd
 import random
 import soundfile as sf
 from itertools import starmap, repeat
-from hydra.utils import instantiate, DictConfig
+from hydra.utils import instantiate
+from omegaconf import DictConfig
 from pathlib import Path
 from copy import deepcopy
 import numpy as np
