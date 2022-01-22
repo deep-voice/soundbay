@@ -1,6 +1,6 @@
 # @package _global_
 data:
-  batch_size: 16
+  batch_size: 32
   num_workers: 4
   sample_rate: 96000
   data_sample_rate: 96000
@@ -15,7 +15,7 @@ data:
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
-    seq_length: 0.1
+    seq_length: 0.2
     len_buffer: 0.1
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
@@ -31,7 +31,7 @@ data:
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
-    seq_length: 0.1 # this dataset has shorter call length
+    seq_length: 0.2 # this dataset has shorter call length
     len_buffer: 0.1
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
