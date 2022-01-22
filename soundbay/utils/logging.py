@@ -4,8 +4,7 @@ from unittest.mock import Mock
 import collections
 import torch
 import numpy as np
-from typing import Union
-
+from typing import Union, List
 
 try:
     collectionsAbc = collections.abc
@@ -71,10 +70,10 @@ class Logger:
         """logging losses using writer"""
         for key in self.loss_meter_keys:
             if flag == 'train':
-                self.log_writer.log({f"{key}_train":
+                self.log_writer.log({f"Losses/{key}_train":
                                      self.loss_meter_train[key].summarize_epoch()}, step=log_num)
             elif flag == 'val':
-                self.log_writer.log({f"{key}_val":
+                self.log_writer.log({f"Losses/{key}_val":
                                      self.loss_meter_val[key].summarize_epoch()}, step=log_num)
 
     def init_losses_meter(self):
@@ -105,24 +104,28 @@ class Logger:
         self.pred_proba_list.append(torch.softmax(pred_tuple[0].data, 1).cpu().numpy())
         self.label_list += label.cpu().numpy().tolist()
 
-    def calc_metrics(self, epoch):
+    def calc_metrics(self, epoch: int, mode: str = 'train', label_names: List[str] = ('Noise', 'Call')):
         """calculates metrics, saves to tensorboard log & flush prediction list"""
         pred_proba_array = np.concatenate(self.pred_proba_list)
         self.metrics_dict = self.get_metrics_dict(self.label_list, self.pred_list, pred_proba_array)
-        self.log_writer.log({'Accuracy': self.metrics_dict['accuracy']}, step=epoch)
-        self.log_writer.log({'f1score': self.metrics_dict['f1score']}, step=epoch)
-        self.log_writer.log({'precision': self.metrics_dict['precision']}, step=epoch)
-        self.log_writer.log({'recall': self.metrics_dict['recall']}, step=epoch)
+        self.log_writer.log({f'Metrics/{mode}_Accuracy': self.metrics_dict['accuracy']}, step=epoch)
+        self.log_writer.log({f'Metrics/{mode}_f1score': self.metrics_dict['f1score']}, step=epoch)
+        self.log_writer.log({f'Metrics/{mode}_precision': self.metrics_dict['precision']}, step=epoch)
+        self.log_writer.log({f'Metrics/{mode}_recall': self.metrics_dict['recall']}, step=epoch)
+        self.log_writer.log({f'Metrics/{mode}_auc': self.metrics_dict['auc']}, step=epoch)
         if not self.debug_mode:
-            self.log_writer.log({'auc': self.metrics_dict['auc']}, step=epoch)
             self.log_writer.log(
-                {'ROC Curve': wandb.plot.roc_curve(self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
+                {f'{mode}_charts/ROC Curve': wandb.plot.roc_curve(self.label_list, pred_proba_array, labels=label_names)},
                 step=epoch
             )
             self.log_writer.log(
-                {'PR Curve': wandb.plot.pr_curve(self.label_list, pred_proba_array, labels=['Noise', 'Call'])},
+                {f'{mode}_charts/PR Curve': wandb.plot.pr_curve(self.label_list, pred_proba_array, labels=label_names)},
                 step=epoch
             )
+            wandb.log({f'{mode}_charts/conf_mat': wandb.plot.confusion_matrix(probs=None, y_true=self.label_list,
+                                                                              preds=self.pred_list,
+                                                                              class_names=label_names)},
+                                                                              step=epoch)
         self.pred_list = []  # flush
         self.label_list = []
         self.pred_proba_list = []
