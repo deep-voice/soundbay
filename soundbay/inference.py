@@ -10,7 +10,7 @@ import os
 import pandas
 import datetime
 from hydra.utils import instantiate
-from soundbay.utils.logging import Logger
+from soundbay.utils.logging import Logger, save_dict_to_json
 from soundbay.utils.checkpoint_utils import merge_with_checkpoint
 
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
@@ -115,6 +115,10 @@ def inference_to_file(
     test_dataloader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size, num_workers=0,
                                  pin_memory=False)
 
+    # output file name
+    dataset_name = Path(test_dataset.metadata_path).stem
+    filename = f"Inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}"
+
     # predict
     predict_prob = predict_proba(model, test_dataloader, device, None)
     results_df = pandas.DataFrame(predict_prob, columns=['class0_prob', 'class1_prob'])
@@ -124,15 +128,13 @@ def inference_to_file(
                                                np.array(concat_dataset["class1_prob"].values.tolist()) >= 0.5,
                                                results_df.values)
         print(metrics_dict)
+        save_dict_to_json(dict_obj=metrics_dict, filepath=(output_path / f"{filename}.json"))
     else:
         concat_dataset = results_df
         print("Notice: The dataset has no ground truth labels")
 
     #save file
-    dataset_name = Path(test_dataset.metadata_path).stem
-    filename = f"Inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.csv"
-    output_file = output_path / filename
-    concat_dataset.to_csv(index=False, path_or_buf=output_file)
+    concat_dataset.to_csv(index=False, path_or_buf=(output_path / f"{filename}.csv"))
 
     return
 

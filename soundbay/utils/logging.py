@@ -5,6 +5,8 @@ import collections
 import torch
 import numpy as np
 from typing import Union, List
+from pathlib import Path
+import json
 
 try:
     collectionsAbc = collections.abc
@@ -163,3 +165,8 @@ def flatten(d, parent_key='', sep='.'):
         else:
             items.update({new_key: v})
     return dict(items)
+
+
+def save_dict_to_json(dict_obj: dict, filepath: Union[Path, str]):
+    with open(filepath, 'w') as f:
+        json.dump(dict_obj, f)
