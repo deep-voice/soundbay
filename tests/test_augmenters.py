@@ -1,9 +1,6 @@
 import pytest
-import sys
 import soundfile as sf
-sys.path.append('../src')
-import torch
-from data_augmentation import *
+from soundbay.data_augmentation import *
 
 
 # Each test calling this fixture will run one time per each element in the params list

@@ -1,7 +1,0 @@
-# @package _global_
-defaults:
-  - data: defaults_inference
-  - data: _augmentations
-  - data: _preprocessors
-  - checkpoint: defaults
-  - experiment: null_hydra
