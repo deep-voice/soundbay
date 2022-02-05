@@ -26,6 +26,7 @@ from hydra.utils import instantiate
 import random
 from unittest.mock import Mock
 import os
+import tempfile
 from soundbay.utils.app import App
 from soundbay.utils.logging import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
@@ -115,8 +116,9 @@ def main(args):
     # Set logger
     _logger = wandb if not args.experiment.debug else Mock()
     experiment_name = get_experiment_name(args)
+    # os.environ["WANDB_DIR"] = "/tmp"
     _logger.init(project="finding_willy", name=experiment_name, group=args.experiment.group_name,
-                 id=args.experiment.run_id)
+                 id=args.experiment.run_id, dir=tempfile.gettempdir())
 
     # Set device
     if not torch.cuda.is_available():
@@ -176,10 +178,12 @@ def main(args):
         model_args=args.model.model,
         logger=logger,
     )
-    if args.experiment.bucket_name and not args.experiment.debug:
-        upload_experiment_to_s3(experiment_id=logger.log_writer.run.id, dir_path=output_dirpath,
-                                bucket_name=args.experiment.bucket_name, include_parent=True)
-        print(f'experiment {logger.log_writer.run.id} has been successfully uploaded to {args.experiment.bucket_name} bucket')
+
+    # if args.experiment.bucket_name and not args.experiment.debug:
+    #     upload_experiment_to_s3(experiment_id=logger.log_writer.run.id, dir_path=output_dirpath,
+    #                             bucket_name=args.experiment.bucket_name, include_parent=True)
+        
+    print(f'experiment {logger.log_writer.run.id} has been successfully uploaded to {args.experiment.bucket_name} bucket')
 
 
 if __name__ == "__main__":

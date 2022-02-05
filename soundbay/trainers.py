@@ -5,6 +5,10 @@ from tqdm import tqdm
 from pathlib import Path
 from soundbay.utils.app import app
 from soundbay.utils.logging import Logger
+import numpy as np
+import time
+import matplotlib.pyplot as plt
+import wandb
 
 
 class Trainer:
@@ -79,11 +83,15 @@ class Trainer:
                 iterator.set_postfix_str(s)
             if self.debug and epoch > 2:
                 break
+        # wandb.run.log({"artifacts_table" : self.train_dataloader.dataset.artifacts_table})
+        # time.sleep(10)
+        # wandb.run.finish()
 
     def train_epoch(self, epoch):
         self.model.train()
         for it, batch in tqdm(enumerate(self.train_dataloader), desc='train'):
-            if it == 3 and self.debug:
+            if it == 1:
+
                 break
 
             self.model.zero_grad()
@@ -103,6 +111,8 @@ class Trainer:
         # logging
         if not app.args.experiment.debug:
             self.logger.calc_metrics(epoch, 'train')
+            wandb.run.log({"artifacts_table" :self.train_dataloader.dataset.artifacts_table}) 
+
         self.logger.log(epoch, 'train')
         if self.scheduler is not None:
             self.scheduler.step()
@@ -112,7 +122,7 @@ class Trainer:
         with torch.no_grad():
             self.model.eval()
             for it, batch in tqdm(enumerate(self.val_dataloader), desc='val'):
-                if it == 3 and self.debug:
+                if it == 1:
                     break
                 audio, label = batch
                 audio, label = audio.to(self.device), label.to(self.device)
@@ -126,9 +136,9 @@ class Trainer:
                 self.logger.update_predictions((estimated_label, label))
 
             # logging
-            if not app.args.experiment.debug:
-                self.logger.calc_metrics(epoch ,'val')
-            self.logger.log(epoch, 'val')
+            # if not app.args.experiment.debug:
+            #     self.logger.calc_metrics(epoch ,'val')
+            # self.logger.log(epoch, 'val')
 
 
     def _save_checkpoint(self, checkpoint_path: Union[str, None]):

@@ -12,6 +12,9 @@ from omegaconf import DictConfig
 from pathlib import Path
 from copy import deepcopy
 import numpy as np
+import time
+import wandb
+import matplotlib.pyplot as plt
 from soundbay.data_augmentation import ChainedAugmentations
 
 
@@ -49,6 +52,12 @@ class ClassifierDataset(Dataset):
         self.preprocessor = self.set_preprocessor(preprocessors)
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
+        columns = ["idx", "waveform", "spectrogram"]
+        self.artifacts_table = wandb.Table(columns=columns)
+
+
+
+
 
     @staticmethod
     def _update_metadata_by_mode(metadata, mode, split_metadata_by_label):
@@ -196,7 +205,7 @@ class ClassifierDataset(Dataset):
             preprocessor = torch.nn.Identity()
         return preprocessor
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx, upload_artifact=True):
         '''
         __getitem__ method loads item according to idx from the metadata
 
@@ -209,16 +218,39 @@ class ClassifierDataset(Dataset):
         '''
         path_to_file, begin_time, end_time, label = self._grab_fields(idx)
         audio = self._get_audio(path_to_file, begin_time, end_time, label)
-        audio = self.sampler(audio)
-        audio = self.augmenter(audio)
-        audio = self.preprocessor(audio)
+        audio_raw = self.sampler(audio)
+        audio_augmented = self.augmenter(audio_raw)
+        audio_processed = self.preprocessor(audio_augmented)
+
+        if (label == 1) and (idx ==937) and self.mode=='train':
+            # columns = ["idx", "waveform", "binary_spectrogram"]
+
+            artifact_spec = audio_processed[0, ...] # remove batch idx
+            artifact_wav = np.array(audio_raw[0,...])
+            x = np.linspace(0, 1, num=artifact_wav.shape[0])
+            fig, ax = plt.subplots( nrows=1, ncols=1 )
+            ax.plot(x, artifact_wav)
+            orig_waveflot = f'sample_{idx}_waveform.png'
+            fig.savefig(orig_waveflot)
+            plt.close(fig)
+            img_spec = np.repeat(np.expand_dims(np.array(artifact_spec),2), 3, 2) # convert to image
+            spec_path = f'sample_{idx}_spectrogram.png'
+            plt.imsave(spec_path, img_spec, cmap=plt.cm.magma)
+            time.sleep(3)
+
+
+            self.artifacts_table.add_data(str(idx), wandb.Image(orig_waveflot), wandb.Image(spec_path))
+
+            # self.artifacts_table.add_data(str(idx), str(idx),str(idx))
+
+
 
         if self.mode == "train" or self.mode == "val":
             label = self.metadata["label"][idx]
-            return audio, label
+            return audio_processed, label
 
         elif self.mode == "test":
-            return audio
+            return audio_processed
 
     def __len__(self):
         return self.metadata.shape[0]
