@@ -38,6 +38,8 @@ class ClassifierDataset(Dataset):
         self.audio_dict = self._create_audio_dict(Path(data_path))
         self.metadata_path = metadata_path
         metadata = pd.read_csv(self.metadata_path)
+        metadata_filenames = pd.read_csv(self.metadata_path, usecols=['filename'], dtype=pd.StringDtype())
+        metadata['filename'] = metadata_filenames
         self.metadata = self._update_metadata_by_mode(metadata, mode, split_metadata_by_label)
         self.mode = mode
         self.seq_length = seq_length
@@ -358,7 +360,7 @@ class InferenceDataset(Dataset):
             audio_dict contains references to audio paths given name from metadata
         """
         audio_len = sf.info(self.file_path).duration
-        self._start_times = np.arange(0, audio_len//self.seq_length * self.seq_length, self.seq_length).astype(int)
+        self._start_times = np.arange(0, audio_len//self.seq_length * self.seq_length, self.seq_length)
 
     def _get_audio(self, begin_time):
         """
@@ -391,7 +393,7 @@ class InferenceDataset(Dataset):
         audio, label - torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
         , int (if mode="train" only)
         '''
-        begin_time = self._start_times[idx] * self.data_sample_rate
+        begin_time = int(self._start_times[idx] * self.data_sample_rate)
         audio = self._get_audio(begin_time)
         audio = self.sampler(audio)
         audio = self.preprocessor(audio)
