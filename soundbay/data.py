@@ -52,8 +52,7 @@ class ClassifierDataset(Dataset):
         self.preprocessor = self.set_preprocessor(preprocessors)
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
-        columns = ["idx", "waveform", "spectrogram"]
-        self.artifacts_table = wandb.Table(columns=columns)
+
 
 
 
@@ -222,32 +221,15 @@ class ClassifierDataset(Dataset):
         audio_augmented = self.augmenter(audio_raw)
         audio_processed = self.preprocessor(audio_augmented)
 
-        if (label == 1) and (idx ==937) and self.mode=='train':
-            # columns = ["idx", "waveform", "binary_spectrogram"]
-
-            artifact_spec = audio_processed[0, ...] # remove batch idx
-            artifact_wav = np.array(audio_raw[0,...])
-            x = np.linspace(0, 1, num=artifact_wav.shape[0])
-            fig, ax = plt.subplots( nrows=1, ncols=1 )
-            ax.plot(x, artifact_wav)
-            orig_waveflot = f'sample_{idx}_waveform.png'
-            fig.savefig(orig_waveflot)
-            plt.close(fig)
-            img_spec = np.repeat(np.expand_dims(np.array(artifact_spec),2), 3, 2) # convert to image
-            spec_path = f'sample_{idx}_spectrogram.png'
-            plt.imsave(spec_path, img_spec, cmap=plt.cm.magma)
-            time.sleep(3)
 
 
-            self.artifacts_table.add_data(str(idx), wandb.Image(orig_waveflot), wandb.Image(spec_path))
-
-            # self.artifacts_table.add_data(str(idx), str(idx),str(idx))
 
 
 
         if self.mode == "train" or self.mode == "val":
             label = self.metadata["label"][idx]
-            return audio_processed, label
+            return audio_processed, label, audio_raw, idx
+            # , wav, idx
 
         elif self.mode == "test":
             return audio_processed

@@ -4,6 +4,9 @@ from unittest.mock import Mock
 import collections
 import torch
 import numpy as np
+import librosa
+import matplotlib
+import matplotlib.pyplot as plt
 from typing import Union, List
 
 try:
@@ -125,10 +128,41 @@ class Logger:
             wandb.log({f'{mode}_charts/conf_mat': wandb.plot.confusion_matrix(probs=None, y_true=self.label_list,
                                                                               preds=self.pred_list,
                                                                               class_names=label_names)},
-                                                                              step=epoch)
+                                                                              step=epoch, commit=True)
         self.pred_list = []  # flush
         self.label_list = []
         self.pred_proba_list = []
+
+    def upload_artifacts(self, audio: torch.Tensor, label: torch.Tensor, raw_wav: torch.Tensor, idx: torch.Tensor, sample_rate: int=16000, flag: str='train', epoch: int=1):
+        """upload algorithm artifacts to W&B during training session"""
+        matplotlib.use('Agg')
+        idx = idx.detach().cpu().numpy()
+
+
+        # Original wavs batch
+
+        artifact_wav = torch.squeeze(raw_wav).detach().cpu().numpy() * 100
+        artifact_wav_list = [artifact_wav[x,...] for x in range(artifact_wav.shape[0])]
+        list_of_wavs_objects = [wandb.Audio(data_or_path=wav, caption=f'{ind}_train', sample_rate=sample_rate) for wav, ind in zip(artifact_wav_list,idx)]
+
+        # Spectrograms batch
+        artifact_spec = torch.squeeze(audio).detach().cpu().numpy()
+        axes = [plt.subplots(nrows=1, ncols=1) for _ in range(artifact_spec.shape[0])]
+        specs = [librosa.display.specshow(artifact_spec[x,...], ax=axes[x][1]) for x in range(artifact_spec.shape[0])]
+        list_of_specs_objects = [wandb.Image(data_or_path=spec, caption=f'{ind}_train') for spec, ind in zip(specs,idx)]
+        log_dict1 = {f'First batch {flag} original wavs for epoch {epoch}': list_of_wavs_objects}
+        log_dict2 = {f'First batch {flag} augmented spectrograms for epoch {epoch}': list_of_specs_objects}
+
+        # Upload to W&B
+        wandb.log(log_dict1, commit=True)
+        wandb.log(log_dict2, commit=True)
+
+        # Clear figures
+        plt.figure().clear()
+        plt.close()
+        plt.cla()
+        plt.clf()
+        return
 
     @staticmethod
     def get_metrics_dict(label_list, pred_list, pred_proba_array):
