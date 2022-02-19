@@ -1,16 +1,8 @@
 import librosa
 import numpy as np
 import torch
-import matplotlib.pyplot as plt
 
 
-
-def plot_stft(audio_data, sr):
-    fig = plt.figure(figsize=(15,7))
-    nfft = 256
-    D = librosa.amplitude_to_db(np.abs(librosa.stft(audio_data, n_fft=nfft, hop_length=nfft // 4)), ref=np.max)
-    display.specshow(D, sr=sr, fmax=10000)
-    plt.colorbar(format='%+2.0f dB')
 
 class LibrosaMelSpectrogram:
     """
