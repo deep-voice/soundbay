@@ -8,12 +8,11 @@ import random
 import soundfile as sf
 from itertools import starmap, repeat
 from hydra.utils import instantiate
+from typing import Union
 from omegaconf import DictConfig
 from pathlib import Path
 from copy import deepcopy
 import numpy as np
-import time
-import wandb
 import matplotlib.pyplot as plt
 from soundbay.data_augmentation import ChainedAugmentations
 
@@ -228,7 +227,7 @@ class ClassifierDataset(Dataset):
         elif self.mode == "val":
             label = self.metadata["label"][idx]
             return audio_processed, label
-            
+
         elif self.mode == "test":
             return audio_processed
 
@@ -340,7 +339,7 @@ class InferenceDataset(Dataset):
     '''
     class for storing and loading data.
     '''
-    def __init__(self, file_path: (str, Path),
+    def __init__(self, file_path: Union[str, Path],
                  preprocessors: DictConfig,
                  seq_length: float = 1,
                  data_sample_rate: int = 44100,
