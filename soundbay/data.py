@@ -221,16 +221,14 @@ class ClassifierDataset(Dataset):
         audio_augmented = self.augmenter(audio_raw)
         audio_processed = self.preprocessor(audio_augmented)
 
-
-
-
-
-
         if self.mode == "train" or self.mode == "val":
             label = self.metadata["label"][idx]
             return audio_processed, label, audio_raw, idx
-            # , wav, idx
 
+        elif self.mode == "val":
+            label = self.metadata["label"][idx]
+            return audio_processed, label
+            
         elif self.mode == "test":
             return audio_processed
 
