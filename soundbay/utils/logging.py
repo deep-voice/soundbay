@@ -4,7 +4,7 @@ from unittest.mock import Mock
 import collections
 import torch
 import numpy as np
-import librosa
+import librosa.display
 import matplotlib
 import matplotlib.pyplot as plt
 from typing import Union, List
@@ -137,13 +137,14 @@ class Logger:
         """upload algorithm artifacts to W&B during training session"""
         matplotlib.use('Agg')
         idx = idx.detach().cpu().numpy()
+        label = label.detach().cpu().numpy()
 
 
         # Original wavs batch
 
         artifact_wav = torch.squeeze(raw_wav).detach().cpu().numpy() * 100
         artifact_wav_list = [artifact_wav[x,...] for x in range(artifact_wav.shape[0])]
-        list_of_wavs_objects = [wandb.Audio(data_or_path=wav, caption=f'{ind}_train', sample_rate=sample_rate) for wav, ind in zip(artifact_wav_list,idx)]
+        list_of_wavs_objects = [wandb.Audio(data_or_path=wav, caption=f'label_{lab}_{ind}_train', sample_rate=sample_rate) for wav, ind, lab in zip(artifact_wav_list,idx, label)]
 
         # Spectrograms batch
         artifact_spec = torch.squeeze(audio).detach().cpu().numpy()

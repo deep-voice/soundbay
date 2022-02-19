@@ -204,7 +204,7 @@ class ClassifierDataset(Dataset):
             preprocessor = torch.nn.Identity()
         return preprocessor
 
-    def __getitem__(self, idx, upload_artifact=True):
+    def __getitem__(self, idx):
         '''
         __getitem__ method loads item according to idx from the metadata
 
