@@ -90,30 +90,35 @@ class Trainer:
     def train_epoch(self, epoch):
         self.model.train()
         for it, batch in tqdm(enumerate(self.train_dataloader), desc='train'):
-            if it == 1:
-
+            if it == 2:
                 break
 
             self.model.zero_grad()
-            audio, label = batch
-            audio, label = audio.to(self.device), label.to(self.device)
+            audio, label, raw_wav, idx = batch
+            audio, label, raw_wav, idx  = audio.to(self.device), label.to(self.device), raw_wav.to(self.device), idx.to(self.device)
 
+            if it == 1:
+                self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='train', epoch=epoch)
+                break
             # estimate and calc losses
             estimated_label = self.model(audio)
             loss = self.criterion(estimated_label, label)
             loss.backward()
             self.optimizer.step()
 
-            # update losses
+            # update losses and log batch
+            # TODO: add logging of batch to logger
+
             self.logger.update_losses(loss.detach(), flag='train')
             self.logger.update_predictions((estimated_label, label))
 
         # logging
         if not app.args.experiment.debug:
             self.logger.calc_metrics(epoch, 'train')
-            wandb.run.log({"artifacts_table" :self.train_dataloader.dataset.artifacts_table}) 
+            # wandb.run.log({"artifacts_table" :self.train_dataloader.dataset.artifacts_table}) 
 
         self.logger.log(epoch, 'train')
+        self.train_dataloader.artifacts_logger = []
         if self.scheduler is not None:
             self.scheduler.step()
 
@@ -136,9 +141,9 @@ class Trainer:
                 self.logger.update_predictions((estimated_label, label))
 
             # logging
-            # if not app.args.experiment.debug:
-            #     self.logger.calc_metrics(epoch ,'val')
-            # self.logger.log(epoch, 'val')
+            if not app.args.experiment.debug:
+                self.logger.calc_metrics(epoch ,'val')
+            self.logger.log(epoch, 'val')
 
 
     def _save_checkpoint(self, checkpoint_path: Union[str, None]):
