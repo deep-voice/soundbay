@@ -5,10 +5,7 @@ from tqdm import tqdm
 from pathlib import Path
 from soundbay.utils.app import app
 from soundbay.utils.logging import Logger
-import numpy as np
-import time
 import matplotlib.pyplot as plt
-import wandb
 
 
 class Trainer:
@@ -83,9 +80,7 @@ class Trainer:
                 iterator.set_postfix_str(s)
             if self.debug and epoch > 2:
                 break
-        # wandb.run.log({"artifacts_table" : self.train_dataloader.dataset.artifacts_table})
-        # time.sleep(10)
-        # wandb.run.finish()
+
 
     def train_epoch(self, epoch):
         self.model.train()
