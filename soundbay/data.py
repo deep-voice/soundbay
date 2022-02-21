@@ -37,9 +37,8 @@ class ClassifierDataset(Dataset):
         """
         self.audio_dict = self._create_audio_dict(Path(data_path))
         self.metadata_path = metadata_path
-        metadata = pd.read_csv(self.metadata_path)
-        metadata_filenames = pd.read_csv(self.metadata_path, usecols=['filename'], dtype=pd.StringDtype())
-        metadata['filename'] = metadata_filenames
+        self.dtype_dict = {'filename': 'str'}
+        metadata = pd.read_csv(self.metadata_path, dtype=self.dtype_dict)
         self.metadata = self._update_metadata_by_mode(metadata, mode, split_metadata_by_label)
         self.mode = mode
         self.seq_length = seq_length
@@ -51,6 +50,7 @@ class ClassifierDataset(Dataset):
         self.preprocessor = self.set_preprocessor(preprocessors)
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
+
 
     @staticmethod
     def _update_metadata_by_mode(metadata, mode, split_metadata_by_label):
