@@ -92,9 +92,9 @@ class Trainer:
             audio, label, raw_wav, idx = batch
             audio, label  = audio.to(self.device), label.to(self.device)
 
-            if it == 0:
+            if it == 0 and not self.debug:
                 self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='train', epoch=epoch)
-                break
+
             # estimate and calc losses
             estimated_label = self.model(audio)
             loss = self.criterion(estimated_label, label)
@@ -110,7 +110,6 @@ class Trainer:
         # logging
         if not app.args.experiment.debug:
             self.logger.calc_metrics(epoch, 'train')
-            # wandb.run.log({"artifacts_table" :self.train_dataloader.dataset.artifacts_table}) 
 
         self.logger.log(epoch, 'train')
         if self.scheduler is not None:
@@ -121,9 +120,8 @@ class Trainer:
         with torch.no_grad():
             self.model.eval()
             for it, batch in tqdm(enumerate(self.val_dataloader), desc='val'):
-                if it == 1:
+                if it == 3 and self.debug:
                     break
-
                 audio, label, raw_wav, idx = batch
                 audio, label, raw_wav, idx  = audio.to(self.device), label.to(self.device), raw_wav.to(self.device), idx.to(self.device)
                 # estimate and calc losses

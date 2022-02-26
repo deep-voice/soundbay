@@ -8,6 +8,7 @@ import librosa.display
 import matplotlib
 import matplotlib.pyplot as plt
 from typing import Union, List
+matplotlib.rc('figure', max_open_warning = 0)
 
 try:
     collectionsAbc = collections.abc
@@ -135,7 +136,7 @@ class Logger:
 
     def upload_artifacts(self, audio: torch.Tensor, label: torch.Tensor, raw_wav: torch.Tensor, idx: torch.Tensor, sample_rate: int=16000, flag: str='train', epoch: int=1):
         """upload algorithm artifacts to W&B during training session"""
-        volume = 100
+        volume = 10
         matplotlib.use('Agg')
         idx = idx.detach().cpu().numpy()
         label = label.detach().cpu().numpy()
@@ -155,13 +156,13 @@ class Logger:
         artifact_spec = torch.squeeze(audio).detach().cpu().numpy()
         axes = [plt.subplots(nrows=1, ncols=1) for _ in range(artifact_spec.shape[0])]
         specs = [librosa.display.specshow(artifact_spec[x,...], ax=axes[x][1]) for x in range(artifact_spec.shape[0])]
-        list_of_specs_objects = [wandb.Image(data_or_path=spec, caption=f'{ind}_train') for spec, ind in zip(specs,idx)]
+        list_of_specs_objects = [wandb.Image(data_or_path=spec, caption=f'label_{lab}_{ind}_train') for spec, ind, lab in zip(specs,idx, label)]
         log_wavs = {f'First batch {flag} original wavs for epoch {epoch}': list_of_wavs_objects}
         log_specs = {f'First batch {flag} augmented spectrograms for epoch {epoch}': list_of_specs_objects}
 
         # Upload to W&B
-        wandb.log(log_wavs, commit=True)
-        wandb.log(log_specs, commit=True)
+        wandb.log(log_wavs, commit=False)
+        wandb.log(log_specs, commit=False)
 
         # Clear figures
         plt.figure().clear()
