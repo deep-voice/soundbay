@@ -3,7 +3,6 @@ import numpy as np
 import torch
 
 
-
 class LibrosaMelSpectrogram:
     """
     Defining and computing a mel-spectrogram transform using pre-defined parameters
@@ -32,7 +31,6 @@ class LibrosaMelSpectrogram:
         melspectrogram = librosa.feature.melspectrogram(sample_numpy, sr=self.sr, n_mels=self.n_mels, n_fft=self.n_fft,
                                                         hop_length=self.hop_length, fmin=self.fmin, fmax=self.fmax)
         return melspectrogram
-
 
 
 
