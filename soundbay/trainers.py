@@ -85,14 +85,14 @@ class Trainer:
     def train_epoch(self, epoch):
         self.model.train()
         for it, batch in tqdm(enumerate(self.train_dataloader), desc='train'):
-            if it == 2:
+            if it == 3 and self.debug:
                 break
 
             self.model.zero_grad()
             audio, label, raw_wav, idx = batch
             audio, label  = audio.to(self.device), label.to(self.device)
 
-            if it == 1:
+            if it == 0:
                 self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='train', epoch=epoch)
                 break
             # estimate and calc losses
@@ -113,7 +113,6 @@ class Trainer:
             # wandb.run.log({"artifacts_table" :self.train_dataloader.dataset.artifacts_table}) 
 
         self.logger.log(epoch, 'train')
-        self.train_dataloader.artifacts_logger = []
         if self.scheduler is not None:
             self.scheduler.step()
 
