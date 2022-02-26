@@ -135,6 +135,7 @@ class Logger:
 
     def upload_artifacts(self, audio: torch.Tensor, label: torch.Tensor, raw_wav: torch.Tensor, idx: torch.Tensor, sample_rate: int=16000, flag: str='train', epoch: int=1):
         """upload algorithm artifacts to W&B during training session"""
+        volume = 100
         matplotlib.use('Agg')
         idx = idx.detach().cpu().numpy()
         label = label.detach().cpu().numpy()
@@ -142,7 +143,11 @@ class Logger:
 
         # Original wavs batch
 
-        artifact_wav = torch.squeeze(raw_wav).detach().cpu().numpy() * 100
+        artifact_wav = torch.squeeze(raw_wav).detach().cpu().numpy()
+        artifact_wav = artifact_wav / np.max(np.abs(artifact_wav)) * 0.5 #avoid clipping
+        artifact_wav = artifact_wav * 10 ** (volume / (20 * np.log10(1/ np.std(artifact_wav)))) # add dB ()
+
+
         artifact_wav_list = [artifact_wav[x,...] for x in range(artifact_wav.shape[0])]
         list_of_wavs_objects = [wandb.Audio(data_or_path=wav, caption=f'label_{lab}_{ind}_train', sample_rate=sample_rate) for wav, ind, lab in zip(artifact_wav_list,idx, label)]
 
@@ -151,18 +156,15 @@ class Logger:
         axes = [plt.subplots(nrows=1, ncols=1) for _ in range(artifact_spec.shape[0])]
         specs = [librosa.display.specshow(artifact_spec[x,...], ax=axes[x][1]) for x in range(artifact_spec.shape[0])]
         list_of_specs_objects = [wandb.Image(data_or_path=spec, caption=f'{ind}_train') for spec, ind in zip(specs,idx)]
-        log_dict1 = {f'First batch {flag} original wavs for epoch {epoch}': list_of_wavs_objects}
-        log_dict2 = {f'First batch {flag} augmented spectrograms for epoch {epoch}': list_of_specs_objects}
+        log_wavs = {f'First batch {flag} original wavs for epoch {epoch}': list_of_wavs_objects}
+        log_specs = {f'First batch {flag} augmented spectrograms for epoch {epoch}': list_of_specs_objects}
 
         # Upload to W&B
-        wandb.log(log_dict1, commit=True)
-        wandb.log(log_dict2, commit=True)
+        wandb.log(log_wavs, commit=True)
+        wandb.log(log_specs, commit=True)
 
         # Clear figures
         plt.figure().clear()
-        plt.close()
-        plt.cla()
-        plt.clf()
         return
 
     @staticmethod
