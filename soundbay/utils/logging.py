@@ -136,7 +136,7 @@ class Logger:
 
     def upload_artifacts(self, audio: torch.Tensor, label: torch.Tensor, raw_wav: torch.Tensor, idx: torch.Tensor, sample_rate: int=16000, flag: str='train', epoch: int=1):
         """upload algorithm artifacts to W&B during training session"""
-        volume = 10
+        volume = 50
         matplotlib.use('Agg')
         idx = idx.detach().cpu().numpy()
         label = label.detach().cpu().numpy()
@@ -146,6 +146,7 @@ class Logger:
 
         artifact_wav = torch.squeeze(raw_wav).detach().cpu().numpy()
         artifact_wav = artifact_wav / np.max(np.abs(artifact_wav)) * 0.5 #avoid clipping
+
         artifact_wav = artifact_wav * 10 ** (volume / (20 * np.log10(1/ np.std(artifact_wav)))) # add dB ()
 
 
@@ -161,8 +162,8 @@ class Logger:
         log_specs = {f'First batch {flag} augmented spectrograms for epoch {epoch}': list_of_specs_objects}
 
         # Upload to W&B
-        wandb.log(log_wavs, commit=False)
-        wandb.log(log_specs, commit=False)
+        wandb.log(log_wavs, commit=True)
+        wandb.log(log_specs, commit=True)
 
         # Clear figures
         plt.figure().clear()
