@@ -90,7 +90,7 @@ class Trainer:
 
             self.model.zero_grad()
             audio, label, raw_wav, idx = batch
-            audio, label, raw_wav, idx  = audio.to(self.device), label.to(self.device), raw_wav.to(self.device), idx.to(self.device)
+            audio, label  = audio.to(self.device), label.to(self.device)
 
             if it == 1:
                 self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='train', epoch=epoch)
@@ -124,9 +124,9 @@ class Trainer:
             for it, batch in tqdm(enumerate(self.val_dataloader), desc='val'):
                 if it == 1:
                     break
-                audio, label = batch
-                audio, label = audio.to(self.device), label.to(self.device)
 
+                audio, label, raw_wav, idx = batch
+                audio, label, raw_wav, idx  = audio.to(self.device), label.to(self.device), raw_wav.to(self.device), idx.to(self.device)
                 # estimate and calc losses
                 estimated_label = self.model(audio)
                 loss = self.criterion(estimated_label, label)

@@ -56,7 +56,6 @@ class ClassifierDataset(Dataset):
 
 
 
-
     @staticmethod
     def _update_metadata_by_mode(metadata, mode, split_metadata_by_label):
         if split_metadata_by_label:
