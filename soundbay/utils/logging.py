@@ -162,8 +162,8 @@ class Logger:
         log_specs = {f'First batch {flag} augmented spectrograms for epoch {epoch}': list_of_specs_objects}
 
         # Upload to W&B
-        wandb.log(log_wavs, commit=True)
-        wandb.log(log_specs, commit=True)
+        wandb.log(log_wavs, commit=False)
+        wandb.log(log_specs, commit=False)
 
         # Clear figures
         plt.figure().clear()
