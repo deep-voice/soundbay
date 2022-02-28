@@ -129,7 +129,7 @@ class Logger:
             wandb.log({f'{mode}_charts/conf_mat': wandb.plot.confusion_matrix(probs=None, y_true=self.label_list,
                                                                               preds=self.pred_list,
                                                                               class_names=label_names)},
-                                                                              step=epoch, commit=True)
+                                                                              step=epoch, commit=False)
         self.pred_list = []  # flush
         self.label_list = []
         self.pred_proba_list = []
