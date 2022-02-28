@@ -93,7 +93,7 @@ class Trainer:
             audio, label  = audio.to(self.device), label.to(self.device)
 
             if it == 0 and not self.debug:
-                self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='train', epoch=epoch)
+                self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='train')
 
             # estimate and calc losses
             estimated_label = self.model(audio)
@@ -123,7 +123,10 @@ class Trainer:
                 if it == 3 and self.debug:
                     break
                 audio, label, raw_wav, idx = batch
-                audio, label, raw_wav, idx  = audio.to(self.device), label.to(self.device), raw_wav.to(self.device), idx.to(self.device)
+                audio, label, raw_wav, idx  = audio.to(self.device), label.to(self.device)
+                if it == 0 and not self.debug:
+                    self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='val')
+
                 # estimate and calc losses
                 estimated_label = self.model(audio)
                 loss = self.criterion(estimated_label, label)

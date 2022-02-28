@@ -210,8 +210,13 @@ class ClassifierDataset(Dataset):
         idx - int
 
         output:
-        audio, label - torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
-        , int (if mode="train" only)
+        For train/ val modes -
+        audio_processed, label, audio_raw, idx - torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
+        , int (if mode="train" only), 2-d tensor, int
+
+        For test - audio_processed - torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
+
+
         '''
         path_to_file, begin_time, end_time, label = self._grab_fields(idx)
         audio = self._get_audio(path_to_file, begin_time, end_time, label)
@@ -223,9 +228,6 @@ class ClassifierDataset(Dataset):
             label = self.metadata["label"][idx]
             return audio_processed, label, audio_raw, idx
 
-        elif self.mode == "val":
-            label = self.metadata["label"][idx]
-            return audio_processed, label
 
         elif self.mode == "test":
             return audio_processed
