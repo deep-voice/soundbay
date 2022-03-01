@@ -134,8 +134,42 @@ def inference_to_file(
     output_file = output_path / filename
     concat_dataset.to_csv(index=False, path_or_buf=output_file)
 
+    raven_filename = f"raven_annotations-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}-thresh03.csv"
+    raven_output_file = output_path / raven_filename
+    raven_df = inference_csv_to_raven(results_df, test_dataset, threshold=0.5)
+    raven_df.to_csv(index=False, path_or_buf=raven_output_file, sep="\t")
+
     return
 
+def inference_csv_to_raven(probsdataframe, test_dataset, threshold=0.5):
+    # transforms the probability dataframe to a raven format with class_1 predictions as the annotated bounding boxes
+    len_dataset = probsdataframe.shape[0] #number of segments in wav
+    seq_len = test_dataset.seq_length
+    all_begin_times = np.arange(0, len_dataset * seq_len, seq_len)
+    positives = []
+    for index, row in probsdataframe.iterrows():
+        if row['class1_prob'] > threshold:
+            positives.append(index)
+
+    begin_times = np.round(all_begin_times[positives],decimals=1)
+    end_times = np.round(begin_times+seq_len,decimals=1)
+    if end_times[-1] > round(len_dataset*seq_len,1):
+        end_times[-1] = round(len_dataset*seq_len,1) #cut off last bbox if exceeding eof
+    low_freq = np.zeros_like(begin_times)
+    high_freq = np.ones_like(begin_times)*20000 #just tall enough bounding box
+    view = ['Spectrogram 1']*len(begin_times)
+    selection = np.arange(1,len(begin_times)+1)
+    channel = np.ones_like(begin_times)
+    channel = channel.astype(int)
+    bboxes = {'Selection': selection, 'View': view, 'Channel': channel,
+              'Begin Time (s)': begin_times, 'End Time (s)': end_times,
+              'Low Freq (Hz)': low_freq, 'High Freq (Hz)': high_freq}
+    annotations_df = pandas.DataFrame(data = bboxes)
+
+
+
+
+    return annotations_df
 
 @hydra.main(config_name="runs/main_inference", config_path="conf")
 def inference_main(args) -> None:
