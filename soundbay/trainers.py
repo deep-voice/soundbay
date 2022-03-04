@@ -102,7 +102,6 @@ class Trainer:
             self.optimizer.step()
 
             # update losses and log batch
-            # TODO: add logging of batch to logger
 
             self.logger.update_losses(loss.detach(), flag='train')
             self.logger.update_predictions((estimated_label, label))
