@@ -1,8 +1,11 @@
 import importlib
 import torch
 import torch.nn as nn
-from torchvision.models.resnet import ResNet, BasicBlock, conv3x3
+from torch import Tensor
+from torchvision.models.resnet import ResNet, BasicBlock, conv3x3, Bottleneck
 from torchvision.models.vgg import VGG
+from torchvision.models import squeezenet
+import torch.nn.init as init
 
 
 class ResNet1Channel(ResNet):
@@ -25,6 +28,114 @@ class ResNet1Channel(ResNet):
         class_name = block.split('.')[-1]
         module_name = '.'.join(block.split('.')[:-1])
         return getattr(importlib.import_module(module_name), class_name)
+
+
+class SqueezeNet1D(nn.Module):
+
+    def __init__(
+        self,
+        version: str = '1_1',
+        num_classes: int = 2
+    ) -> None:
+        super(SqueezeNet1D, self).__init__()
+        self.num_classes = num_classes
+        if version == '1_0':
+            self.features = nn.Sequential(
+                nn.Conv2d(1, 96, kernel_size=7, stride=2),
+                nn.ReLU(inplace=True),
+                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
+                squeezenet.Fire(96, 16, 64, 64),
+                squeezenet.Fire(128, 16, 64, 64),
+                squeezenet.Fire(128, 32, 128, 128),
+                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
+                squeezenet.Fire(256, 32, 128, 128),
+                squeezenet.Fire(256, 48, 192, 192),
+                squeezenet.Fire(384, 48, 192, 192),
+                squeezenet.Fire(384, 64, 256, 256),
+                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
+                squeezenet.Fire(512, 64, 256, 256),
+            )
+        elif version == '1_1':
+            self.features = nn.Sequential(
+                nn.Conv2d(1, 64, kernel_size=3, stride=2),
+                nn.ReLU(inplace=True),
+                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
+                squeezenet.Fire(64, 16, 64, 64),
+                squeezenet.Fire(128, 16, 64, 64),
+                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
+                squeezenet.Fire(128, 32, 128, 128),
+                squeezenet.Fire(256, 32, 128, 128),
+                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
+                squeezenet.Fire(256, 48, 192, 192),
+                squeezenet.Fire(384, 48, 192, 192),
+                squeezenet.Fire(384, 64, 256, 256),
+                squeezenet.Fire(512, 64, 256, 256),
+            )
+        else:
+            # FIXME: Is this needed? SqueezeNet should only be called from the
+            # FIXME: squeezenet1_x() functions
+            # FIXME: This checking is not done for the other models
+            raise ValueError("Unsupported SqueezeNet version {version}:"
+                             "1_0 or 1_1 expected".format(version=version))
+
+        # Final convolution is initialized differently from the rest
+        final_conv = nn.Conv2d(512, self.num_classes, kernel_size=1)
+        self.classifier = nn.Sequential(
+            nn.Dropout(p=0.5),
+            final_conv,
+            nn.ReLU(inplace=True),
+            nn.AdaptiveAvgPool2d((1, 1))
+        )
+
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                if m is final_conv:
+                    init.normal_(m.weight, mean=0.0, std=0.01)
+                else:
+                    init.kaiming_uniform_(m.weight)
+                if m.bias is not None:
+                    init.constant_(m.bias, 0)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.features(x)
+        x = self.classifier(x)
+        return torch.flatten(x, 1)
+
+
+class BottleneckDropout(Bottleneck):
+    
+    def __init__(self, *args, **kwargs):
+        super(BottleneckDropout, self).__init__(*args, **kwargs)
+        self.dropout1 = nn.Dropout(p=0.5)
+        self.dropout2 = nn.Dropout(p=0.5)
+        self.dropout3 = nn.Dropout(p=0.5)
+        self.dropout4 = nn.Dropout(p=0.5)
+
+    def forward(self, x: Tensor) -> Tensor:
+        identity = x
+
+        out = self.dropout1(x)
+        out = self.conv1(out)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.dropout2(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+        out = self.dropout3(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+        out = self.dropout4(out)
+
+        return out
 
 
 class VGG1Channel(VGG):

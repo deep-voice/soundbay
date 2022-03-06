@@ -2,6 +2,8 @@ import pytest
 import torch
 from torch import nn
 
+from soundbay.models import SqueezeNet1D
+
 
 class Model(nn.Module):
     def __init__(self):
@@ -16,6 +18,11 @@ class Model(nn.Module):
 @pytest.fixture
 def model():
     return Model()
+
+
+@pytest.fixture
+def squeezenet():
+    return SqueezeNet1D()
 
 
 @pytest.fixture
