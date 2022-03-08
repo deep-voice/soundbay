@@ -134,9 +134,12 @@ def inference_to_file(
     output_file = output_path / filename
     concat_dataset.to_csv(index=False, path_or_buf=output_file)
 
-    raven_filename = f"raven_annotations-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}-thresh03.csv"
+    # save raven file
+    threshold = 0.5
+    thresholdtext = int(threshold*10)
+    raven_filename = f"raven_annotations-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}-thresh0{thresholdtext}.csv"
     raven_output_file = output_path / raven_filename
-    raven_df = inference_csv_to_raven(results_df, test_dataset, threshold=0.5)
+    raven_df = inference_csv_to_raven(results_df, test_dataset, threshold=threshold)
     raven_df.to_csv(index=False, path_or_buf=raven_output_file, sep="\t")
 
     return
