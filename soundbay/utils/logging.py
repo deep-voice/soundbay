@@ -4,7 +4,11 @@ from unittest.mock import Mock
 import collections
 import torch
 import numpy as np
+import librosa.display
+import matplotlib
+import matplotlib.pyplot as plt
 from typing import Union, List
+matplotlib.rc('figure', max_open_warning = 0)
 
 try:
     collectionsAbc = collections.abc
@@ -49,7 +53,8 @@ class Logger:
 
     def __init__(self,
                  log_writer=Mock(),
-                 debug_mode=False
+                 debug_mode=False,
+                 artifacts_upload_limit=64
                  ):
         """
         __init__ initializes the logger and all the associated arrays and variables
@@ -63,6 +68,7 @@ class Logger:
         self.pred_list = []
         self.pred_proba_list = []
         self.label_list = []
+        self.upload_artifacts_limit = artifacts_upload_limit
         self.metrics_dict = {'accuracy': [], 'f1score': [], 'precision': [], 'recall': [], 'auc': []}
         self.debug_mode = debug_mode
 
@@ -125,10 +131,46 @@ class Logger:
             wandb.log({f'{mode}_charts/conf_mat': wandb.plot.confusion_matrix(probs=None, y_true=self.label_list,
                                                                               preds=self.pred_list,
                                                                               class_names=label_names)},
-                                                                              step=epoch)
+                                                                              step=epoch, commit=False)
         self.pred_list = []  # flush
         self.label_list = []
         self.pred_proba_list = []
+
+    def upload_artifacts(self, audio: torch.Tensor, label: torch.Tensor, raw_wav: torch.Tensor, idx: torch.Tensor, sample_rate: int=16000, flag: str='train'):
+        """upload algorithm artifacts to W&B during training session"""
+        volume = 50
+        matplotlib.use('Agg')
+        idx = idx.detach().cpu().numpy()
+        label = label.detach().cpu().numpy()
+
+        if audio.shape[0] > self.upload_artifacts_limit:
+            audio = audio[:self.upload_artifacts_limit,...]
+            label = label[:self.upload_artifacts_limit,...]
+            raw_wav = raw_wav[:self.upload_artifacts_limit,...]
+            idx = idx[:self.upload_artifacts_limit,...]
+
+        # Original wavs batch
+
+        artifact_wav = torch.squeeze(raw_wav).detach().cpu().numpy()
+        artifact_wav = artifact_wav / np.max(np.abs(artifact_wav)) * 0.5 #avoid clipping
+        artifact_wav = artifact_wav * 10 ** (volume / (20 * np.log10(1/ np.std(artifact_wav)))) # add dB 
+        list_of_wavs_objects = [wandb.Audio(data_or_path=wav, caption=f'label_{lab}_{ind}_train', sample_rate=sample_rate) for wav, ind, lab in zip(artifact_wav,idx, label)]
+
+        # Spectrograms batch
+        artifact_spec = torch.squeeze(audio).detach().cpu().numpy()
+        axes = [plt.subplots(nrows=1, ncols=1) for _ in range(artifact_spec.shape[0])]
+        specs = [librosa.display.specshow(artifact_spec[x,...], ax=axes[x][1]) for x in range(artifact_spec.shape[0])]
+        list_of_specs_objects = [wandb.Image(data_or_path=spec, caption=f'label_{lab}_{ind}_train') for spec, ind, lab in zip(specs,idx, label)]
+        log_wavs = {f'First batch {flag} original wavs': list_of_wavs_objects}
+        log_specs = {f'First batch {flag} augmented spectrograms': list_of_specs_objects}
+
+        # Upload to W&B
+        wandb.log(log_wavs, commit=False)
+        wandb.log(log_specs, commit=False)
+
+        # Clear figures
+        plt.figure().clear()
+        return
 
     @staticmethod
     def get_metrics_dict(label_list, pred_list, pred_proba_array):
