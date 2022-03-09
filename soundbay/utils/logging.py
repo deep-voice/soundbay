@@ -53,7 +53,8 @@ class Logger:
 
     def __init__(self,
                  log_writer=Mock(),
-                 debug_mode=False
+                 debug_mode=False,
+                 artifacts_upload_limit=64
                  ):
         """
         __init__ initializes the logger and all the associated arrays and variables
@@ -67,6 +68,7 @@ class Logger:
         self.pred_list = []
         self.pred_proba_list = []
         self.label_list = []
+        self.upload_artifacts_limit = artifacts_upload_limit
         self.metrics_dict = {'accuracy': [], 'f1score': [], 'precision': [], 'recall': [], 'auc': []}
         self.debug_mode = debug_mode
 
@@ -141,6 +143,11 @@ class Logger:
         idx = idx.detach().cpu().numpy()
         label = label.detach().cpu().numpy()
 
+        if audio.shape[0] > self.upload_artifacts_limit:
+            audio = audio[:self.upload_artifacts_limit,...]
+            label = label[:self.upload_artifacts_limit,...]
+            raw_wav = raw_wav[:self.upload_artifacts_limit,...]
+            idx = idx[:self.upload_artifacts_limit,...]
 
         # Original wavs batch
 

@@ -140,7 +140,7 @@ def main(args):
         checkpoint = None
 
     # Logging
-    logger = Logger(_logger, debug_mode=args.experiment.debug)
+    logger = Logger(_logger, debug_mode=args.experiment.debug, artifacts_upload_limit=args.experiment.artifacts_upload_limit)
     flattenArgs = flatten(args)
     logger.log_writer.config.update(flattenArgs)
     App.init(args)
