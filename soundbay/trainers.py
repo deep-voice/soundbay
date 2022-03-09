@@ -5,6 +5,7 @@ from tqdm import tqdm
 from pathlib import Path
 from soundbay.utils.app import app
 from soundbay.utils.logging import Logger
+import matplotlib.pyplot as plt
 
 
 class Trainer:
@@ -80,6 +81,7 @@ class Trainer:
             if self.debug and epoch > 2:
                 break
 
+
     def train_epoch(self, epoch):
         self.model.train()
         for it, batch in tqdm(enumerate(self.train_dataloader), desc='train'):
@@ -87,8 +89,11 @@ class Trainer:
                 break
 
             self.model.zero_grad()
-            audio, label = batch
-            audio, label = audio.to(self.device), label.to(self.device)
+            audio, label, raw_wav, idx = batch
+            audio, label  = audio.to(self.device), label.to(self.device)
+
+            if it == 0 and not self.debug:
+                self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='train')
 
             # estimate and calc losses
             estimated_label = self.model(audio)
@@ -96,13 +101,15 @@ class Trainer:
             loss.backward()
             self.optimizer.step()
 
-            # update losses
+            # update losses and log batch
+
             self.logger.update_losses(loss.detach(), flag='train')
             self.logger.update_predictions((estimated_label, label))
 
         # logging
         if not app.args.experiment.debug:
             self.logger.calc_metrics(epoch, 'train')
+
         self.logger.log(epoch, 'train')
         if self.scheduler is not None:
             self.scheduler.step()
@@ -114,8 +121,10 @@ class Trainer:
             for it, batch in tqdm(enumerate(self.val_dataloader), desc='val'):
                 if it == 3 and self.debug:
                     break
-                audio, label = batch
+                audio, label, raw_wav, idx = batch
                 audio, label = audio.to(self.device), label.to(self.device)
+                if it == 0 and not self.debug:
+                    self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='val')
 
                 # estimate and calc losses
                 estimated_label = self.model(audio)
