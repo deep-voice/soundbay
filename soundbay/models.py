@@ -30,76 +30,22 @@ class ResNet1Channel(ResNet):
         return getattr(importlib.import_module(module_name), class_name)
 
 
-class SqueezeNet1D(nn.Module):
+class SqueezeNet1D(squeezenet.SqueezeNet):
 
     def __init__(
         self,
         version: str = '1_1',
         num_classes: int = 2
     ) -> None:
-        super(SqueezeNet1D, self).__init__()
-        self.num_classes = num_classes
+        super(SqueezeNet1D, self).__init__(version, num_classes)
+        sequential_list = list(self.features.children())
         if version == '1_0':
-            self.features = nn.Sequential(
-                nn.Conv2d(1, 96, kernel_size=7, stride=2),
-                nn.ReLU(inplace=True),
-                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
-                squeezenet.Fire(96, 16, 64, 64),
-                squeezenet.Fire(128, 16, 64, 64),
-                squeezenet.Fire(128, 32, 128, 128),
-                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
-                squeezenet.Fire(256, 32, 128, 128),
-                squeezenet.Fire(256, 48, 192, 192),
-                squeezenet.Fire(384, 48, 192, 192),
-                squeezenet.Fire(384, 64, 256, 256),
-                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
-                squeezenet.Fire(512, 64, 256, 256),
-            )
+            sequential_list[0] = nn.Conv2d(1, 96, kernel_size=7, stride=2)
         elif version == '1_1':
-            self.features = nn.Sequential(
-                nn.Conv2d(1, 64, kernel_size=3, stride=2),
-                nn.ReLU(inplace=True),
-                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
-                squeezenet.Fire(64, 16, 64, 64),
-                squeezenet.Fire(128, 16, 64, 64),
-                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
-                squeezenet.Fire(128, 32, 128, 128),
-                squeezenet.Fire(256, 32, 128, 128),
-                nn.MaxPool2d(kernel_size=3, stride=2, ceil_mode=True),
-                squeezenet.Fire(256, 48, 192, 192),
-                squeezenet.Fire(384, 48, 192, 192),
-                squeezenet.Fire(384, 64, 256, 256),
-                squeezenet.Fire(512, 64, 256, 256),
-            )
+            sequential_list[0] = nn.Conv2d(1, 64, kernel_size=3, stride=2)
         else:
-            # FIXME: Is this needed? SqueezeNet should only be called from the
-            # FIXME: squeezenet1_x() functions
-            # FIXME: This checking is not done for the other models
-            raise ValueError("Unsupported SqueezeNet version {version}:"
-                             "1_0 or 1_1 expected".format(version=version))
-
-        # Final convolution is initialized differently from the rest
-        final_conv = nn.Conv2d(512, self.num_classes, kernel_size=1)
-        self.classifier = nn.Sequential(
-            nn.Dropout(p=0.5),
-            final_conv,
-            nn.ReLU(inplace=True),
-            nn.AdaptiveAvgPool2d((1, 1))
-        )
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                if m is final_conv:
-                    init.normal_(m.weight, mean=0.0, std=0.01)
-                else:
-                    init.kaiming_uniform_(m.weight)
-                if m.bias is not None:
-                    init.constant_(m.bias, 0)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.features(x)
-        x = self.classifier(x)
-        return torch.flatten(x, 1)
+            raise ValueError(f'Unknown SqueezeNet version: {version}, expected 1_0 or 1_1')
+        self.features = nn.Sequential(*sequential_list)
 
 
 class BottleneckDropout(Bottleneck):
