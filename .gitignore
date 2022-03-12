@@ -31,3 +31,4 @@ soundbay/outputs/*
 
 # outputs
 outputs/
+/soundbay/wandb/
