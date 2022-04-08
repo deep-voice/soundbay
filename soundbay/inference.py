@@ -95,7 +95,9 @@ def inference_to_file(
     model_args,
     checkpoint_state_dict,
     output_path,
-    model_name
+    model_name,
+    save_raven,
+    threshold
 ):
     """
     This functions takes the dataset and produces the model prediction to a file
@@ -135,12 +137,12 @@ def inference_to_file(
     concat_dataset.to_csv(index=False, path_or_buf=output_file)
 
     # save raven file
-    threshold = 0.5
-    thresholdtext = int(threshold*10)
-    raven_filename = f"raven_annotations-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}-thresh0{thresholdtext}.csv"
-    raven_output_file = output_path / raven_filename
-    raven_df = inference_csv_to_raven(results_df, test_dataset, threshold=threshold)
-    raven_df.to_csv(index=False, path_or_buf=raven_output_file, sep="\t")
+    if save_raven:
+        thresholdtext = int(threshold*10)
+        raven_filename = f"raven_annotations-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}-thresh0{thresholdtext}.csv"
+        raven_output_file = output_path / raven_filename
+        raven_df = inference_csv_to_raven(results_df, test_dataset, threshold=threshold)
+        raven_df.to_csv(index=False, path_or_buf=raven_output_file, sep="\t")
 
     return
 
@@ -190,7 +192,7 @@ def inference_main(args) -> None:
 
     working_dirpath = Path(hydra.utils.get_original_cwd())
     os.chdir(working_dirpath)
-    output_dirpath = working_dirpath
+    output_dirpath = working_dirpath.parent.absolute() / "outputs"
 
     ckpt_dict = torch.load(args.checkpoint.path, map_location=torch.device('cpu'))
     ckpt_args = ckpt_dict['args']
@@ -205,6 +207,8 @@ def inference_main(args) -> None:
         checkpoint_state_dict=ckpt,
         output_path=output_dirpath,
         model_name=Path(args.checkpoint.path).stem,
+        save_raven=args.save_raven,
+        threshold=args.threshold
     )
     print("Finished inference")
 
