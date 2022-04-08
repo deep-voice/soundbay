@@ -33,6 +33,7 @@ class LibrosaMelSpectrogram:
         return melspectrogram
 
 
+
 class LibrosaPcen:
     """
     Defining and computing pcen (Per-Channel Energy Normalization) transform using pre-defined parameters
