@@ -32,3 +32,5 @@ outputs/*
 # outputs
 outputs/
 /soundbay/.null/inference.log
+/soundbay/wandb/
+
