@@ -9,3 +9,5 @@ data:
   batch_size: 64
   num_workers: 2
   data_sample_rate: 96000
+save_raven: True
+threshold: 0.9
