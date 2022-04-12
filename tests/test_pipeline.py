@@ -26,7 +26,7 @@ def check_variable_change(model_before, model_after, vars_change=True, device=to
             else:
                 assert torch.equal(p0.to(device), p1.to(device))
         except AssertionError:
-            raise VariablesChangeException(  # error mes        sage
+            raise VariablesChangeException(  # error message
                 "{var_name} {msg}".format(
                     var_name=name,
                     msg='did not change!' if vars_change else 'changed!'

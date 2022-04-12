@@ -8,10 +8,12 @@ import random
 import soundfile as sf
 from itertools import starmap, repeat
 from hydra.utils import instantiate
+from typing import Union
 from omegaconf import DictConfig
 from pathlib import Path
 from copy import deepcopy
 import numpy as np
+import matplotlib.pyplot as plt
 from soundbay.data_augmentation import ChainedAugmentations
 
 
@@ -205,21 +207,27 @@ class ClassifierDataset(Dataset):
         idx - int
 
         output:
-        audio, label - torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
-        , int (if mode="train" only)
+        For train/ val modes -
+        audio_processed, label, audio_raw, idx - torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
+        , int (if mode="train" only), 2-d tensor, int
+
+        For test - audio_processed - torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
+
+
         '''
         path_to_file, begin_time, end_time, label = self._grab_fields(idx)
         audio = self._get_audio(path_to_file, begin_time, end_time, label)
-        audio = self.sampler(audio)
-        audio = self.augmenter(audio)
-        audio = self.preprocessor(audio)
+        audio_raw = self.sampler(audio)
+        audio_augmented = self.augmenter(audio_raw)
+        audio_processed = self.preprocessor(audio_augmented)
 
         if self.mode == "train" or self.mode == "val":
             label = self.metadata["label"][idx]
-            return audio, label
+            return audio_processed, label, audio_raw, idx
+
 
         elif self.mode == "test":
-            return audio
+            return audio_processed
 
     def __len__(self):
         return self.metadata.shape[0]
@@ -329,7 +337,7 @@ class InferenceDataset(Dataset):
     '''
     class for storing and loading data.
     '''
-    def __init__(self, file_path: (str, Path),
+    def __init__(self, file_path: Union[str, Path],
                  preprocessors: DictConfig,
                  seq_length: float = 1,
                  data_sample_rate: int = 44100,

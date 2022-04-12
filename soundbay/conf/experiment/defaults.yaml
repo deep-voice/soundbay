@@ -6,3 +6,4 @@ experiment:
   run_id: null
   group_name: null
   bucket_name: deepvoice-experiments
+  artifacts_upload_limit: 64
