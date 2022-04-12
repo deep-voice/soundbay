@@ -5,8 +5,9 @@ data:
     file_path: '../data/file1.wav'
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
+    seq_length: 0.2
   batch_size: 64
   num_workers: 2
-  data_sample_rate: 44100
+  data_sample_rate: 96000
 save_raven: True
-threshold: 0.5
+threshold: 0.9
