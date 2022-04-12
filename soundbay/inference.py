@@ -111,7 +111,7 @@ def inference_to_file(
         output_path: directory to save the prediction file
     """
     # set paths and create dataset
-    test_dataset = instantiate(dataset_args, seq_length=0.2)
+    test_dataset = instantiate(dataset_args)
 
     # load model
     model = load_model(model_args, checkpoint_state_dict).to(device)
