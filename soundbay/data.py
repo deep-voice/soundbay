@@ -53,7 +53,6 @@ class ClassifierDataset(Dataset):
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
 
-
     @staticmethod
     def _update_metadata_by_mode(metadata, mode, split_metadata_by_label):
         if split_metadata_by_label:
