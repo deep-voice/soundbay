@@ -43,6 +43,7 @@ def modeling(
     scheduler_args,
     model_args,
     logger,
+    num_unfrozen,
 ):
     """
     modeling function takes all the variables and parameters defined in the main script
@@ -102,7 +103,12 @@ def modeling(
         logger=logger
     )
 
+    # Freeze layers if required (num_unfrozen!=0)
+    if num_unfrozen:
+        model.freeze_layers(num_unfrozen)
+
     # Commence training
+
     _trainer.train()
 
     return
@@ -175,6 +181,7 @@ def main(args):
         scheduler_args=args.optim.scheduler,
         model_args=args.model.model,
         logger=logger,
+        num_unfrozen=args.optim.num_unfrozen,
     )
     if args.experiment.bucket_name and not args.experiment.debug:
         upload_experiment_to_s3(experiment_id=logger.log_writer.run.id, dir_path=output_dirpath,
