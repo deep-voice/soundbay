@@ -1,3 +1,4 @@
 # @package _global_
 checkpoint:
   path: null
+  continue_previous_training: False

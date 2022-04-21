@@ -38,6 +38,7 @@ class Trainer:
                  device: Union[torch.device, None] = torch.device("cpu"),
                  scheduler=None,
                  checkpoint: str = None,
+                 continue_previous_training = False,
                  debug: bool = False):
 
         # set parameters for stft loss
@@ -57,7 +58,8 @@ class Trainer:
 
         # load checkpoint
         if checkpoint:
-            self._load_checkpoint(checkpoint_path=checkpoint)
+            self._load_checkpoint(checkpoint_path=checkpoint, 
+                    continue_previous_training=continue_previous_training)
 
     def train(self):
         best_loss = float('inf')
@@ -156,7 +158,7 @@ class Trainer:
 
         torch.save(state_dict, self.output_path / checkpoint_path)
 
-    def _load_checkpoint(self, checkpoint_path: Union[str, None]):
+    def _load_checkpoint(self, checkpoint_path: Union[str, None], continue_previous_training: bool):
         """Load checkpoint.
         Args:
             checkpoint_path (str): Checkpoint path to be loaded.
@@ -165,8 +167,9 @@ class Trainer:
             return
         print('Loading checkpoint')
         state_dict = torch.load(checkpoint_path, map_location='cpu')
-        self.epochs_trained = state_dict["epochs"]
-        self.optimizer.load_state_dict(state_dict["optimizer"])
-        if self.scheduler is not None:
-            self.scheduler.load_state_dict(state_dict["scheduler"])
         self.model.load_state_dict(state_dict["model"])
+        if continue_previous_training:
+            self.epochs_trained = state_dict["epochs"]
+            self.optimizer.load_state_dict(state_dict["optimizer"])
+            if self.scheduler is not None:
+                self.scheduler.load_state_dict(state_dict["scheduler"])

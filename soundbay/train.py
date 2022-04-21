@@ -162,7 +162,8 @@ def main(args):
         debug=args.experiment.debug,
         criterion=criterion,
         checkpoint=checkpoint,
-        output_path=output_dirpath
+        output_path=output_dirpath,
+        continue_previous_training=args.checkpoint.continue_previous_training
     )
     # modeling function for training
     modeling(
