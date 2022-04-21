@@ -23,7 +23,7 @@ soundbay/runs
 soundbay/logs
 *last.pth
 *best.pth
-soundbay/outputs/*
+outputs/*
 .misc
 
 # redundant formats
@@ -31,3 +31,6 @@ soundbay/outputs/*
 
 # outputs
 outputs/
+/soundbay/.null/inference.log
+/soundbay/wandb/
+

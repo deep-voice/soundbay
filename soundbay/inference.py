@@ -1,4 +1,6 @@
 from typing import Generator, Union
+
+import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 import numpy as np
@@ -95,7 +97,9 @@ def inference_to_file(
     model_args,
     checkpoint_state_dict,
     output_path,
-    model_name
+    model_name,
+    save_raven,
+    threshold
 ):
     """
     This functions takes the dataset and produces the model prediction to a file
@@ -134,8 +138,43 @@ def inference_to_file(
     output_file = output_path / filename
     concat_dataset.to_csv(index=False, path_or_buf=output_file)
 
+    # save raven file
+    if save_raven:
+        thresholdtext = int(threshold*10)
+        raven_filename = f"raven_annotations-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}-thresh0{thresholdtext}.csv"
+        raven_output_file = output_path / raven_filename
+        raven_df = inference_csv_to_raven(results_df, test_dataset.seq_length, threshold=threshold)
+        raven_df.to_csv(index=False, path_or_buf=raven_output_file, sep="\t")
+
     return
 
+def inference_csv_to_raven(probsdataframe: pd.DataFrame, seq_length: float, threshold: float = 0.5):
+    # transforms the probability dataframe to a raven format with class_1 predictions as the annotated bounding boxes
+    len_dataset = probsdataframe.shape[0]  # number of segments in wav
+    seq_len = seq_length
+    all_begin_times = np.arange(0, len_dataset * seq_len, seq_len)
+
+    if_positive = probsdataframe['class1_prob'] > threshold  # check if the probability is above the threshold
+    begin_times = all_begin_times[if_positive]
+    # begin_times = np.round(all_begin_times[if_positive], decimals=1) #rounded to avoid float errors (e.g. 24.00000000000001)
+
+    end_times = np.round(begin_times+seq_len, decimals=1)
+    if end_times[-1] > round(len_dataset*seq_len,1):
+        end_times[-1] = round(len_dataset*seq_len,1) #cut off last bbox if exceeding eof
+    low_freq = np.zeros_like(begin_times)
+    high_freq = np.ones_like(begin_times)*20000 #just tall enough bounding box
+    view = ['Spectrogram 1']*len(begin_times)
+    selection = np.arange(1,len(begin_times)+1)
+    channel = np.ones_like(begin_times).astype(int)
+    bboxes = {'Selection': selection, 'View': view, 'Channel': channel,
+              'Begin Time (s)': begin_times, 'End Time (s)': end_times,
+              'Low Freq (Hz)': low_freq, 'High Freq (Hz)': high_freq}
+    annotations_df = pandas.DataFrame(data = bboxes)
+
+
+
+
+    return annotations_df
 
 @hydra.main(config_name="runs/main_inference", config_path="conf")
 def inference_main(args) -> None:
@@ -153,7 +192,7 @@ def inference_main(args) -> None:
 
     working_dirpath = Path(hydra.utils.get_original_cwd())
     os.chdir(working_dirpath)
-    output_dirpath = working_dirpath
+    output_dirpath = working_dirpath.parent.absolute() / "outputs"
 
     ckpt_dict = torch.load(args.checkpoint.path, map_location=torch.device('cpu'))
     ckpt_args = ckpt_dict['args']
@@ -168,6 +207,8 @@ def inference_main(args) -> None:
         checkpoint_state_dict=ckpt,
         output_path=output_dirpath,
         model_name=Path(args.checkpoint.path).stem,
+        save_raven=args.save_raven,
+        threshold=args.threshold
     )
     print("Finished inference")
 
