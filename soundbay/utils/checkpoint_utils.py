@@ -23,7 +23,7 @@ def walk(input_path):
 def upload_experiment_to_s3(experiment_id: str,
                             dir_path: Union[Path, str],
                             bucket_name: str,
-                            include_parent: bool = True):
+                            include_parent: bool = True, logger = None):
     """
     Uploads the experiment folder to s3 bucket
     Input:
@@ -42,6 +42,10 @@ def upload_experiment_to_s3(experiment_id: str,
     for upload_file in tqdm(upload_files):
         upload_file = str(upload_file)
         s3_client.upload_file(upload_file, bucket_name, upload_file.replace(current_global, object_global))
+
+    if logger is not None:
+        print(f'experiment {logger.log_writer.run.id} has been successfully uploaded to {bucket_name} bucket')
+
 
 
 def merge_with_checkpoint(run_args, checkpoint_args):

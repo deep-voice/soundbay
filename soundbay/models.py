@@ -1,8 +1,11 @@
 import importlib
 import torch
 import torch.nn as nn
-from torchvision.models.resnet import ResNet, BasicBlock, conv3x3
+from torch import Tensor
+from torchvision.models.resnet import ResNet, BasicBlock, conv3x3, Bottleneck
 from torchvision.models.vgg import VGG
+from torchvision.models import squeezenet
+import torch.nn.init as init
 
 
 class ResNet1Channel(ResNet):
@@ -51,6 +54,60 @@ class ResNet1Channel(ResNet):
 
 
 
+
+
+class SqueezeNet1D(squeezenet.SqueezeNet):
+
+    def __init__(
+        self,
+        version: str = '1_1',
+        num_classes: int = 2
+    ) -> None:
+        super(SqueezeNet1D, self).__init__(version, num_classes)
+        sequential_list = list(self.features.children())
+        if version == '1_0':
+            sequential_list[0] = nn.Conv2d(1, 96, kernel_size=7, stride=2)
+        elif version == '1_1':
+            sequential_list[0] = nn.Conv2d(1, 64, kernel_size=3, stride=2)
+        else:
+            raise ValueError(f'Unknown SqueezeNet version: {version}, expected 1_0 or 1_1')
+        self.features = nn.Sequential(*sequential_list)
+
+
+class BottleneckDropout(Bottleneck):
+    
+    def __init__(self, *args, **kwargs):
+        super(BottleneckDropout, self).__init__(*args, **kwargs)
+        self.dropout1 = nn.Dropout(p=0.5)
+        self.dropout2 = nn.Dropout(p=0.5)
+        self.dropout3 = nn.Dropout(p=0.5)
+        self.dropout4 = nn.Dropout(p=0.5)
+
+    def forward(self, x: Tensor) -> Tensor:
+        identity = x
+
+        out = self.dropout1(x)
+        out = self.conv1(out)
+        out = self.bn1(out)
+        out = self.relu(out)
+        out = self.dropout2(out)
+
+        out = self.conv2(out)
+        out = self.bn2(out)
+        out = self.relu(out)
+        out = self.dropout3(out)
+
+        out = self.conv3(out)
+        out = self.bn3(out)
+
+        if self.downsample is not None:
+            identity = self.downsample(x)
+
+        out += identity
+        out = self.relu(out)
+        out = self.dropout4(out)
+
+        return out
 
 
 class VGG1Channel(VGG):
