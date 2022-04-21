@@ -1,0 +1,9 @@
+# @package _global_
+defaults:
+  - data: defaults
+  - augmentations: _augmentations
+  - preprocessors: _preprocessors
+  - model: jasco_resnet_50            #finetune model has to be the same as used for training base model
+  - optim: jasco_resnet_50_finetune   #finetune optim has to be the same as used for training base model
+  - experiment: defaults
+  - checkpoint: defaults
