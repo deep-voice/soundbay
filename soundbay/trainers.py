@@ -170,3 +170,4 @@ class Trainer:
         if self.scheduler is not None:
             self.scheduler.load_state_dict(state_dict["scheduler"])
         self.model.load_state_dict(state_dict["model"])
+        ## verigy i can't push directly to master
