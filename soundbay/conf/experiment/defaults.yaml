@@ -7,3 +7,6 @@ experiment:
   group_name: null
   bucket_name: deepvoice-experiments
   artifacts_upload_limit: 64
+  checkpoint:
+    path: null
+    load_optimizer_state: False
