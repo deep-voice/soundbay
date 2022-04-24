@@ -44,7 +44,7 @@ def modeling(
     scheduler_args,
     model_args,
     logger,
-    num_unfrozen,
+    freeze_layers_for_finetune,
 ):
     """
     modeling function takes all the variables and parameters defined in the main script
@@ -104,9 +104,9 @@ def modeling(
         logger=logger
     )
 
-    # Freeze layers if required (num_unfrozen!=0)
-    if num_unfrozen:
-        model.freeze_layers(num_unfrozen)
+    # Freeze layers if required (freeze_layers_for_finetune==True)
+    if freeze_layers_for_finetune:
+        model.freeze_layers(freeze_layers_for_finetune)
 
     # Commence training
 
@@ -132,6 +132,7 @@ def main(args):
     else:
         print('GPU!!!!!!!!!')
         device = torch.device("cuda")
+
 
     # Convert filepaths, convenient if you wish to use relative paths
     working_dirpath = Path(hydra.utils.get_original_cwd())
@@ -160,6 +161,12 @@ def main(args):
     random.seed(args.experiment.manual_seed)
     torch.manual_seed(args.experiment.manual_seed)
 
+    # Prevent crash in case none defined finetune
+    '''if args.optim.freeze_layers_for_finetune is None:
+        args.optim.freeze_layers_for_finetune = False'''
+    if args.optim.freeze_layers_for_finetune:
+        print('The model is in finetune mode!')
+
     # instantiate Trainer class with parameters "meta" parameters
     trainer_partial = partial(
         Trainer,
@@ -182,14 +189,13 @@ def main(args):
         scheduler_args=args.optim.scheduler,
         model_args=args.model.model,
         logger=logger,
-        num_unfrozen=args.optim.num_unfrozen,
+        freeze_layers_for_finetune=args.optim.freeze_layers_for_finetune,
     )
 
     if args.experiment.bucket_name and not args.experiment.debug:
         upload_experiment_to_s3(experiment_id=logger.log_writer.run.id, dir_path=output_dirpath,
                                 bucket_name=args.experiment.bucket_name, include_parent=True, logger=logger)
         
-
 
 if __name__ == "__main__":
     main()

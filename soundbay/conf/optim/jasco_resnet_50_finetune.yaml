@@ -9,4 +9,4 @@ optim:
   scheduler:
     _target_: torch.optim.lr_scheduler.ExponentialLR
     gamma: 0.95
-  num_unfrozen: 0 # 0 = No freeze, 1 = freeze FC,   2 = freeze FC+block4,   ...
+  freeze_layers_for_finetune:  # Default is False. If True, freeze classifier + last layer/block

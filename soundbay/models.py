@@ -29,29 +29,19 @@ class ResNet1Channel(ResNet):
         module_name = '.'.join(block.split('.')[:-1])
         return getattr(importlib.import_module(module_name), class_name)
 
-    def freeze_layers(self, num_unfrozen=1):
+    def freeze_layers(self, freeze_layers_for_finetune=False):
         """
-        Freeze all layers except the last "num_unfrozen" layers from training
+        Freeze all layers except the classifier and last layer block from training, as a condition for finetune
         Input:
-            num_unfrozen: number of layers to NOT be frozen, starting from the last layer of the model.
+            freeze_layers_for_finetune: True if objective is to finetune the model (default == False)
         """
-
-        for param in self.parameters():
-            param.requires_grad = False
-
-        if num_unfrozen >= 1:
+        if freeze_layers_for_finetune:
+            for param in self.parameters():
+                param.requires_grad = False
             for param in self.fc.parameters():
                 param.requires_grad = True
-        if num_unfrozen >= 2:
             for param in self.layer4.parameters():
                 param.requires_grad = True
-        if num_unfrozen >= 3:
-            for param in self.layer3.parameters():
-                param.requires_grad = True
-        if num_unfrozen >= 4:
-            for param in self.layer2.parameters():
-                param.requires_grad = True
-
 
 
 

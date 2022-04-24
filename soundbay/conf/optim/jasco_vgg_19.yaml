@@ -9,3 +9,4 @@ optim:
   scheduler:
     _target_: torch.optim.lr_scheduler.ExponentialLR
     gamma: 0.926118
+  freeze_layers_for_finetune:  # Default is False.
