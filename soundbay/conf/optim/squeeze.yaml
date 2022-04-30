@@ -11,3 +11,4 @@ optim:
     start_factor: 1.0
     end_factor: 0
     total_iters: ${optim.epochs}
+  freeze_layers_for_finetune: False # Default is False.
