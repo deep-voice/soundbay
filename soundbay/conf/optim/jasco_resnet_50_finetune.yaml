@@ -8,5 +8,5 @@ optim:
     weight_decay: 0.0001
   scheduler:
     _target_: torch.optim.lr_scheduler.ExponentialLR
-    gamma: 0.926118
-  freeze_layers_for_finetune: False  # Default is False.
+    gamma: 0.95
+  freeze_layers_for_finetune: True  # Default is False. If True, freeze classifier + last layer/block
