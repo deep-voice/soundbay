@@ -4,5 +4,5 @@ defaults:
   - augmentations: _augmentations
   - preprocessors: _preprocessors
   - model: defaults
-  - optim: defaults
+  - optim: defaults_finetune
   - experiment: defaults
