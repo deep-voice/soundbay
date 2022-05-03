@@ -9,9 +9,9 @@ data:
   hop_length: 256
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/Manatees/train_data/wav'
+    data_path: '../datasets/Manatees/wav'
     mode: train
-    metadata_path: '../datasets/Manatees/Manatee_train_val_splits.csv'
+    metadata_path: '../datasets/Manatees/Manatee_2022_0054_train_val_splits.csv'
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}

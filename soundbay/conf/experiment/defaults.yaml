@@ -8,5 +8,5 @@ experiment:
   bucket_name: deepvoice-experiments
   artifacts_upload_limit: 64
   checkpoint:
-    path: null
+    path: '../best.pth'
     load_optimizer_state: False
