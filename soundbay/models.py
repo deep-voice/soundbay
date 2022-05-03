@@ -29,6 +29,18 @@ class ResNet1Channel(ResNet):
         module_name = '.'.join(block.split('.')[:-1])
         return getattr(importlib.import_module(module_name), class_name)
 
+    def freeze_layers(self):
+        """
+        Freeze all layers except the classifier and last layer block from training, as a condition for finetune
+        """
+
+        for param in self.parameters():
+            param.requires_grad = False
+        for param in self.fc.parameters():
+            param.requires_grad = True
+        for param in self.layer4.parameters():
+            param.requires_grad = True
+
 
 class SqueezeNet1D(squeezenet.SqueezeNet):
 
