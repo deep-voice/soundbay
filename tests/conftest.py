@@ -37,12 +37,18 @@ def scheduler(optimizer):
 
 
 @pytest.fixture
-def data_loader():
+def train_data_loader():
     inputs = torch.randn(20, 20)
     targets = torch.randint(0, 2, (20,)).long()
-    batch = [(inputs, targets)]
+    batch = [(inputs, targets, None, None)]
     return batch
 
+
+@pytest.fixture
+def inference_data_loader():
+    inputs = torch.randn(20, 20)
+    batch = [inputs]
+    return batch
 
 @pytest.fixture
 def criterion():

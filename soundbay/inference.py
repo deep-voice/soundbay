@@ -34,9 +34,8 @@ def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
     all_predictions = []
     with torch.no_grad():
         model.eval()
-        for batch in tqdm(data_loader):
-            audio, label = batch
-            audio, label = audio.to(device), label.to(device)
+        for audio in tqdm(data_loader):
+            audio = audio.to(device)
 
             predicted_probability = model(audio).cpu().numpy()
             if selected_class_idx is None:
@@ -193,8 +192,9 @@ def inference_main(args) -> None:
     working_dirpath = Path(hydra.utils.get_original_cwd())
     os.chdir(working_dirpath)
     output_dirpath = working_dirpath.parent.absolute() / "outputs"
+    output_dirpath.mkdir(exist_ok=True)
 
-    ckpt_dict = torch.load(args.checkpoint.path, map_location=torch.device('cpu'))
+    ckpt_dict = torch.load(args.experiment.checkpoint.path, map_location=torch.device('cpu'))
     ckpt_args = ckpt_dict['args']
     args = merge_with_checkpoint(args, ckpt_args)
     ckpt = ckpt_dict['model']
@@ -206,9 +206,9 @@ def inference_main(args) -> None:
         model_args=args.model.model,
         checkpoint_state_dict=ckpt,
         output_path=output_dirpath,
-        model_name=Path(args.checkpoint.path).stem,
-        save_raven=args.save_raven,
-        threshold=args.threshold
+        model_name=Path(args.experiment.checkpoint.path).stem,
+        save_raven=args.experiment.save_raven,
+        threshold=args.experiment.threshold
     )
     print("Finished inference")
 

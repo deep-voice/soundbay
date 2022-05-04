@@ -14,6 +14,11 @@ pip install -e .
 # OR 
 pip install -r requirements.txt
 ```
+[sox](http://sox.sourceforge.net/) is also required and can be installed using:
+```
+sudo apt update
+sudo apt install sox
+``` 
 
 ## Usage
 
@@ -54,12 +59,12 @@ Runs training with a config file under conf/runs/main_unit_norm, overriding the 
 To run the predictions of the model on a single audio file use the inference script:
 ```
 cd src
-python inference.py --config-name runs/inference_single_audio checkpoint.path=<PATH/TO/MODEL> data.test_dataset.file_path=<PATH/TO/FILE>
+python inference.py --config-name runs/inference_single_audio experiment.checkpoint.path=<PATH/TO/MODEL> data.test_dataset.file_path=<PATH/TO/FILE>
 ```
 To run the predictions of the model on a labeled test partition use:
 ```
 cd src
-python inference.py --config-name runs/main_inference checkpoint.path=<PATH/TO/MODEL> data.test_dataset.data_path=<PATH/TO/DATA> data.test_dataset.metadata_path=<PATH/TO/METADATA> 
+python inference.py --config-name runs/main_inference experiment.checkpoint.path=<PATH/TO/MODEL> data.test_dataset.data_path=<PATH/TO/DATA> data.test_dataset.metadata_path=<PATH/TO/METADATA> 
 ```
 
 ## License
