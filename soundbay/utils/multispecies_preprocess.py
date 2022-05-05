@@ -1,5 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import pandas as pd
 import soundfile as sf
 from pathlib import Path
@@ -17,19 +17,26 @@ def df_freq_range_dict(x):
 
     }.get(x, None)
 
-def df_attach_wav_files(row):
+def df_attach_wav_files(sub_df, row):
     folder_prefix = '2018_04/OOI_105_'
     file_prefix = 'HYDBBA105OOI_'
 #     date_time_obj = datetime. strptime(row['UTC'], '%Y-%m-%d %H:%M:%S.%f')
     format_1 = '%m/%d/%Y %H:%M:%S'
     format_2 = '%m/%d/%Y %H:%M'
-    
-    date_time_obj = datetime. strptime(row['UTC'], '%m/%d/%Y %H:%M:%S')
-    date_time_obj = date_time_obj - timedelta(minutes=date_time_obj.minute % 10,
+    try:
+        date_time_obj = datetime. strptime(row['UTC'], format_1)
+    except:
+        try:
+            date_time_obj = datetime. strptime(row['UTC'], format_2)
+        except ValueError:
+            print("problematic time format!")
+
+
+    date_time_obj = date_time_obj - timedelta(minutes=date_time_obj.minute % 5,
                                 seconds=date_time_obj.second,
                                 microseconds=date_time_obj.microsecond)
 #     '4/1/2018 12:05:53'
-    begin_time = date_time_obj - timedelta(minutes=(date_time_obj.minute - (date_time_obj.minute % 10)),
+    begin_time = date_time_obj - timedelta(minutes=(date_time_obj.minute - (date_time_obj.minute % 5)),
                                 seconds=date_time_obj.second,
                                 microseconds=date_time_obj.microsecond)
     file_address = datetime.strftime(date_time_obj,folder_prefix + '%Y_%m_%d/' + file_prefix +'%Y%m%d-%H%M%S.wav')
@@ -48,15 +55,15 @@ def process_row(row, metadata_dict):
         sub_df = sub_df[['UID','UTC','UTCMilliseconds']]
         sub_df['Species_ID'] = row['Species_ID']
         sub_df['Sound_type'] = row['Sound_type']
-        sub_df['PG_UID'] = row['PG_UID']
-        sub_df['file'] = df_attach_wav_files(row)
+        sub_df['PG_UID'] = row['PG_UID'].copy()
+        sub_df['file'] = df_attach_wav_files(sub_df, row)
         
     
     return sub_df
 
 def main():
     print("Hello World!")
-    selection_path = Path('../../../../multispecies_dataset')
+    selection_path = Path('../..//multispecies_dataset')
     filelist = list(selection_path.glob('**/*.csv'))
 
     metadata =[]
@@ -84,6 +91,7 @@ def main():
         total_df.append(process_row(row, metadata_dict))
 
     total_df = pd.concat(total_df)
+    print('finished parsing dataset')
 
 
 if __name__ == "__main__":
