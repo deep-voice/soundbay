@@ -10,7 +10,7 @@ import os
 import pandas
 import datetime
 from hydra.utils import instantiate
-from soundbay.utils.logging import Logger
+from soundbay.utils.logging_metrics import Logger
 from soundbay.utils.checkpoint_utils import merge_with_checkpoint
 
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,

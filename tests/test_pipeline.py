@@ -2,7 +2,7 @@ import copy
 import os
 import torch
 import wandb
-from soundbay.utils.logging import Logger
+from soundbay.utils.logging_metrics import Logger
 from soundbay.inference import predict
 from soundbay.trainers import Trainer
 from pathlib import Path

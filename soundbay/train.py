@@ -28,7 +28,7 @@ from unittest.mock import Mock
 import os
 import tempfile
 from soundbay.utils.app import App
-from soundbay.utils.logging import Logger, flatten, get_experiment_name
+from soundbay.utils.logging_metrics import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
 from soundbay.trainers import Trainer
 

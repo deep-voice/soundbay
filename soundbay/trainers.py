@@ -4,7 +4,7 @@ import torch.utils.data
 from tqdm import tqdm
 from pathlib import Path
 from soundbay.utils.app import app
-from soundbay.utils.logging import Logger
+from soundbay.utils.logging_metrics import Logger
 import matplotlib.pyplot as plt
 
 
