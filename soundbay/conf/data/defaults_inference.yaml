@@ -9,7 +9,7 @@ data:
   test_dataset:
     _target_: soundbay.data.ClassifierDataset
     data_path: '../tests/assets/data'
-    mode: val
+    mode: test
     metadata_path: '../tests/assets/annotations/sample_annotations.csv'
     augmentations_p: 0
     augmentations: null
