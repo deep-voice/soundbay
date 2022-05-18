@@ -1,5 +1,10 @@
 # @package _global_
 experiment:
+  debug: False
+  name: null
+  run_id: null
+  group_name: null
+  artifacts_upload_limit: 64
   checkpoint:
     path: ???
     load_optimizer_state: False

@@ -1,0 +1,21 @@
+# @package _global_
+data:
+  batch_size: 32
+  num_workers: 4
+  data_sample_rate: 96000
+  max_freq: 44100
+  n_fft: 1024
+  hop_length: 256
+  test_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: '../../../Deep_Voice/HF_WAV_Manatee_Samples/2022-WildtracksRecordings'
+    mode: test
+    metadata_path: '../datasets/Manatees/Manatee_2022_0054_train_val_splits.csv'
+    augmentations_p: 0
+    augmentations: null
+    seq_length: 0.2
+    len_buffer: 0.1
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    equalize_data: false
+    slice_flag: true

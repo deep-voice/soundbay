@@ -12,8 +12,10 @@ import os
 import pandas
 import datetime
 from hydra.utils import instantiate
-from soundbay.utils.logging import Logger
+from soundbay.utils.logging import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import merge_with_checkpoint
+import wandb
+from unittest.mock import Mock
 
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
                   device: torch.device = torch.device('cpu'),
@@ -90,6 +92,7 @@ def load_model(model_params, checkpoint_state_dict):
 
 
 def inference_to_file(
+    args,
     device,
     batch_size,
     dataset_args,
@@ -121,22 +124,47 @@ def inference_to_file(
     # predict
     predict_prob = predict_proba(model, test_dataloader, device, None)
     results_df = pandas.DataFrame(predict_prob, columns=['class0_prob', 'class1_prob'])
+
     if hasattr(test_dataset, 'metadata'):
         concat_dataset = pandas.concat([test_dataset.metadata, results_df], axis=1)
         metrics_dict = Logger.get_metrics_dict(concat_dataset["label"].values.tolist(),
                                                np.array(concat_dataset["class1_prob"].values.tolist()) >= 0.5,
                                                results_df.values)
         print(metrics_dict)
+
+        print('Logging metrics to wandb...')
+        _logger = wandb if not args.experiment.debug else Mock()
+        experiment_name = get_experiment_name(args)
+        _logger.init(project="soundbay-inference", name=experiment_name, group=args.experiment.group_name,
+                     id=args.experiment.run_id)
+        logger = Logger(_logger, debug_mode=args.experiment.debug,
+                        artifacts_upload_limit=args.experiment.artifacts_upload_limit)
+        flattenArgs = flatten(args)
+        logger.log_writer.config.update(flattenArgs)
+        logger.log_writer.config.update(metrics_dict)
+        label_names = ('Noise', 'Call')
+        logger.log_writer.log(
+            {f'test_charts/PR Curve': wandb.plot.pr_curve(concat_dataset["label"].values.tolist(),
+                                                          np.array([concat_dataset["class0_prob"].values.tolist(),
+                                                                   concat_dataset["class1_prob"].values.tolist()]).T,
+                                                          labels=label_names)}, step=1)
+        # logger.log_writer.log(
+        #     {f'test_charts/ROC Curve': wandb.plot.roc_curve(concat_dataset["label"].values.tolist(),
+        #     np.array(concat_dataset["class1_prob"].values.tolist()), labels=label_names)}, step=1)
+        wandb.log({f'test_charts/conf_mat': wandb.plot.confusion_matrix(probs=None, y_true=concat_dataset["label"].values.tolist(),
+                                                                          preds=np.array(concat_dataset["class1_prob"].values.tolist()) >= 0.5,
+                                                                          class_names=label_names)},
+                  step=1, commit=False)
+
     else:
         concat_dataset = results_df
         print("Notice: The dataset has no ground truth labels")
 
-    #save file
+    # save file
     dataset_name = Path(test_dataset.metadata_path).stem
     filename = f"Inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.csv"
     output_file = output_path / filename
     concat_dataset.to_csv(index=False, path_or_buf=output_file)
-
     # save raven file
     if save_raven:
         thresholdtext = int(threshold*10)
@@ -200,6 +228,7 @@ def inference_main(args) -> None:
     ckpt = ckpt_dict['model']
 
     inference_to_file(
+        args=args,
         device=device,
         batch_size=args.data.batch_size,
         dataset_args=args.data.test_dataset,
