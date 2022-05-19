@@ -148,9 +148,7 @@ def inference_to_file(
                                                           np.array([concat_dataset["class0_prob"].values.tolist(),
                                                                    concat_dataset["class1_prob"].values.tolist()]).T,
                                                           labels=label_names)}, step=1)
-        # logger.log_writer.log(
-        #     {f'test_charts/ROC Curve': wandb.plot.roc_curve(concat_dataset["label"].values.tolist(),
-        #     np.array(concat_dataset["class1_prob"].values.tolist()), labels=label_names)}, step=1)
+
         wandb.log({f'test_charts/conf_mat': wandb.plot.confusion_matrix(probs=None, y_true=concat_dataset["label"].values.tolist(),
                                                                           preds=np.array(concat_dataset["class1_prob"].values.tolist()) >= 0.5,
                                                                           class_names=label_names)},
