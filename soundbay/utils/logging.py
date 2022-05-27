@@ -110,18 +110,25 @@ class Logger:
         self.pred_proba_list.append(torch.softmax(pred_tuple[0].data, 1).cpu().numpy())
         self.label_list += label.cpu().numpy().tolist()
 
-    def calc_metrics(self, epoch: int, mode: str = 'train', label_names: List[str] = ('Noise', 'Call')):
+    def calc_metrics(self, epoch: int, mode: str = 'train', label_names: List[str] = None):
         """calculates metrics, saves to tensorboard log & flush prediction list"""
         pred_proba_array = np.concatenate(self.pred_proba_list)
         self.metrics_dict = self.get_metrics_dict(self.label_list, self.pred_list, pred_proba_array)
-        self.log_writer.log({f'Metrics/{mode}_Accuracy': self.metrics_dict['accuracy']}, step=epoch)
-        self.log_writer.log({f'Metrics/{mode}_f1score': self.metrics_dict['f1score']}, step=epoch)
-        self.log_writer.log({f'Metrics/{mode}_precision': self.metrics_dict['precision']}, step=epoch)
-        self.log_writer.log({f'Metrics/{mode}_recall': self.metrics_dict['recall']}, step=epoch)
-        self.log_writer.log({f'Metrics/{mode}_auc': self.metrics_dict['auc']}, step=epoch)
+        for metric, value in self.metrics_dict['global'].items():
+            self.log_writer.log({f'Global Metrics {mode}/{metric}': value}, step=epoch)
+
+        if label_names is None:
+            label_names = ['Noise'] + [f'Call_{i}' for i in range(1, len(self.metrics_dict['calls']) + 1)]
+
+        for class_id in self.metrics_dict['calls']:
+            for metric in self.metrics_dict['calls'][class_id]:
+                self.log_writer.log({f'Call Metrics {mode}/{metric}_{label_names[class_id]}':
+                                    self.metrics_dict['calls'][class_id][metric]}, step=epoch)
+
         if not self.debug_mode:
             self.log_writer.log(
-                {f'{mode}_charts/ROC Curve': wandb.plot.roc_curve(self.label_list, pred_proba_array, labels=label_names)},
+                {f'{mode}_charts/ROC Curve': wandb.plot.roc_curve(self.label_list, pred_proba_array,
+                                                                  labels=label_names)},
                 step=epoch
             )
             self.log_writer.log(
@@ -175,12 +182,38 @@ class Logger:
     @staticmethod
     def get_metrics_dict(label_list, pred_list, pred_proba_array):
         """calculate the metrics comparing the predictions to the ground-truth labels, and return them in dict format"""
-        accuracy = metrics.accuracy_score(label_list, pred_list)  # calculate accuracy using sklearn.metrics
-        f1score = metrics.f1_score(label_list, pred_list)
-        precision = metrics.precision_score(label_list, pred_list)
-        recall = metrics.recall_score(label_list, pred_list)
-        auc = metrics.roc_auc_score(label_list, pred_proba_array[:, 1])
-        metrics_dict = {'accuracy': accuracy, 'f1score': f1score, 'precision': precision, 'recall': recall, 'auc': auc}
+        metrics_dict = {
+            'global': {'accuracy': metrics.accuracy_score(label_list, pred_list),
+                       'bg_f1': metrics.f1_score(label_list, pred_list, pos_label=0),
+                       'call_f1_macro': metrics.f1_score(label_list, pred_list, average='macro'),
+                       'bg_precision': metrics.precision_score(label_list, pred_list, pos_label=0),
+                       'bg_recall': metrics.recall_score(label_list, pred_list, pos_label=0)
+                       },
+            'calls': {}
+        }
+
+        try:
+            metrics_dict['bg_auc']: metrics.roc_auc_score(label_list, pred_proba_array[:, 0],
+                                                          labels=list(range(pred_proba_array.shape[1])))
+        except ValueError:
+            metrics_dict['bg_auc'] = np.nan
+
+        try:
+            metrics_dict['call_auc_macro']: metrics.roc_auc_score(label_list, pred_proba_array[:, 1:],
+                                                                  average='macro',
+                                                                  labels=list(range(pred_proba_array.shape[1])))
+        except ValueError:
+            metrics_dict['call_auc_macro'] = np.nan
+
+        for class_id in range(1, pred_proba_array.shape[1]):
+            metrics_dict['calls'][class_id] = {}
+            metrics_dict['calls'][class_id]['precision'] = metrics.precision_score(
+                label_list, pred_list, pos_label=class_id)
+            metrics_dict['calls'][class_id]['recall'] = metrics.recall_score(
+                label_list, pred_list, pos_label=class_id)
+            metrics_dict['calls'][class_id]['f1'] = metrics.f1_score(
+                label_list, pred_list, pos_label=class_id)
+
         return metrics_dict
 
 
