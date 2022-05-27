@@ -13,6 +13,7 @@ from omegaconf import DictConfig
 from pathlib import Path
 from copy import deepcopy
 import numpy as np
+from imblearn.over_sampling import RandomOverSampler
 import matplotlib.pyplot as plt
 from soundbay.data_augmentation import ChainedAugmentations
 
@@ -80,8 +81,38 @@ class ClassifierDataset(Dataset):
         """
 
         def _equalize_distribution(df_object):
+            label_candidates, label_frequency = np.unique(df_object['label'], return_counts=True)
+            # TODO: How should we consider background?
+            max_frequency_index = np.argmax(label_frequency)
+            max_frequency = label_frequency[max_frequency_index] 
+            max_label = label_candidates[max_frequency_index]
+            # oversampled_classes = np.delete(label_candidates,
+            # for sub_class in 
+            oversample = RandomOverSampler(sampling_strategy='minority')
+
+            oversampled_df, oversampled_labels = oversample.fit_resample(df_object.drop(columns=['label']), df_object['label'])
             len_pos = len(df_object[df_object['label'] == 1])
             len_neg = len(df_object[df_object['label'] == 0])
+
+
+            # # example of random oversampling to balance the class distribution
+            # from collections import Counter
+            # from sklearn.datasets import make_classification
+            # from imblearn.over_sampling import RandomOverSampler
+            # # define dataset
+            # X, y = make_classification(n_samples=10000, weights=[0.99], flip_y=0)
+            # # summarize class distribution
+            # print(Counter(y))
+            # # define oversampling strategy
+            # oversample = RandomOverSampler(sampling_strategy='minority')
+            # # fit and apply the transform
+            # X_over, y_over = oversample.fit_resample(X, y)
+            # # summarize class distribution
+            # print(Counter(y_over))
+
+
+
+
             diff = len_pos - len_neg
             if diff == 0:
                 return df_object
