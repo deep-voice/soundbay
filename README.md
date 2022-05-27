@@ -1,7 +1,7 @@
 <img src="figs/logo_deepvoice.png" width="400"/>
 
 ## Deep Learning Framework for Bioacoustics
-Soundbay is an intuitive and comprehensive Python-based framework for training deep learning models and apply them in bioacoustic research. We focus our efforts on marine mammals communication, however, we believe the framework is applicable for a broader scope.
+Soehensive Python-based framework for training deep learning models and apply them in bioacoustic research. We focus our efforts on marine mammals communication, however, we believe the framework is applicable for a broader scope.
 
 ## Installation
 Before installing, please verify you have a working Python environment, with pytorch, torchvision and torchaudio installed according to your local hardware.<br>
