@@ -7,7 +7,8 @@ import numpy as np
 import librosa.display
 import matplotlib
 import matplotlib.pyplot as plt
-from typing import Union, List
+from typing import Union, List, Optional
+
 matplotlib.rc('figure', max_open_warning = 0)
 
 try:
@@ -69,7 +70,7 @@ class Logger:
         self.pred_proba_list = []
         self.label_list = []
         self.upload_artifacts_limit = artifacts_upload_limit
-        self.metrics_dict = {'accuracy': [], 'f1score': [], 'precision': [], 'recall': [], 'auc': []}
+        self.metrics_dict = {}
         self.debug_mode = debug_mode
 
     def log(self, log_num: int, flag: str):
@@ -110,18 +111,25 @@ class Logger:
         self.pred_proba_list.append(torch.softmax(pred_tuple[0].data, 1).cpu().numpy())
         self.label_list += label.cpu().numpy().tolist()
 
-    def calc_metrics(self, epoch: int, mode: str = 'train', label_names: List[str] = ('Noise', 'Call')):
+    def calc_metrics(self, epoch: int, mode: str = 'train', label_names: Optional[List[str]] = None):
         """calculates metrics, saves to tensorboard log & flush prediction list"""
         pred_proba_array = np.concatenate(self.pred_proba_list)
         self.metrics_dict = self.get_metrics_dict(self.label_list, self.pred_list, pred_proba_array)
-        self.log_writer.log({f'Metrics/{mode}_Accuracy': self.metrics_dict['accuracy']}, step=epoch)
-        self.log_writer.log({f'Metrics/{mode}_f1score': self.metrics_dict['f1score']}, step=epoch)
-        self.log_writer.log({f'Metrics/{mode}_precision': self.metrics_dict['precision']}, step=epoch)
-        self.log_writer.log({f'Metrics/{mode}_recall': self.metrics_dict['recall']}, step=epoch)
-        self.log_writer.log({f'Metrics/{mode}_auc': self.metrics_dict['auc']}, step=epoch)
+        for metric, value in self.metrics_dict['global'].items():
+            self.log_writer.log({f'Global Metrics {mode}/{metric}': value}, step=epoch)
+
+        if label_names is None:
+            label_names = ['Noise'] + [f'Call_{i}' for i in range(1, len(self.metrics_dict['calls']) + 1)]
+
+        for class_id in self.metrics_dict['calls']:
+            for metric in self.metrics_dict['calls'][class_id]:
+                self.log_writer.log({f'Call Metrics {mode}/{metric}_{label_names[class_id]}':
+                                    self.metrics_dict['calls'][class_id][metric]}, step=epoch)
+
         if not self.debug_mode:
             self.log_writer.log(
-                {f'{mode}_charts/ROC Curve': wandb.plot.roc_curve(self.label_list, pred_proba_array, labels=label_names)},
+                {f'{mode}_charts/ROC Curve': wandb.plot.roc_curve(self.label_list, pred_proba_array,
+                                                                  labels=label_names)},
                 step=epoch
             )
             self.log_writer.log(
@@ -173,14 +181,48 @@ class Logger:
         return
 
     @staticmethod
-    def get_metrics_dict(label_list, pred_list, pred_proba_array):
+    def get_metrics_dict(label_list: Union[list, np.ndarray], pred_list: Union[list, np.ndarray],
+                         pred_proba_array: np.ndarray):
         """calculate the metrics comparing the predictions to the ground-truth labels, and return them in dict format"""
-        accuracy = metrics.accuracy_score(label_list, pred_list)  # calculate accuracy using sklearn.metrics
-        f1score = metrics.f1_score(label_list, pred_list)
-        precision = metrics.precision_score(label_list, pred_list)
-        recall = metrics.recall_score(label_list, pred_list)
-        auc = metrics.roc_auc_score(label_list, pred_proba_array[:, 1])
-        metrics_dict = {'accuracy': accuracy, 'f1score': f1score, 'precision': precision, 'recall': recall, 'auc': auc}
+
+        label_list = np.array(label_list)
+        pred_list = np.array(pred_list)
+        pred_proba_array = np.array(pred_proba_array)
+
+        metrics_dict = {
+            'global': {'accuracy': metrics.accuracy_score(label_list, pred_list),
+                       'call_average_precision_macro': np.nanmean([metrics.average_precision_score(
+                           label_list == i, pred_proba_array[:, i]) for i in range(1, pred_proba_array.shape[1])]),
+                       'bg_average_precision': metrics.average_precision_score(label_list == 0, pred_proba_array[:, 0]),
+                       'call_f1_macro': metrics.f1_score(label_list, pred_list, average='macro',
+                                                         labels=list(range(1, pred_proba_array.shape[1]))),
+                       'bg_f1': metrics.f1_score(label_list == 0, pred_list == 0),
+                       'bg_precision': metrics.precision_score(label_list == 0, pred_list == 0),
+                       'bg_recall': metrics.recall_score(label_list == 0, pred_list == 0),
+                       },
+            'calls': {}
+        }
+
+        def nan_auc(y_true, y_pred):
+            try:
+                return metrics.roc_auc_score(y_true, y_pred)
+            except ValueError:
+                return np.nan
+
+        metrics_dict['global']['bg_auc'] = nan_auc(label_list == 0, pred_proba_array[:, 0])
+
+        # Equivalent of 'macro' 'ovr' auc for only the positive classes.
+        # nan auc are not counted towards the mean.
+        pos_auc_list = [nan_auc(label_list == i, pred_proba_array[:, i]) for i in range(1, pred_proba_array.shape[1])]
+        metrics_dict['global']['call_auc_macro'] = np.nanmean(pos_auc_list)
+
+        for class_id in range(1, pred_proba_array.shape[1]):
+            metrics_dict['calls'][class_id] = {
+                'precision': metrics.precision_score(label_list == class_id, pred_list == class_id),
+                'recall': metrics.recall_score(label_list == class_id, pred_list == class_id),
+                'f1': metrics.f1_score(label_list == class_id, pred_list == class_id),
+            }
+
         return metrics_dict
 
 
