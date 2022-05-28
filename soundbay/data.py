@@ -167,8 +167,8 @@ class ClassifierDataset(Dataset):
                 start_time = random.randint(begin_time - margin_len_begin, end_time - margin_len_end)
             else:
                 start_time = random.randint(begin_time, end_time - int(self.seq_length * self.data_sample_rate))
-            if start_time < begin_time:
-                start_time = begin_time
+            if start_time < 0:
+                start_time = 0
         else:
             start_time = begin_time
         data, _ = sf.read(str(path_to_file), start=start_time,
