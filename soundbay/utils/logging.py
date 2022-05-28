@@ -69,7 +69,7 @@ class Logger:
         self.pred_proba_list = []
         self.label_list = []
         self.upload_artifacts_limit = artifacts_upload_limit
-        self.metrics_dict = {'accuracy': [], 'f1score': [], 'precision': [], 'recall': [], 'auc': []}
+        self.metrics_dict = {}
         self.debug_mode = debug_mode
 
     def log(self, log_num: int, flag: str):
@@ -182,6 +182,16 @@ class Logger:
     @staticmethod
     def get_metrics_dict(label_list, pred_list, pred_proba_array):
         """calculate the metrics comparing the predictions to the ground-truth labels, and return them in dict format"""
+
+        if isinstance(label_list, list):
+            label_list = np.array(label_list)
+
+        if isinstance(pred_list, list):
+            pred_list = np.array(pred_list)
+
+        if isinstance(pred_proba_array, list):
+            pred_proba_array = np.array(pred_proba_array)
+
         metrics_dict = {
             'global': {'accuracy': metrics.accuracy_score(label_list, pred_list),
                        'bg_f1': metrics.f1_score(label_list == 0, pred_list == 0),
@@ -193,27 +203,27 @@ class Logger:
             'calls': {}
         }
 
-        try:
-            metrics_dict['bg_auc']: metrics.roc_auc_score(label_list, pred_proba_array[:, 0],
-                                                          labels=list(range(pred_proba_array.shape[1])))
-        except ValueError:
-            metrics_dict['bg_auc'] = np.nan
+        def nan_auc(y_true, y_pred):
+            try:
+                return metrics.roc_auc_score(y_true, y_pred)
+            except ValueError:
+                return np.nan
 
-        try:
-            metrics_dict['call_auc_macro']: metrics.roc_auc_score(label_list, pred_proba_array[:, 1:],
-                                                                  average='macro',
-                                                                  labels=list(range(pred_proba_array.shape[1])))
-        except ValueError:
-            metrics_dict['call_auc_macro'] = np.nan
+        metrics_dict['global']['bg_auc'] = nan_auc(label_list == 0, pred_proba_array[:, 0])
+
+        # Equivalent of 'macro' 'ovr' auc for only the positive classes.
+        # nan auc are not counted towards the mean.
+        pos_auc_list = [nan_auc(label_list == i, pred_proba_array[:, i]) for i in range(1, pred_proba_array.shape[1])]
+        metrics_dict['global']['call_auc_macro'] = np.nanmean(pos_auc_list)
 
         for class_id in range(1, pred_proba_array.shape[1]):
             metrics_dict['calls'][class_id] = {}
             metrics_dict['calls'][class_id]['precision'] = metrics.precision_score(
-                label_list, pred_list, pos_label=class_id)
+                label_list == class_id, pred_list == class_id)
             metrics_dict['calls'][class_id]['recall'] = metrics.recall_score(
-                label_list, pred_list, pos_label=class_id)
+                label_list == class_id, pred_list == class_id)
             metrics_dict['calls'][class_id]['f1'] = metrics.f1_score(
-                label_list, pred_list, pos_label=class_id)
+                label_list == class_id, pred_list == class_id)
 
         return metrics_dict
 
