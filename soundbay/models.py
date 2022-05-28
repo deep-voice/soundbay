@@ -217,7 +217,7 @@ class GenericClassifier(nn.Module):
                  strides=(2, 2, 2, 2, 2, 2, 2, 2, 2, 1),
                  in_channels=(1, 128, 128, 128, 256, 256, 256, 512, 512, 512),
                  out_channels=(128, 128, 128, 256, 256, 256, 512, 512, 512, 1024),
-                 outputs_num=2,
+                 num_classes=2,
                  features_in=2048,
                  ):
         super(GenericClassifier, self).__init__()
@@ -227,7 +227,7 @@ class GenericClassifier(nn.Module):
                 ConvBlock2d(in_channels[i], out_channels[i], kernels[i], padd=(kernels[i] - 1) // 2, stride=strides[i])
             ]
             self.conv_layers += conv_layer
-        self.fc = nn.Linear(features_in, outputs_num)
+        self.fc = nn.Linear(features_in, num_classes)
 
     def forward(self, x):
 
