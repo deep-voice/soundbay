@@ -30,7 +30,17 @@ def analysis_logging(results_df,num_classes):
     print(metrics_dict)
 
 def inference_csv_to_raven(probsdataframe: pd.DataFrame, num_classes, seq_length: float, selected_class: str,threshold: float = 0.5, class_name: str = "call") -> pd.DataFrame:
-    # transforms the probability dataframe to a raven format with class_1 predictions as the annotated bounding boxes
+    """ Converts a csv file containing the inference results to a raven csv file.
+        Args: probsdataframe: a pandas dataframe containing the inference results.
+                      num_classes: the number of classes in the dataset.
+                      seq_length: the length of the sequence.
+                      selected_class: the class to be selected.
+                      threshold: the threshold to be used for the selection.
+                      class_name: the name of the class for which the raven csv file is generated.
+
+        Returns: a pandas dataframe containing the raven csv file.
+    """
+
     relevant_columns = probsdataframe.columns[-int(num_classes):]
     relevant_columns_df = probsdataframe[relevant_columns]
     len_dataset = relevant_columns_df.shape[0]  # number of segments in wav
@@ -38,18 +48,17 @@ def inference_csv_to_raven(probsdataframe: pd.DataFrame, num_classes, seq_length
     if_positive = probsdataframe[selected_class] > threshold  # check if the probability is above the threshold
     if "begin_time" in probsdataframe.columns: #if the dataframe has metadata
         all_begin_times = probsdataframe["begin_time"].values
-
     else: #if the dataframe came from a file with no ground truth
         all_begin_times = np.arange(0, len_dataset * seq_len, seq_len)
 
-    begin_times = all_begin_times[if_positive]
-    # begin_times = np.round(all_begin_times[if_positive], decimals=1) #rounded to avoid float errors (e.g. 24.00000000000001)
-
+    begin_times = all_begin_times[if_positive]  # get the begin times of the positive segments
     end_times = np.round(begin_times+seq_len, decimals=3)
     if end_times[-1] > round(len_dataset*seq_len,1):
-        end_times[-1] = round(len_dataset*seq_len,1) #cut off last bbox if exceeding eof
+        end_times[-1] = round(len_dataset*seq_len,1)  # cut off last bbox if exceeding eof
+
+    # create columns for raven format
     low_freq = np.zeros_like(begin_times)
-    high_freq = np.ones_like(begin_times)*20000 #just tall enough bounding box
+    high_freq = np.ones_like(begin_times)*20000  # just tall enough bounding box
     view = ['Spectrogram 1']*len(begin_times)
     selection = np.arange(1,len(begin_times)+1)
     annotation = [class_name]*len(begin_times)
@@ -57,10 +66,8 @@ def inference_csv_to_raven(probsdataframe: pd.DataFrame, num_classes, seq_length
     bboxes = {'Selection': selection, 'View': view, 'Channel': channel,
               'Begin Time (s)': begin_times, 'End Time (s)': end_times,
               'Low Freq (Hz)': low_freq, 'High Freq (Hz)': high_freq, 'Annotation': annotation}
-    annotations_df = pandas.DataFrame(data = bboxes)
 
-
-
+    annotations_df = pandas.DataFrame(data = bboxes)  # create dataframe
 
     return annotations_df
 
