@@ -59,8 +59,6 @@ def test_trainer(model, optimizer, scheduler, train_data_loader, criterion):
     trainer.train()
     check_variable_change(pre_training_model, model)
     assert trainer.epochs_trained == 2
-    assert len(trainer.logger.metrics_dict) == 5
-    assert (0 <= trainer.logger.metrics_dict['accuracy'] <= 1)
 
     # check that can load from checkpoint
     pre_training_model = copy.deepcopy(model)
