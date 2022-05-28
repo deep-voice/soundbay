@@ -1,5 +1,6 @@
 # @package _global_
 data:
+  label_names: ['Noise', 'Call']
   batch_size: 64
   num_workers: 10
   sample_rate: 16000
@@ -9,9 +10,9 @@ data:
   hop_length: 256
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/deep-voice'
+    data_path: '../datasets/mozambique_2018'
     mode: train 
-    metadata_path: '../annotations/combined_annotations_filtered_train.csv'
+    metadata_path: '../datasets/mozambique_2018/combined_annotations_filtered_train.csv'
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
@@ -24,9 +25,9 @@ data:
     slice_flag: false
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/deep-voice'
+    data_path: '../datasets/mozambique_2018'
     mode: val 
-    metadata_path: '../annotations/combined_annotations_filtered_val.csv'
+    metadata_path: '../datasets/mozambique_2018/combined_annotations_filtered_val.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}

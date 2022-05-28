@@ -1,0 +1,7 @@
+# @package _global_
+experiment:
+  checkpoint:
+    path: ???
+    load_optimizer_state: False
+  save_raven: False
+  threshold: 0.5

@@ -1,5 +1,5 @@
 # @package _global_
 defaults:
   - data: inference_file
-  - checkpoint: defaults
+  - experiment: inference
   - experiment: null_hydra

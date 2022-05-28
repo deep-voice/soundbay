@@ -26,7 +26,6 @@ from hydra.utils import instantiate
 import random
 from unittest.mock import Mock
 import os
-import tempfile
 from soundbay.utils.app import App
 from soundbay.utils.logging import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
@@ -139,8 +138,8 @@ def main(args):
     os.chdir(working_dirpath)
 
     # Define checkpoint
-    if args.checkpoint.path:
-        checkpoint = working_dirpath / args.checkpoint.path
+    if args.experiment.checkpoint.path:
+        checkpoint = working_dirpath / args.experiment.checkpoint.path
         assert checkpoint.exists(), 'Checkpoint does not exists!'
     else:
         checkpoint = None
@@ -174,7 +173,9 @@ def main(args):
         debug=args.experiment.debug,
         criterion=criterion,
         checkpoint=checkpoint,
-        output_path=output_dirpath
+        output_path=output_dirpath,
+        load_optimizer_state=args.experiment.checkpoint.load_optimizer_state,
+        label_names=args.data.label_names,
     )
     # modeling function for training
     modeling(
