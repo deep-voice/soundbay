@@ -184,10 +184,11 @@ class Logger:
         """calculate the metrics comparing the predictions to the ground-truth labels, and return them in dict format"""
         metrics_dict = {
             'global': {'accuracy': metrics.accuracy_score(label_list, pred_list),
-                       'bg_f1': metrics.f1_score(label_list, pred_list, pos_label=0),
-                       'call_f1_macro': metrics.f1_score(label_list, pred_list, average='macro'),
-                       'bg_precision': metrics.precision_score(label_list, pred_list, pos_label=0),
-                       'bg_recall': metrics.recall_score(label_list, pred_list, pos_label=0)
+                       'bg_f1': metrics.f1_score(label_list == 0, pred_list == 0),
+                       'call_f1_macro': metrics.f1_score(label_list, pred_list, average='macro',
+                                                         labels=list(range(1, pred_proba_array.shape[1]))),
+                       'bg_precision': metrics.precision_score(label_list == 0, pred_list == 0),
+                       'bg_recall': metrics.recall_score(label_list == 0, pred_list == 0)
                        },
             'calls': {}
         }
