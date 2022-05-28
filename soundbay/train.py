@@ -174,7 +174,8 @@ def main(args):
         criterion=criterion,
         checkpoint=checkpoint,
         output_path=output_dirpath,
-        load_optimizer_state=args.experiment.checkpoint.load_optimizer_state
+        load_optimizer_state=args.experiment.checkpoint.load_optimizer_state,
+        label_names=args.data.label_names,
     )
     # modeling function for training
     modeling(
