@@ -194,11 +194,14 @@ class Logger:
 
         metrics_dict = {
             'global': {'accuracy': metrics.accuracy_score(label_list, pred_list),
-                       'bg_f1': metrics.f1_score(label_list == 0, pred_list == 0),
+                       'call_average_precision_macro': np.nanmean([metrics.average_precision_score(
+                           label_list == i, pred_proba_array[:, i]) for i in range(1, pred_proba_array.shape[1])]),
+                       'bg_average_precision': metrics.average_precision_score(label_list == 0, pred_proba_array[:, 0]),
                        'call_f1_macro': metrics.f1_score(label_list, pred_list, average='macro',
                                                          labels=list(range(1, pred_proba_array.shape[1]))),
+                       'bg_f1': metrics.f1_score(label_list == 0, pred_list == 0),
                        'bg_precision': metrics.precision_score(label_list == 0, pred_list == 0),
-                       'bg_recall': metrics.recall_score(label_list == 0, pred_list == 0)
+                       'bg_recall': metrics.recall_score(label_list == 0, pred_list == 0),
                        },
             'calls': {}
         }
