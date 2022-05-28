@@ -75,7 +75,7 @@ def analysis_main() -> None:
 
     output_dirpath = workdir.parent.absolute() / "outputs"
     output_dirpath.mkdir(exist_ok=True)
-    inference_csv_name = "Inference_results-2022-05-28_10-31-31-best-sample_annotations"
+    inference_csv_name = "Inference_results-2022-05-03_17-01-10-best_margin0_5-220302_0054"
     inference_results_path = output_dirpath / Path(inference_csv_name + ".csv")
     num_classes = 2
     threshold = 1/num_classes  # threshold for the classifier in the raven results
@@ -85,11 +85,13 @@ def analysis_main() -> None:
     # go through columns and find the one containing the selected class
     column_list = results_df.columns
     selected_class_column = [s for s in column_list if name_col in s][0]
-    seq_length = results_df["call_length"].unique()[0]  # extract call length from inference results
+    seq_length_default = 0.2  # relevant only if analyzing an inference single file (not a dataset)
+    seq_length = results_df["call_length"].unique()[0] if "call_length" in results_df.columns else seq_length_default  # extract call length from inference results
 
     save_raven = True
-    # log analysis metrics
-    analysis_logging(results_df,num_classes)
+    if "label" in results_df.columns:
+        # log analysis metrics
+        analysis_logging(results_df,num_classes)
 
     # create raven results
     if save_raven:
