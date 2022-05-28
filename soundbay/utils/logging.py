@@ -7,7 +7,8 @@ import numpy as np
 import librosa.display
 import matplotlib
 import matplotlib.pyplot as plt
-from typing import Union, List
+from typing import Union, List, Optional
+
 matplotlib.rc('figure', max_open_warning = 0)
 
 try:
@@ -110,7 +111,7 @@ class Logger:
         self.pred_proba_list.append(torch.softmax(pred_tuple[0].data, 1).cpu().numpy())
         self.label_list += label.cpu().numpy().tolist()
 
-    def calc_metrics(self, epoch: int, mode: str = 'train', label_names: List[str] = None):
+    def calc_metrics(self, epoch: int, mode: str = 'train', label_names: Optional[List[str]] = None):
         """calculates metrics, saves to tensorboard log & flush prediction list"""
         pred_proba_array = np.concatenate(self.pred_proba_list)
         self.metrics_dict = self.get_metrics_dict(self.label_list, self.pred_list, pred_proba_array)
@@ -180,17 +181,13 @@ class Logger:
         return
 
     @staticmethod
-    def get_metrics_dict(label_list, pred_list, pred_proba_array):
+    def get_metrics_dict(label_list: Union[list, np.ndarray], pred_list: Union[list, np.ndarray],
+                         pred_proba_array: np.ndarray):
         """calculate the metrics comparing the predictions to the ground-truth labels, and return them in dict format"""
 
-        if isinstance(label_list, list):
-            label_list = np.array(label_list)
-
-        if isinstance(pred_list, list):
-            pred_list = np.array(pred_list)
-
-        if isinstance(pred_proba_array, list):
-            pred_proba_array = np.array(pred_proba_array)
+        label_list = np.array(label_list)
+        pred_list = np.array(pred_list)
+        pred_proba_array = np.array(pred_proba_array)
 
         metrics_dict = {
             'global': {'accuracy': metrics.accuracy_score(label_list, pred_list),
@@ -220,13 +217,11 @@ class Logger:
         metrics_dict['global']['call_auc_macro'] = np.nanmean(pos_auc_list)
 
         for class_id in range(1, pred_proba_array.shape[1]):
-            metrics_dict['calls'][class_id] = {}
-            metrics_dict['calls'][class_id]['precision'] = metrics.precision_score(
-                label_list == class_id, pred_list == class_id)
-            metrics_dict['calls'][class_id]['recall'] = metrics.recall_score(
-                label_list == class_id, pred_list == class_id)
-            metrics_dict['calls'][class_id]['f1'] = metrics.f1_score(
-                label_list == class_id, pred_list == class_id)
+            metrics_dict['calls'][class_id] = {
+                'precision': metrics.precision_score(label_list == class_id, pred_list == class_id),
+                'recall': metrics.recall_score(label_list == class_id, pred_list == class_id),
+                'f1': metrics.f1_score(label_list == class_id, pred_list == class_id),
+            }
 
         return metrics_dict
 
