@@ -1,11 +1,10 @@
-from typing import Union, Generator, Tuple
+from typing import Union, Generator, Tuple, List
 import torch
 import torch.utils.data
 from tqdm import tqdm
 from pathlib import Path
 from soundbay.utils.app import app
 from soundbay.utils.logging import Logger
-import matplotlib.pyplot as plt
 
 
 class Trainer:
@@ -38,6 +37,8 @@ class Trainer:
                  device: Union[torch.device, None] = torch.device("cpu"),
                  scheduler=None,
                  checkpoint: str = None,
+                 load_optimizer_state: bool = False,
+                 label_names: List[str] = None,
                  debug: bool = False):
 
         # set parameters for stft loss
@@ -54,10 +55,11 @@ class Trainer:
         self.train_dataloader = train_dataloader
         self.val_dataloader = val_dataloader
         self.output_path = output_path
+        self.label_names = list(label_names) if label_names else None
 
         # load checkpoint
         if checkpoint:
-            self._load_checkpoint(checkpoint_path=checkpoint)
+            self._load_checkpoint(checkpoint_path=checkpoint, load_optimizer_state=load_optimizer_state)
 
     def train(self):
         best_loss = float('inf')
@@ -108,7 +110,7 @@ class Trainer:
 
         # logging
         if not app.args.experiment.debug:
-            self.logger.calc_metrics(epoch, 'train')
+            self.logger.calc_metrics(epoch, 'train', self.label_names)
 
         self.logger.log(epoch, 'train')
         if self.scheduler is not None:
@@ -136,7 +138,7 @@ class Trainer:
 
             # logging
             if not app.args.experiment.debug:
-                self.logger.calc_metrics(epoch ,'val')
+                self.logger.calc_metrics(epoch, 'val', self.label_names)
             self.logger.log(epoch, 'val')
 
 
@@ -156,7 +158,7 @@ class Trainer:
 
         torch.save(state_dict, self.output_path / checkpoint_path)
 
-    def _load_checkpoint(self, checkpoint_path: Union[str, None]):
+    def _load_checkpoint(self, checkpoint_path: Union[str, None], load_optimizer_state: bool):
         """Load checkpoint.
         Args:
             checkpoint_path (str): Checkpoint path to be loaded.
@@ -165,8 +167,9 @@ class Trainer:
             return
         print('Loading checkpoint')
         state_dict = torch.load(checkpoint_path, map_location='cpu')
-        self.epochs_trained = state_dict["epochs"]
-        self.optimizer.load_state_dict(state_dict["optimizer"])
-        if self.scheduler is not None:
-            self.scheduler.load_state_dict(state_dict["scheduler"])
         self.model.load_state_dict(state_dict["model"])
+        if load_optimizer_state:
+            self.epochs_trained = state_dict["epochs"]
+            self.optimizer.load_state_dict(state_dict["optimizer"])
+            if self.scheduler is not None:
+                self.scheduler.load_state_dict(state_dict["scheduler"])

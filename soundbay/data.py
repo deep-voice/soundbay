@@ -237,7 +237,6 @@ class ClassifierDataset(Dataset):
             label = self.metadata["label"][idx]
             return audio_processed, label, audio_raw, idx
 
-
         elif self.mode == "test":
             return audio_processed
 
@@ -417,7 +416,7 @@ class InferenceDataset(Dataset):
         audio = self.sampler(audio)
         audio = self.preprocessor(audio)
 
-        return audio, idx
+        return audio
 
     def __len__(self):
         return len(self._start_times)

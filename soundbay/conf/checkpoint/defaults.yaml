@@ -1,4 +1,0 @@
-# @package _global_
-checkpoint:
-  path: null
-  resume: 'allow'
