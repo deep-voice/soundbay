@@ -86,7 +86,10 @@ def process_row(row, metadata_dict):
             'begin_time': [begin_time],
             'end_time': [end_time],
             'call_length': [call_length],
-            'file_address': [file_address]}
+            'file_address': [file_address],
+            'freq_range': [row['Run']],
+            'UID':[sub_row['UID']]}
+
             df = pd.DataFrame(data=d)
 
 
@@ -122,15 +125,15 @@ def main():
         total_df.append(process_row(row, metadata_dict))
 
     total_df = pd.concat(total_df)
-    total_df.to_csv('out_rafael_pp.csv', index=False)
-    # total_df = pd.read_csv('./datasets/multispecies_DS_EDA/three_classes_dataset.csv')
-    # print(f'previous sizes of dataframe: {total_df.shape}')
-    # total_df.rename(columns={'file_address':'filename'}, inplace=True)
-    # total_df_merged = non_overlap_df(total_df)
-    # print(f'previous sizes of dataframe: {total_df_merged.shape}')
-    # total_df_merged.to_csv('out.csv', index=False)
+    total_df.to_csv('pre_merge.csv', index=False)
+    total_df = pd.read_csv('./pre_merge.csv')
+    print(f'previous sizes of dataframe: {total_df.shape}')
+    total_df.rename(columns={'file_address':'filename'}, inplace=True)
+    total_df_merged = non_overlap_df(total_df)
+    print(f'previous sizes of dataframe: {total_df_merged.shape}')
+    total_df_merged.to_csv('post_merge.csv', index=False)
 
-    # print('finished parsing dataset')
+    print('finished parsing dataset')
 
 
 if __name__ == "__main__":
