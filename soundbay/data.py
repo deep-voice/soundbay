@@ -92,19 +92,6 @@ class ClassifierDataset(Dataset):
             return df_object_resampled
 
 
-
-
-            # diff = len_pos - len_neg
-            # if diff == 0:
-            #     return df_object
-            # label = 0 if diff > 0 else 1
-            # multiplier = int(np.ceil(abs(diff) / min(len_neg, len_pos)))
-            # additive = pd.concat(deepcopy([self.metadata[self.metadata['label'] == label]]) * multiplier)
-            # additive = additive[:abs(diff)]
-            # df_object = pd.concat([df_object, additive])
-            # assert len(df_object[df_object['label'] == 1]) == len(df_object[df_object['label'] == 0])
-            # return df_object
-
         self.metadata = self.metadata[self.metadata['call_length'] >= (self.seq_length + len_buffer)]
         if equalize:
             self.metadata = _equalize_distribution(self.metadata)
@@ -256,7 +243,7 @@ class MultiClassifierDataset(ClassifierDataset):
         """
         _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
         and returns the audio segment in a torch.tensor. it differs from ClassifierDataset _get_audio method
-        by turning the first conditional into "if not background" instead of "if call"
+        by turning the first conditional into "not background" instead of "if call"
 
         input:
         path_to_file - string
@@ -280,6 +267,9 @@ class MultiClassifierDataset(ClassifierDataset):
         data, _ = sf.read(path_to_file, start=start_time, stop=start_time + int(self.seq_length * self.data_sample_rate))
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
         return audio
+
+
+
 
 class PeakNormalize:
     """Convert array to lay between 0 to 1"""
