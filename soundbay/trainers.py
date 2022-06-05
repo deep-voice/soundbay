@@ -1,5 +1,5 @@
 import numpy as np
-from typing import Union, Generator, Tuple
+from typing import Union, Generator, Tuple, List
 import torch
 import torch.utils.data
 from tqdm import tqdm
@@ -39,6 +39,7 @@ class Trainer:
                  scheduler=None,
                  checkpoint: str = None,
                  load_optimizer_state: bool = False,
+                 label_names: List[str] = None,
                  debug: bool = False):
 
         # set parameters for stft loss
@@ -55,6 +56,7 @@ class Trainer:
         self.train_dataloader = train_dataloader
         self.val_dataloader = val_dataloader
         self.output_path = output_path
+        self.label_names = list(label_names) if label_names else None
 
         # load checkpoint
         if checkpoint:
@@ -112,7 +114,7 @@ class Trainer:
 
         # logging
         if not app.args.experiment.debug:
-            self.logger.calc_metrics(epoch, 'train')
+            self.logger.calc_metrics(epoch, 'train', self.label_names)
 
         self.logger.log(epoch, 'train')
         if self.scheduler is not None:
@@ -140,7 +142,7 @@ class Trainer:
 
             # logging
             if not app.args.experiment.debug:
-                self.logger.calc_metrics(epoch ,'val')
+                self.logger.calc_metrics(epoch, 'val', self.label_names)
             self.logger.log(epoch, 'val')
 
 
