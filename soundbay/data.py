@@ -210,7 +210,7 @@ class ClassifierDataset(Dataset):
         else:
             preprocessor = torch.nn.Identity()
         return preprocessor
-
+    
     def __getitem__(self, idx):
         '''
         __getitem__ method loads item according to idx from the metadata
@@ -248,53 +248,38 @@ class ClassifierDataset(Dataset):
 
 class MultiClassifierDataset(ClassifierDataset):
     '''
-    class for storing and loading data.
+    This  class inherits all the traits from ClassifierDataset and handles cases with multiple classes
     '''
-    def __init__(self): 
-    # data_path, metadata_path, augmentations, augmentations_p, preprocessors,
-    #              seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100, mode="train",
-    #              equalize_data=False, slice_flag=False, margin_ratio=0,
-    #              split_metadata_by_label=False):
-        super(MultiClassifierDataset, self)
-        """
-        __init__ method initiates ClassifierDataset instance:
-        Input:
-        data_path - string
-        metadata_path - string
-        augmentations - list of classes (not instances) from data_augmentation.py
-        augmentations_p - array of probabilities (float64)
-        preprocessors - list of classes from preprocessors (TBD function)
 
-        Output:
-        ClassifierDataset Object - inherits from Dataset object in PyTorch package
+    
+    def _get_audio(self, path_to_file, begin_time, end_time, label):
         """
-        print(self.metadata)
+        _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
+        and returns the audio segment in a torch.tensor. it differs from ClassifierDataset _get_audio method
+        by turning the first conditional into "if not background" instead of "if call"
+
+        input:
+        path_to_file - string
+        begin_time - int
+        end_time - int
+
+        output:
+        audio - pytorch tensor (1-D array)
+        """
         
-        def _get_audio(self, path_to_file, begin_time, end_time, label):
-            """
-            _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
-            and returns the audio segment in a torch.tensor
 
-            input:
-            path_to_file - string
-            begin_time - int
-            end_time - int
-
-            output:
-            audio - pytorch tensor (1-D array)
-            """
-            if (self.mode == "train") and (label == 1):
-                if self.margin_ratio != 0:  # ranges from 0 to 1 - indicates the relative part from seq_len to exceed call_length
-                    margin_len_begin = int((self.seq_length * self.data_sample_rate) * self.margin_ratio)
-                    margin_len_end = int((self.seq_length * self.data_sample_rate) * (1 - self.margin_ratio))
-                    start_time = random.randint(begin_time - margin_len_begin, end_time - margin_len_end)
-                else:
-                    start_time = random.randint(begin_time, end_time - int(self.seq_length * self.data_sample_rate))
+        if (self.mode == "train") and (label != 0):
+            if self.margin_ratio != 0:  # ranges from 0 to 1 - indicates the relative part from seq_len to exceed call_length
+                margin_len_begin = int((self.seq_length * self.data_sample_rate) * self.margin_ratio)
+                margin_len_end = int((self.seq_length * self.data_sample_rate) * (1 - self.margin_ratio))
+                start_time = random.randint(begin_time - margin_len_begin, end_time - margin_len_end)
             else:
-                start_time = begin_time
-            data, _ = sf.read(path_to_file, start=start_time, stop=start_time + int(self.seq_length * self.data_sample_rate))
-            audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
-            return audio
+                start_time = random.randint(begin_time, end_time - int(self.seq_length * self.data_sample_rate))
+        else:
+            start_time = begin_time
+        data, _ = sf.read(path_to_file, start=start_time, stop=start_time + int(self.seq_length * self.data_sample_rate))
+        audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
+        return audio
 
 class PeakNormalize:
     """Convert array to lay between 0 to 1"""
