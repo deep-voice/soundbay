@@ -1,5 +1,6 @@
 # @package _global_
 data:
+  label_names: ['Noise', 'Call']
   batch_size: 32
   num_workers: 4
   sample_rate: 96000
