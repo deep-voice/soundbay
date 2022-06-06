@@ -9,4 +9,5 @@ experiment:
   artifacts_upload_limit: 64
   checkpoint:
     path: null
+    resume: 'allow'
     load_optimizer_state: False

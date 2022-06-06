@@ -122,7 +122,7 @@ def main(args):
     _logger = wandb if not args.experiment.debug else Mock()
     experiment_name = get_experiment_name(args)
     _logger.init(project="finding_willy", name=experiment_name, group=args.experiment.group_name,
-                 id=args.experiment.run_id)
+                 id=args.experiment.run_id, resume=args.checkpoint.resume)
 
     # Set device
     if not torch.cuda.is_available():
