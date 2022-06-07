@@ -13,7 +13,6 @@ from omegaconf import DictConfig
 from pathlib import Path
 from copy import deepcopy
 import numpy as np
-from imblearn.over_sampling import RandomOverSampler
 import matplotlib.pyplot as plt
 from soundbay.data_augmentation import ChainedAugmentations
 
