@@ -34,5 +34,4 @@ data:
     margin_ratio: 0
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
-    
     slice_flag: true
