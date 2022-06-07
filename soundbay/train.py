@@ -17,12 +17,13 @@ using the command line when running main.py (e.g. "main.py experiment.debug=True
 """
 
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 import wandb
 from functools import partial
 from pathlib import Path
 import hydra
 from hydra.utils import instantiate
+
 import random
 from unittest.mock import Mock
 import os
@@ -44,6 +45,7 @@ def modeling(
     model_args,
     logger,
     freeze_layers_for_finetune,
+    equalize_data
 ):
     """
     modeling function takes all the variables and parameters defined in the main script
@@ -61,6 +63,7 @@ def modeling(
     scheduler_args - scheduler arguments taken from the configuration files/ overwritten
     model_args - model arguments taken from the configuration files/ overwritten
     logger - logger arguments taken from the configuration files/ overwritten
+    equalize_data - Boolean argument for data equalization - given frequency of each class`
 
     """
     # Set paths and create dataset
@@ -75,17 +78,22 @@ def modeling(
     logger.log_writer.watch(model)
 
     # Define dataloader for training and validation datasets as well as optimizers arguments
+    if equalize_data:
+        sampler = WeightedRandomSampler(1/train_dataset.items_per_classes, len(train_dataset) ) 
+    else:
+        sampler = None
     train_dataloader = DataLoader(
             dataset=train_dataset,
-            shuffle=True,
+            sampler=sampler,
+            shuffle=sampler is None,
             batch_size=batch_size,
             num_workers=num_workers,
             pin_memory=True,
         )
     val_dataloader = DataLoader(
             dataset=val_dataset,
-            shuffle=False,
             batch_size=batch_size,
+            shuffle=False,
             num_workers=num_workers,
             pin_memory=True,
         )
@@ -190,6 +198,7 @@ def main(args):
         model_args=args.model.model,
         logger=logger,
         freeze_layers_for_finetune=args.optim.freeze_layers_for_finetune,
+        equalize_data=args.experiment.equalize_data
     )
 
     if args.experiment.bucket_name and not args.experiment.debug:
