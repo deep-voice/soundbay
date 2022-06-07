@@ -100,9 +100,6 @@ class Trainer:
 
             # estimate and calc losses
             estimated_label = self.model(audio)
-            if estimated_label.shape[1] > 2: #Softmax in case of multiclass
-                soft = torch.nn.Softmax()
-                estimated_label = soft(estimated_label)
             loss = self.criterion(estimated_label, label)
             loss.backward()
             self.optimizer.step()
