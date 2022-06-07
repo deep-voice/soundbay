@@ -8,7 +8,17 @@ import pandas
 import datetime
 from scipy.special import softmax
 from soundbay.utils.logging import Logger
+import argparse
 
+def make_parser():
+    parser = argparse.ArgumentParser("Results Analysis")
+
+    parser.add_argument("--num_classes", default=2, help="number of classes for analysis")
+    parser.add_argument("--filedir", default="../outputs", help="directory for inference file")
+    parser.add_argument("--filename", default="", help="csv file of inference results for analysis")
+    parser.add_argument("--selected_class", default="1", help = "selected class, will be annotated raven file")
+
+    return parser
 
 def analysis_logging(results_df,num_classes):
     """
@@ -77,17 +87,17 @@ def analysis_main() -> None:
 
     """
     # configurations:
-
+    args = make_parser().parse_args()
     workdir = Path(os.getcwd())
 
-    output_dirpath = workdir.parent.absolute() / "outputs"
+    output_dirpath = Path(args.filedir) #workdir.parent.absolute() / "outputs"
     output_dirpath.mkdir(exist_ok=True)
-    inference_csv_name = "Inference_results-2022-05-03_17-01-10-best_margin0_5-220302_0054"
+    inference_csv_name = args.filename
     inference_results_path = output_dirpath / Path(inference_csv_name + ".csv")
-    num_classes = 2
+    num_classes = int(args.num_classes)
     threshold = 1/num_classes  # threshold for the classifier in the raven results
     results_df = pd.read_csv(inference_results_path)
-    name_col = str(1) # selected class for raven results
+    name_col = args.selected_class  # selected class for raven results
 
     # go through columns and find the one containing the selected class
     column_list = results_df.columns
