@@ -24,7 +24,7 @@ class ClassifierDataset(Dataset):
     '''
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100, mode="train",
-                 equalize_data=False, slice_flag=False, margin_ratio=0,
+                  slice_flag=False, margin_ratio=0,
                  split_metadata_by_label=False):
         """
         __init__ method initiates ClassifierDataset instance:
@@ -48,11 +48,12 @@ class ClassifierDataset(Dataset):
         self.sample_rate = sample_rate
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
-        self._preprocess_metadata(len_buffer, equalize_data, slice_flag)
+        self._preprocess_metadata(len_buffer, slice_flag)
         self.augmenter = self._set_augmentations(augmentations, augmentations_p)
         self.preprocessor = self.set_preprocessor(preprocessors)
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
+        self.items_per_classes = np.unique(self.metadata['label'], return_counts=True)[1]
 
     @staticmethod
     def _update_metadata_by_mode(metadata, mode, split_metadata_by_label):
@@ -71,7 +72,7 @@ class ClassifierDataset(Dataset):
         audio_paths = data_path.rglob('*.wav')
         return {x.name.replace('.wav', ''): x for x in audio_paths}
 
-    def _preprocess_metadata(self, len_buffer, equalize=False, slice_flag=False):
+    def _preprocess_metadata(self, len_buffer, slice_flag=False):
         """
         function _preprocesses_metadata grabs calls with minimal length of self.seq_length + len_buffer
         Input:
@@ -80,21 +81,8 @@ class ClassifierDataset(Dataset):
         ClassifierDataset object with self.metadata dataframe after applying the condition
         """
 
-        def _equalize_distribution(df_object):
-            # TODO: How should we consider background?
-            oversample = RandomOverSampler(sampling_strategy='auto')
-
-            oversampled_df, oversampled_labels = oversample.fit_resample(df_object.drop(columns=['label']), df_object['label'])
-            df_object_resampled =  pd.DataFrame.join(oversampled_df, oversampled_labels)
-            _, frequencies = np.unique(df_object_resampled['label'], return_counts=True)
-            freq_list = list(frequencies)
-            assert(freq_list.count(freq_list[0]) == len(freq_list)) # assert equal classes for all
-            return df_object_resampled
-
-
         self.metadata = self.metadata[self.metadata['call_length'] >= (self.seq_length + len_buffer)]
-        if equalize:
-            self.metadata = _equalize_distribution(self.metadata)
+
         if slice_flag:
             self._slice_sequence(len_buffer)
 
