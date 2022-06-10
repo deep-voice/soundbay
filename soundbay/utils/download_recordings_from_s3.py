@@ -14,6 +14,6 @@ if __name__=="__main__":
     # print(unique_files, freq)
     iterator = tqdm(list(unique_files), desc='Downloading files from s3...')
     for ifile in iterator:
-        run_cmd = f'aws s3 cp {ifile} {download_path} --dryrun'
+        run_cmd = f'aws s3 cp {ifile} {download_path}'
         subprocess.run(run_cmd, shell=True)
     print(csv_path, download_path)
