@@ -1,4 +1,3 @@
-import numpy as np
 from typing import Union, Generator, Tuple, List
 import torch
 import torch.utils.data
