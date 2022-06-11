@@ -1,6 +1,6 @@
 # @package _global_
 data:
-  label_names: ['Noise', 'Call1','Call2','Call3']
+  label_names: ['Call1','Call2']
   batch_size: 64
   num_workers: 10
   sample_rate: 16000
@@ -10,9 +10,9 @@ data:
   hop_length: 256
   train_dataset:
     _target_: soundbay.data.MultiClassifierDataset
-    data_path: '../tests/assets/data/'
+    data_path: '../../dataset_files'
     mode: train
-    metadata_path: '../tests/assets/annotations/sample_annotations.csv'
+    metadata_path: '../../dataset_files/training_out_curated.csv' 
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
@@ -24,9 +24,9 @@ data:
     slice_flag: false
   val_dataset:
     _target_: soundbay.data.MultiClassifierDataset
-    data_path: '../tests/assets/data'
+    data_path: '../../dataset_files'
     mode: val
-    metadata_path: '../tests/assets/annotations/sample_annotations.csv'
+    metadata_path: '../../dataset_files/training_out_curated.csv' 
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
