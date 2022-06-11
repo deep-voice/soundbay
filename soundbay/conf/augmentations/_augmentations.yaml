@@ -14,7 +14,7 @@ _augmentations:
     _target_: soundbay.data_augmentation.FrequencyMasking
     p: 0.5
     sr: ${data.sample_rate}
-    min_freq_in_segment: 200
+    min_freq_in_segment: 2000
     max_freq_in_segment: ${data.max_freq}
     attenuation_gain: 120
-    bandwidth_to_filter_out: 50
+    bandwidth_to_filter_out: 5000
