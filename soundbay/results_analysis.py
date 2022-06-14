@@ -54,13 +54,13 @@ def inference_csv_to_raven(probs_df: pd.DataFrame, num_classes, seq_length: floa
         Returns: a pandas dataframe containing the raven csv file.
     """
 
-    relevant_columns = probsdataframe.columns[-int(num_classes):]
-    relevant_columns_df = probsdataframe[relevant_columns]
+    relevant_columns = probs_df.columns[-int(num_classes):]
+    relevant_columns_df = probs_df[relevant_columns]
     len_dataset = relevant_columns_df.shape[0]  # number of segments in wav
     seq_len = seq_length
-    if_positive = probsdataframe[selected_class] > threshold  # check if the probability is above the threshold
-    if "begin_time" in probsdataframe.columns: #if the dataframe has metadata
-        all_begin_times = probsdataframe["begin_time"].values
+    if_positive = probs_df[selected_class] > threshold  # check if the probability is above the threshold
+    if "begin_time" in probs_df.columns: #if the dataframe has metadata
+        all_begin_times = probs_df["begin_time"].values
     else: #if the dataframe came from a file with no ground truth
         all_begin_times = np.arange(0, len_dataset * seq_len, seq_len)
 
