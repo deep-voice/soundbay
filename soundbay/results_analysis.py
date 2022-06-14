@@ -10,6 +10,9 @@ from scipy.special import softmax
 from soundbay.utils.logging import Logger
 import argparse
 
+
+bb_height = 20000 # just tall enough bounding box for visibility, in Hz
+
 def make_parser():
     parser = argparse.ArgumentParser("Results Analysis")
 
@@ -68,7 +71,7 @@ def inference_csv_to_raven(probsdataframe: pd.DataFrame, num_classes, seq_length
 
     # create columns for raven format
     low_freq = np.zeros_like(begin_times)
-    high_freq = np.ones_like(begin_times)*20000  # just tall enough bounding box
+    high_freq = np.ones_like(begin_times)*bb_height
     view = ['Spectrogram 1']*len(begin_times)
     selection = np.arange(1,len(begin_times)+1)
     annotation = [class_name]*len(begin_times)
@@ -89,7 +92,7 @@ def analysis_main() -> None:
     # configurations:
     args = make_parser().parse_args()
     workdir = Path(os.getcwd())
-
+    assert args.filename, "filename argument is empty, you can't run analysis on nothing"
     output_dirpath = Path(args.filedir) #workdir.parent.absolute() / "outputs"
     output_dirpath.mkdir(exist_ok=True)
     inference_csv_name = args.filename
