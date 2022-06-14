@@ -118,7 +118,11 @@ class ClassifierDataset(Dataset):
         begin_time = int(begin_time * orig_sample_rate)
         end_time = int(end_time * orig_sample_rate)
         label = self.metadata['label'][idx]
-        return path_to_file, begin_time, end_time, label
+        if 'channel' in self.metadata.columns:
+            channel = self.metadata['channel'][idx]
+        else:
+            channel = None
+        return path_to_file, begin_time, end_time, label, channel
 
 
     def _slice_sequence(self, len_buffer):
@@ -143,7 +147,7 @@ class ClassifierDataset(Dataset):
         self.metadata['call_length'] = np.shape(self.metadata)[0] * [self.seq_length]
         return
 
-    def _get_audio(self, path_to_file, begin_time, end_time, label):
+    def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
         """
         _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
         and returns the audio segment in a torch.tensor
@@ -163,9 +167,17 @@ class ClassifierDataset(Dataset):
                 start_time = random.randint(begin_time - margin_len_begin, end_time - margin_len_end)
             else:
                 start_time = random.randint(begin_time, end_time - int(self.seq_length * self.data_sample_rate))
+            if start_time < 0:
+                start_time = 0
         else:
             start_time = begin_time
-        data, _ = sf.read(path_to_file, start=start_time, stop=start_time + int(self.seq_length * self.data_sample_rate))
+        data, _ = sf.read(str(path_to_file), start=start_time,
+                          stop=start_time + int(self.seq_length * self.data_sample_rate))
+        if channel is not None:
+            data = data[:, channel-1]
+        if data.shape[0] < 1:
+           raise ValueError(f"Audio segment is empty. {path_to_file}: "
+                            f"{start_time}, {start_time + int(self.seq_length * self.data_sample_rate)}")
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
         return audio
 
@@ -215,8 +227,8 @@ class ClassifierDataset(Dataset):
 
 
         '''
-        path_to_file, begin_time, end_time, label = self._grab_fields(idx)
-        audio = self._get_audio(path_to_file, begin_time, end_time, label)
+        path_to_file, begin_time, end_time, label, channel = self._grab_fields(idx)
+        audio = self._get_audio(path_to_file, begin_time, end_time, label, channel)
         audio_raw = self.sampler(audio)
         audio_augmented = self.augmenter(audio_raw)
         audio_processed = self.preprocessor(audio_augmented)
