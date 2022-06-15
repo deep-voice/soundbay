@@ -5,7 +5,6 @@ data:
   sample_rate: 48000
   data_sample_rate: 96000
   max_freq: 50000
-  min_freq: 5000
   n_fft: 1024
   hop_length: 512
   train_dataset:

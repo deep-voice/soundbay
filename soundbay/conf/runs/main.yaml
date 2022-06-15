@@ -1,6 +1,6 @@
 # @package _global_
 defaults:
-  - data: brazil
+  - data: brazil_clicks
   - augmentations: _augmentations
   - preprocessors: _preprocessors_unit
   - model: defaults
