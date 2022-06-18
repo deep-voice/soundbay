@@ -160,8 +160,7 @@ class Logger:
         # Original wavs batch
 
         artifact_wav = torch.squeeze(raw_wav).detach().cpu().numpy()
-        artifact_wav = artifact_wav / np.max(np.abs(artifact_wav)) * 0.5 #avoid clipping
-        artifact_wav = artifact_wav * 10 ** (volume / (20 * np.log10(1/ np.std(artifact_wav)))) # add dB 
+        artifact_wav = artifact_wav / np.expand_dims(np.abs(artifact_wav).max(axis=1) + 1e-8, 1) * 0.5  # gain -6dB
         list_of_wavs_objects = [wandb.Audio(data_or_path=wav, caption=f'label_{lab}_{ind}_train', sample_rate=sample_rate) for wav, ind, lab in zip(artifact_wav,idx, label)]
 
         # Spectrograms batch

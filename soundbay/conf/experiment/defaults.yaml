@@ -10,4 +10,5 @@ experiment:
   equalize_data: True
   checkpoint:
     path: null
+    resume: 'allow'
     load_optimizer_state: False

@@ -103,7 +103,11 @@ class BaseDataset(Dataset):
         begin_time = int(begin_time * orig_sample_rate)
         end_time = int(end_time * orig_sample_rate)
         label = self.metadata['label'][idx]
-        return path_to_file, begin_time, end_time, label
+        if 'channel' in self.metadata.columns:
+            channel = self.metadata['channel'][idx]
+        else:
+            channel = None
+        return path_to_file, begin_time, end_time, label, channel
 
 
     def _slice_sequence(self, len_buffer):
@@ -177,8 +181,8 @@ class BaseDataset(Dataset):
 
 
         '''
-        path_to_file, begin_time, end_time, label = self._grab_fields(idx)
-        audio = self._get_audio(path_to_file, begin_time, end_time, label)
+        path_to_file, begin_time, end_time, label, channel = self._grab_fields(idx)
+        audio = self._get_audio(path_to_file, begin_time, end_time, label, channel)
         audio_raw = self.sampler(audio)
         audio_augmented = self.augmenter(audio_raw)
         audio_processed = self.preprocessor(audio_augmented)
@@ -203,44 +207,7 @@ class ClassifierDataset(BaseDataset):
     '''
 
     
-    def _get_audio(self, path_to_file, begin_time, end_time, label):
-        """
-        _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
-        and returns the audio segment in a torch.tensor. it differs from ClassifierDataset _get_audio method
-        by turning the first conditional into "not background" instead of "if call"
-
-        input:
-        path_to_file - string
-        begin_time - int
-        end_time - int
-
-        output:
-        audio - pytorch tensor (1-D array)
-        """
-        
-
-        if (self.mode == "train") and (label != 0):
-            if self.margin_ratio != 0:  # ranges from 0 to 1 - indicates the relative part from seq_len to exceed call_length
-                margin_len_begin = int((self.seq_length * self.data_sample_rate) * self.margin_ratio)
-                margin_len_end = int((self.seq_length * self.data_sample_rate) * (1 - self.margin_ratio))
-                start_time = random.randint(begin_time - margin_len_begin, end_time - margin_len_end)
-            else:
-                start_time = random.randint(begin_time, end_time - int(self.seq_length * self.data_sample_rate))
-        else:
-            start_time = begin_time
-        data, _ = sf.read(path_to_file, start=start_time, stop=start_time + int(self.seq_length * self.data_sample_rate))
-        audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
-        return audio
-
-
-class NoBackGroundDataset(BaseDataset):
-    '''
-    This  class inherits all the traits from BaseDataset and handles cases with no Background noise (calls only dataset)
-    '''
-
-
-    
-    def _get_audio(self, path_to_file, begin_time, end_time, label):
+    def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
         """
         _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
         and returns the audio segment in a torch.tensor
@@ -253,11 +220,61 @@ class NoBackGroundDataset(BaseDataset):
         output:
         audio - pytorch tensor (1-D array)
         """
-        if (self.mode == "train"):
-            start_time = random.randint(begin_time, end_time - int(self.seq_length * self.data_sample_rate))
+        if (self.mode == "train") and (label == 1):
+            if self.margin_ratio != 0:  # ranges from 0 to 1 - indicates the relative part from seq_len to exceed call_length
+                margin_len_begin = int((self.seq_length * self.data_sample_rate) * self.margin_ratio)
+                margin_len_end = int((self.seq_length * self.data_sample_rate) * (1 - self.margin_ratio))
+                start_time = random.randint(begin_time - margin_len_begin, end_time - margin_len_end)
+            else:
+                start_time = random.randint(begin_time, end_time - int(self.seq_length * self.data_sample_rate))
+            if start_time < 0:
+                start_time = 0
         else:
             start_time = begin_time
-        data, _ = sf.read(path_to_file, start=start_time, stop=start_time + int(self.seq_length * self.data_sample_rate))
+        data, _ = sf.read(str(path_to_file), start=start_time,
+                          stop=start_time + int(self.seq_length * self.data_sample_rate))
+        if channel is not None:
+            data = data[:, channel-1]
+        if data.shape[0] < 1:
+           raise ValueError(f"Audio segment is empty. {path_to_file}: "
+                            f"{start_time}, {start_time + int(self.seq_length * self.data_sample_rate)}")
+        audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
+        return audio
+
+
+class NoBackGroundDataset(BaseDataset):
+    '''
+    This  class inherits all the traits from BaseDataset and handles cases with no Background noise (calls only dataset)
+    '''
+
+
+    
+    def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
+        """
+        _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
+        and returns the audio segment in a torch.tensor
+
+        input:
+        path_to_file - string
+        begin_time - int
+        end_time - int
+
+        output:
+        audio - pytorch tensor (1-D array)
+        """
+        if (self.mode == "train") and (label == 1):
+            start_time = random.randint(begin_time, end_time - int(self.seq_length * self.data_sample_rate))
+        if start_time < 0:
+            start_time = 0
+        else:
+            start_time = begin_time
+        data, _ = sf.read(str(path_to_file), start=start_time,
+                          stop=start_time + int(self.seq_length * self.data_sample_rate))
+        if channel is not None:
+            data = data[:, channel-1]
+        if data.shape[0] < 1:
+           raise ValueError(f"Audio segment is empty. {path_to_file}: "
+                            f"{start_time}, {start_time + int(self.seq_length * self.data_sample_rate)}")
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
         return audio
 
