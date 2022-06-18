@@ -15,7 +15,6 @@ using the command line when running main.py (e.g. "main.py experiment.debug=True
 * make sure to install all the packages stated in the requirements.txt file prior to running this script
 
 """
-
 import torch
 from torch.utils.data import DataLoader
 import wandb
@@ -30,6 +29,7 @@ from soundbay.utils.app import App
 from soundbay.utils.logging import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
 from soundbay.trainers import Trainer
+
 
 
 def modeling(
@@ -122,7 +122,7 @@ def main(args):
     _logger = wandb if not args.experiment.debug else Mock()
     experiment_name = get_experiment_name(args)
     _logger.init(project="finding_willy", name=experiment_name, group=args.experiment.group_name,
-                 id=args.experiment.run_id, resume=args.checkpoint.resume)
+                 id=args.experiment.run_id, resume=args.experiment.checkpoint.resume)
     # Set device
     if not torch.cuda.is_available():
         print('CPU!!!!!!!!!!!')
