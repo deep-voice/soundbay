@@ -9,7 +9,7 @@ data:
   n_fft: 1024
   hop_length: 256
   train_dataset:
-    _target_: soundbay.data.MultiClassifierDataset
+    _target_: soundbay.data.ClassifierDataset
     data_path: '../../dataset_files'
     mode: train
     metadata_path: '../../dataset_files/training_out_curated.csv' 
@@ -23,7 +23,7 @@ data:
     sample_rate: ${data.sample_rate}
     slice_flag: false
   val_dataset:
-    _target_: soundbay.data.MultiClassifierDataset
+    _target_: soundbay.data.ClassifierDataset
     data_path: '../../dataset_files'
     mode: val
     metadata_path: '../../dataset_files/training_out_curated.csv' 
