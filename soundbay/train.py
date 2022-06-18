@@ -74,6 +74,10 @@ def modeling(
     model = instantiate(model_args)
     model.to(device)
 
+    # Assert number of labels in the dataset and the number of labels in the model
+    assert model_args.num_classes == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
+    "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
+
     # Add model watch to WANDB
     logger.log_writer.watch(model)
 
