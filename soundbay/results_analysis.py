@@ -1,12 +1,8 @@
 import pandas as pd
-import torch
-from torch.utils.data import DataLoader
 import numpy as np
 from pathlib import Path
-import os
 import pandas
 import datetime
-from scipy.special import softmax
 from soundbay.utils.logging import Logger
 import argparse
 
@@ -20,6 +16,7 @@ def make_parser():
     parser.add_argument("--filedir", default="../outputs", help="directory for inference file")
     parser.add_argument("--filename", default="", help="csv file of inference results for analysis")
     parser.add_argument("--selected_class", default="1", help = "selected class, will be annotated raven file")
+    parser.add_argument("--save_raven", default=True, help ="whether or not to create a raven file")
 
     return parser
 
@@ -42,7 +39,7 @@ def analysis_logging(results_df,num_classes):
                                        results_array)
     print(metrics_dict)
 
-def inference_csv_to_raven(probs_df: pd.DataFrame, num_classes, seq_length: float, selected_class: str,threshold: float = 0.5, class_name: str = "call") -> pd.DataFrame:
+def inference_csv_to_raven(probs_df: pd.DataFrame, num_classes, seq_len: float, selected_class: str,threshold: float = 0.5, class_name: str = "call") -> pd.DataFrame:
     """ Converts a csv file containing the inference results to a raven csv file.
         Args: probsdataframe: a pandas dataframe containing the inference results.
                       num_classes: the number of classes in the dataset.
@@ -57,7 +54,6 @@ def inference_csv_to_raven(probs_df: pd.DataFrame, num_classes, seq_length: floa
     relevant_columns = probs_df.columns[-int(num_classes):]
     relevant_columns_df = probs_df[relevant_columns]
     len_dataset = relevant_columns_df.shape[0]  # number of segments in wav
-    seq_len = seq_length
     if_positive = probs_df[selected_class] > threshold  # check if the probability is above the threshold
     if "begin_time" in probs_df.columns: #if the dataframe has metadata
         all_begin_times = probs_df["begin_time"].values
@@ -91,10 +87,10 @@ def analysis_main() -> None:
     """
     # configurations:
     args = make_parser().parse_args()
-    workdir = Path(os.getcwd())
     assert args.filename, "filename argument is empty, you can't run analysis on nothing"
     output_dirpath = Path(args.filedir) #workdir.parent.absolute() / "outputs"
     output_dirpath.mkdir(exist_ok=True)
+    save_raven = args.save_raven
     inference_csv_name = args.filename
     inference_results_path = output_dirpath / Path(inference_csv_name + ".csv")
     num_classes = int(args.num_classes)
@@ -108,7 +104,6 @@ def analysis_main() -> None:
     seq_length_default = 0.2  # relevant only if analyzing an inference single file (not a dataset)
     seq_length = results_df["call_length"].unique()[0] if "call_length" in results_df.columns else seq_length_default  # extract call length from inference results
 
-    save_raven = True
     if "label" in results_df.columns:
         # log analysis metrics
         analysis_logging(results_df,num_classes)
