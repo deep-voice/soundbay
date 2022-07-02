@@ -11,19 +11,18 @@ from hydra.utils import instantiate
 from typing import Union
 from omegaconf import DictConfig
 from pathlib import Path
-from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
 from soundbay.data_augmentation import ChainedAugmentations
 
 
-class ClassifierDataset(Dataset):
+class BaseDataset(Dataset):
     '''
     class for storing and loading data.
     '''
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100, mode="train",
-                 equalize_data=False, slice_flag=False, margin_ratio=0,
+                  slice_flag=False, margin_ratio=0,
                  split_metadata_by_label=False):
         """
         __init__ method initiates ClassifierDataset instance:
@@ -47,11 +46,12 @@ class ClassifierDataset(Dataset):
         self.sample_rate = sample_rate
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
-        self._preprocess_metadata(len_buffer, equalize_data, slice_flag)
+        self._preprocess_metadata(len_buffer, slice_flag)
         self.augmenter = self._set_augmentations(augmentations, augmentations_p)
         self.preprocessor = self.set_preprocessor(preprocessors)
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
+        self.items_per_classes = np.unique(self.metadata['label'], return_counts=True)[1]
 
     @staticmethod
     def _update_metadata_by_mode(metadata, mode, split_metadata_by_label):
@@ -70,7 +70,7 @@ class ClassifierDataset(Dataset):
         audio_paths = data_path.rglob('*.wav')
         return {x.name.replace('.wav', ''): x for x in audio_paths}
 
-    def _preprocess_metadata(self, len_buffer, equalize=False, slice_flag=False):
+    def _preprocess_metadata(self, len_buffer, slice_flag=False):
         """
         function _preprocesses_metadata grabs calls with minimal length of self.seq_length + len_buffer
         Input:
@@ -79,23 +79,8 @@ class ClassifierDataset(Dataset):
         ClassifierDataset object with self.metadata dataframe after applying the condition
         """
 
-        def _equalize_distribution(df_object):
-            len_pos = len(df_object[df_object['label'] == 1])
-            len_neg = len(df_object[df_object['label'] == 0])
-            diff = len_pos - len_neg
-            if diff == 0:
-                return df_object
-            label = 0 if diff > 0 else 1
-            multiplier = int(np.ceil(abs(diff) / min(len_neg, len_pos)))
-            additive = pd.concat(deepcopy([self.metadata[self.metadata['label'] == label]]) * multiplier)
-            additive = additive[:abs(diff)]
-            df_object = pd.concat([df_object, additive])
-            assert len(df_object[df_object['label'] == 1]) == len(df_object[df_object['label'] == 0])
-            return df_object
-
         self.metadata = self.metadata[self.metadata['call_length'] >= (self.seq_length + len_buffer)]
-        if equalize:
-            self.metadata = _equalize_distribution(self.metadata)
+
         if slice_flag:
             self._slice_sequence(len_buffer)
 
@@ -147,6 +132,81 @@ class ClassifierDataset(Dataset):
         self.metadata['call_length'] = np.shape(self.metadata)[0] * [self.seq_length]
         return
 
+    def _get_audio(self, path_to_file, begin_time, end_time, label):
+        raise NotImplementedError 
+
+    def _set_augmentations(self, augmentations_dict, augmentations_p):
+        """
+        get augmentations list and instantiate - TBD
+        """
+        if augmentations_dict is not None:
+            augmentations_list = [instantiate(args) for args in augmentations_dict.values()]
+        else:
+            augmentations_list = []
+        augmenter = ChainedAugmentations(augmentations_list, augmentations_p) if self.mode == 'train' else torch.nn.Identity()
+        return augmenter
+
+    @staticmethod
+    def set_preprocessor(preprocessors_args):
+        """
+        function set_preprocessor takes preprocessors_args as an argument and creates a preprocessor object
+        to be applied later on the audio segment
+
+        input:
+        preprocessors_args - list of classes from torchvision
+
+        output:
+        preprocessor - Composes several transforms together (transforms object)
+        """
+        if len(preprocessors_args) > 0:
+            processors_list = [instantiate(args) for args in preprocessors_args.values()]
+            preprocessor = transforms.Compose(processors_list)
+        else:
+            preprocessor = torch.nn.Identity()
+        return preprocessor
+    
+    def __getitem__(self, idx):
+        '''
+        __getitem__ method loads item according to idx from the metadata
+
+        input:
+        idx - int
+
+        output:
+        For train/ val modes -
+        audio_processed, label, audio_raw, idx - torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
+        , int (if mode="train" only), 2-d tensor, int
+
+        For test - audio_processed - torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
+
+
+        '''
+        path_to_file, begin_time, end_time, label, channel = self._grab_fields(idx)
+        audio = self._get_audio(path_to_file, begin_time, end_time, label, channel)
+        audio_raw = self.sampler(audio)
+        audio_augmented = self.augmenter(audio_raw)
+        audio_processed = self.preprocessor(audio_augmented)
+
+        if self.mode == "train" or self.mode == "val":
+            label = self.metadata["label"][idx]
+            return audio_processed, label, audio_raw, idx
+
+        elif self.mode == "test":
+            return audio_processed
+
+    def __len__(self):
+        return self.metadata.shape[0]
+
+
+
+
+class ClassifierDataset(BaseDataset):
+    '''
+    This class inherits all the traits from BaseDataset and handles cases that include Background noise 
+    (margin ratio feature is implemented)
+    '''
+
+    
     def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
         """
         _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
@@ -181,67 +241,42 @@ class ClassifierDataset(Dataset):
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
         return audio
 
-    def _set_augmentations(self, augmentations_dict, augmentations_p):
-        """
-        get augmentations list and instantiate - TBD
-        """
-        if augmentations_dict is not None:
-            augmentations_list = [instantiate(args) for args in augmentations_dict.values()]
-        else:
-            augmentations_list = []
-        augmenter = ChainedAugmentations(augmentations_list, augmentations_p) if self.mode == 'train' else torch.nn.Identity()
-        return augmenter
 
-    @staticmethod
-    def set_preprocessor(preprocessors_args):
+class NoBackGroundDataset(BaseDataset):
+    '''
+    This  class inherits all the traits from BaseDataset and handles cases with no Background noise (calls only dataset)
+    '''
+
+
+    
+    def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
         """
-        function set_preprocessor takes preprocessors_args as an argument and creates a preprocessor object
-        to be applied later on the audio segment
+        _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
+        and returns the audio segment in a torch.tensor
 
         input:
-        preprocessors_args - list of classes from torchvision
+        path_to_file - string
+        begin_time - int
+        end_time - int
 
         output:
-        preprocessor - Composes several transforms together (transforms object)
+        audio - pytorch tensor (1-D array)
         """
-        if len(preprocessors_args) > 0:
-            processors_list = [instantiate(args) for args in preprocessors_args.values()]
-            preprocessor = transforms.Compose(processors_list)
+        if (self.mode == "train"):
+            start_time = random.randint(begin_time, end_time - int(self.seq_length * self.data_sample_rate))
+            if start_time < 0:
+                start_time = 0
         else:
-            preprocessor = torch.nn.Identity()
-        return preprocessor
-
-    def __getitem__(self, idx):
-        '''
-        __getitem__ method loads item according to idx from the metadata
-
-        input:
-        idx - int
-
-        output:
-        For train/ val modes -
-        audio_processed, label, audio_raw, idx - torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
-        , int (if mode="train" only), 2-d tensor, int
-
-        For test - audio_processed - torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
-
-
-        '''
-        path_to_file, begin_time, end_time, label, channel = self._grab_fields(idx)
-        audio = self._get_audio(path_to_file, begin_time, end_time, label, channel)
-        audio_raw = self.sampler(audio)
-        audio_augmented = self.augmenter(audio_raw)
-        audio_processed = self.preprocessor(audio_augmented)
-
-        if self.mode == "train" or self.mode == "val":
-            label = self.metadata["label"][idx]
-            return audio_processed, label, audio_raw, idx
-
-        elif self.mode == "test":
-            return audio_processed
-
-    def __len__(self):
-        return self.metadata.shape[0]
+            start_time = begin_time
+        data, _ = sf.read(str(path_to_file), start=start_time,
+                          stop=start_time + int(self.seq_length * self.data_sample_rate))
+        if channel is not None:
+            data = data[:, channel-1]
+        if data.shape[0] < 1:
+           raise ValueError(f"Audio segment is empty. {path_to_file}: "
+                            f"{start_time}, {start_time + int(self.seq_length * self.data_sample_rate)}")
+        audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
+        return audio
 
 
 class PeakNormalize:
