@@ -97,7 +97,7 @@ class BaseDataset(Dataset):
         filename = self.metadata['filename'][idx]
         begin_time = self.metadata['begin_time'][idx]
         end_time = self.metadata['end_time'][idx]
-        path_to_file = self.audio_dict[filename]
+        path_to_file = self.audio_dict[filename[:-4]]
         orig_sample_rate = sf.info(path_to_file).samplerate
         assert orig_sample_rate == self.data_sample_rate
         begin_time = int(begin_time * orig_sample_rate)
@@ -262,10 +262,10 @@ class NoBackGroundDataset(BaseDataset):
         output:
         audio - pytorch tensor (1-D array)
         """
-        if (self.mode == "train") and (label == 1):
+        if (self.mode == "train"):
             start_time = random.randint(begin_time, end_time - int(self.seq_length * self.data_sample_rate))
-        if start_time < 0:
-            start_time = 0
+            if start_time < 0:
+                start_time = 0
         else:
             start_time = begin_time
         data, _ = sf.read(str(path_to_file), start=start_time,
