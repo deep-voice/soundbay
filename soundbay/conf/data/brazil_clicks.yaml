@@ -10,7 +10,7 @@ data:
   hop_length: 512
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../../data/brazil/audio_files'
+    data_path: '../datasets/brazil/audio_files'
     mode: train
     metadata_path: '../datasets/brazil/annotation_train_clicks.csv'
     augmentations_p: 0.5
@@ -25,7 +25,7 @@ data:
     slice_flag: false
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../../data/brazil/audio_files'
+    data_path: '../datasets/brazil/audio_files'
     mode: val
     metadata_path: '../datasets/brazil/annotation_val_clicks.csv'
     augmentations_p: 0
