@@ -224,7 +224,8 @@ class ClassifierDataset(BaseDataset):
             if self.margin_ratio != 0:  # ranges from 0 to 1 - indicates the relative part from seq_len to exceed call_length
                 margin_len_begin = int((self.seq_length * self.data_sample_rate) * self.margin_ratio)
                 margin_len_end = int((self.seq_length * self.data_sample_rate) * (1 - self.margin_ratio))
-                start_time = random.randint(begin_time - margin_len_begin, end_time - margin_len_end)
+                start_time = random.randint(max(begin_time - margin_len_begin, 0),
+                                            min(end_time - margin_len_end, sf.info(path_to_file).frames - int(self.seq_length * self.data_sample_rate) ))
             else:
                 start_time = random.randint(begin_time, end_time - int(self.seq_length * self.data_sample_rate))
             if start_time < 0:
