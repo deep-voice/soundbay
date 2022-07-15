@@ -1,5 +1,6 @@
 # @package _global_
 data:
+  label_names: ['Noise', 'Call']
   batch_size: 32
   num_workers: 4
   sample_rate: 96000
@@ -19,7 +20,6 @@ data:
     len_buffer: 0.1
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
-    equalize_data: true
     slice_flag: false
     split_metadata_by_label: yes
     margin_ratio: 0
@@ -35,7 +35,6 @@ data:
     len_buffer: 0.1
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
-    equalize_data: false
     slice_flag: true
     split_metadata_by_label: yes
     margin_ratio: 0

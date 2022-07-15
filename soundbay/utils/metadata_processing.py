@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -7,6 +8,17 @@ from typing import List
 
 
 # TODO add tests to the utils in this file
+
+def load_n_adapt_raven_annotation_table_to_dv_dataset_requirements(annotation_path: str,
+                                                                   filename_suffix: str = ".Table.1.selections.txt"
+                                                                   ) -> pd.DataFrame:
+    # todo: decide whether to add annotation treatment
+    df_annotations = pd.read_csv(annotation_path, sep="\t")
+    df_annotations['filename'] = os.path.basename(annotation_path).replace(filename_suffix, '')
+    df_annotations = df_annotations.rename(columns={'Begin Time (s)': 'begin_time', 'End Time (s)': 'end_time'})
+    df_annotations['call_length'] = df_annotations['end_time'] - df_annotations['begin_time']
+    return df_annotations
+
 
 # <<<<<<< feature/EDA_script
 def raven_to_df_annotations(annotations_path: str,

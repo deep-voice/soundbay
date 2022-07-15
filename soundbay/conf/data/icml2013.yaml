@@ -1,5 +1,6 @@
 # @package _global_
 data:
+  label_names: ['Noise', 'Call']
   batch_size: 512
   num_workers: 10
   sample_rate: 2000
@@ -20,7 +21,6 @@ data:
     margin_ratio: 0
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
-    equalize_data: true
     slice_flag: false
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
@@ -35,5 +35,4 @@ data:
     margin_ratio: 0
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
-    equalize_data: false
     slice_flag: true
