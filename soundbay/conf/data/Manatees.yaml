@@ -10,9 +10,9 @@ data:
   hop_length: 256
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/Manatees/wav'
+    data_path: '../datasets/Manatees/wav/Acoustic_recordings/'
     mode: train
-    metadata_path: '../datasets/Manatees/Manatee_2022_0054_train_val_splits.csv'
+    metadata_path: '../datasets/Manatees/manatee_train_val_test_splits.csv'
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
@@ -22,12 +22,12 @@ data:
     sample_rate: ${data.sample_rate}
     slice_flag: false
     split_metadata_by_label: yes
-    margin_ratio: 0
+    margin_ratio: 0.5
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/Manatees/train_data/wav'
+    data_path: '../datasets/Manatees/wav/Acoustic_recordings/'
     mode: val
-    metadata_path: '../datasets/Manatees/Manatee_train_val_splits.csv'
+    metadata_path: '../datasets/Manatees/manatee_train_val_test_splits.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
@@ -37,4 +37,4 @@ data:
     sample_rate: ${data.sample_rate}
     slice_flag: true
     split_metadata_by_label: yes
-    margin_ratio: 0
+    margin_ratio: 0.5
