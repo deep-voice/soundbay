@@ -8,7 +8,7 @@ data:
   hop_length: 256
   test_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/Manatees/wav'
+    data_path: '../datasets/Manatees/wav/Acoustic_recordings/'
     mode: test
     metadata_path: '../datasets/Manatees//Manatee_annotations_bg_from_calls-22-06-22.csv'
     augmentations_p: 0
