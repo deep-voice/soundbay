@@ -1,9 +1,9 @@
 # @package _global_
 data:
-  batch_size: 64
-  num_workers: 10
-  data_sample_rate: 44100
-  max_freq: 8000
+  batch_size: 32
+  num_workers: 4
+  data_sample_rate: 96000
+  max_freq: 44100
   n_fft: 1024
   hop_length: 256
   test_dataset:
