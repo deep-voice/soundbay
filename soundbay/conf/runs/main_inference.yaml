@@ -1,5 +1,5 @@
 # @package _global_
 defaults:
-  - data: defaults_inference
+  - data: Manatees #TODO: change back to default_inference if not working on manatees
   - experiment: inference
   - experiment: null_hydra
