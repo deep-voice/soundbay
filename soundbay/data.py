@@ -11,6 +11,7 @@ from hydra.utils import instantiate
 from typing import Union
 from omegaconf import DictConfig
 from pathlib import Path
+from copy import deepcopy
 import numpy as np
 import matplotlib.pyplot as plt
 from soundbay.data_augmentation import ChainedAugmentations
@@ -21,8 +22,8 @@ class BaseDataset(Dataset):
     class for storing and loading data.
     '''
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
-                 seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100, mode="train",
-                  slice_flag=False, margin_ratio=0,
+                 seq_length=1, data_sample_rate=44100, sample_rate=44100, mode="train",
+                 equalize_data=False, slice_flag=False, margin_ratio=0,
                  split_metadata_by_label=False):
         """
         __init__ method initiates ClassifierDataset instance:
@@ -46,7 +47,7 @@ class BaseDataset(Dataset):
         self.sample_rate = sample_rate
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
-        self._preprocess_metadata(len_buffer, slice_flag)
+        self._preprocess_metadata(equalize_data, slice_flag)
         self.augmenter = self._set_augmentations(augmentations, augmentations_p)
         self.preprocessor = self.set_preprocessor(preprocessors)
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
@@ -70,19 +71,44 @@ class BaseDataset(Dataset):
         audio_paths = data_path.rglob('*.wav')
         return {x.name.replace('.wav', ''): x for x in audio_paths}
 
-    def _preprocess_metadata(self, len_buffer, slice_flag=False):
+    def _preprocess_metadata(self, equalize=False, slice_flag=False):
         """
         function _preprocesses_metadata grabs calls with minimal length of self.seq_length + len_buffer
         Input:
-        len_buffer - float64
+            equalize: bool, default = False
+                If true, the metadata file is equalized to contain the same number of each label.
+            slice_flag: bool, default = False
+                If true, the metadata file is sliced into segments of lengths self.seq_length.
         Output:
         ClassifierDataset object with self.metadata dataframe after applying the condition
         """
 
-        self.metadata = self.metadata[self.metadata['call_length'] >= (self.seq_length + len_buffer)]
+        def _equalize_distribution(df_object):
+            # TODO: Adapt this to multiclass
+            len_pos = len(df_object[df_object['label'] == 1])
+            len_neg = len(df_object[df_object['label'] == 0])
+            diff = len_pos - len_neg
+            if diff == 0:
+                return df_object
+            label = 0 if diff > 0 else 1
+            multiplier = int(np.ceil(abs(diff) / min(len_neg, len_pos)))
+            additive = pd.concat(deepcopy([self.metadata[self.metadata['label'] == label]]) * multiplier)
+            additive = additive[:abs(diff)]
+            df_object = pd.concat([df_object, additive])
+            assert len(df_object[df_object['label'] == 1]) == len(df_object[df_object['label'] == 0])
+            return df_object
 
+        # All calls are worthy (because we can later create a bigger slice contain them that is still a call in
+        # _get_audio) but only long enough background sections will do.
+        self.metadata = self.metadata[
+            ((self.metadata['call_length'] >= self.seq_length) & (self.metadata['label'] == 0)) |
+            (self.metadata['label'] > 0)
+            ]
+
+        if equalize:
+            self.metadata = _equalize_distribution(self.metadata)
         if slice_flag:
-            self._slice_sequence(len_buffer)
+            self._slice_sequence()
 
         self.metadata.reset_index(drop=True, inplace=True)
 
@@ -110,11 +136,9 @@ class BaseDataset(Dataset):
         return path_to_file, begin_time, end_time, label, channel
 
 
-    def _slice_sequence(self, len_buffer):
+    def _slice_sequence(self):
         """
         function _slice_sequence process metadata list call lengths to be sliced according to self.seq_length
-        Input:
-        len_buffer - float64
         self
         Output:
         self.metadata sliced according to buffers
@@ -132,8 +156,8 @@ class BaseDataset(Dataset):
         self.metadata['call_length'] = np.shape(self.metadata)[0] * [self.seq_length]
         return
 
-    def _get_audio(self, path_to_file, begin_time, end_time, label):
-        raise NotImplementedError 
+    def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
+        raise NotImplementedError
 
     def _set_augmentations(self, augmentations_dict, augmentations_p):
         """
@@ -164,7 +188,7 @@ class BaseDataset(Dataset):
         else:
             preprocessor = torch.nn.Identity()
         return preprocessor
-    
+
     def __getitem__(self, idx):
         '''
         __getitem__ method loads item according to idx from the metadata
@@ -202,11 +226,11 @@ class BaseDataset(Dataset):
 
 class ClassifierDataset(BaseDataset):
     '''
-    This class inherits all the traits from BaseDataset and handles cases that include Background noise 
+    This class inherits all the traits from BaseDataset and handles cases that include Background noise
     (margin ratio feature is implemented)
     '''
 
-    
+
     def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
         """
         _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
@@ -220,25 +244,42 @@ class ClassifierDataset(BaseDataset):
         output:
         audio - pytorch tensor (1-D array)
         """
-        if (self.mode == "train") and (label == 1):
-            if self.margin_ratio != 0:  # ranges from 0 to 1 - indicates the relative part from seq_len to exceed call_length
-                margin_len_begin = int((self.seq_length * self.data_sample_rate) * self.margin_ratio)
-                margin_len_end = int((self.seq_length * self.data_sample_rate) * (1 - self.margin_ratio))
-                start_time = random.randint(max(begin_time - margin_len_begin, 0),
-                                            min(end_time - margin_len_end, sf.info(path_to_file).frames - int(self.seq_length * self.data_sample_rate) ))
-            else:
-                start_time = random.randint(begin_time, end_time - int(self.seq_length * self.data_sample_rate))
-            if start_time < 0:
-                start_time = 0
+        seg_length = end_time - begin_time
+        requested_seq_length = int(self.seq_length * self.data_sample_rate)
+        last_start_time = sf.info(path_to_file).frames - requested_seq_length
+        # Do all this stuff only to calls in training set, because otherwise _slice_sequence has already been done
+        if self.mode == "train":
+            if seg_length > requested_seq_length:
+                # Only for calls we can safely add sections out of the call and label it as call
+                if (self.margin_ratio != 0) and (label > 0):
+                    # self.margin_ratio ranges from 0 to 1 - indicates the relative part from seq_len to exceed call_length
+                    margin_len_begin = int(requested_seq_length * self.margin_ratio)
+                    margin_len_end = int(requested_seq_length * (1 - self.margin_ratio))
+                    start_time = random.randint(max(begin_time - margin_len_begin, 0),
+                                                min(end_time - margin_len_end, last_start_time))
+                else:
+                    start_time = random.randint(begin_time, min(end_time - requested_seq_length, last_start_time))
+
+                if start_time < 0:
+                    start_time = 0
+            else:  # We know we can only arrive here with label > 0 because we filtered out short bg segments.
+                # If the call is too short, the selected interval can be any interval of length requested_seq_length
+                # that contains it.
+                # TODO: Account for the edge-case of two calls with different classes in the same interval.
+                short_call_margin = requested_seq_length - seg_length
+                # start time is between short_call_margin before begin time, and the latest time you can start and still
+                # both contain the whole call and not get out of the file
+                start_time = random.randint(max(begin_time - short_call_margin, 0),
+                                            min(begin_time, last_start_time))
         else:
             start_time = begin_time
         data, _ = sf.read(str(path_to_file), start=start_time,
-                          stop=start_time + int(self.seq_length * self.data_sample_rate))
+                          stop=start_time + requested_seq_length)
         if channel is not None:
-            data = data[:, channel-1]
+            data = data[:, channel - 1]
         if data.shape[0] < 1:
-           raise ValueError(f"Audio segment is empty. {path_to_file}: "
-                            f"{start_time}, {start_time + int(self.seq_length * self.data_sample_rate)}")
+            raise ValueError(f"Audio segment is empty. {path_to_file}: "
+                             f"{start_time}, {start_time + requested_seq_length}")
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
         return audio
 
@@ -249,7 +290,7 @@ class NoBackGroundDataset(BaseDataset):
     '''
 
 
-    
+
     def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
         """
         _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
