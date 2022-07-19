@@ -229,7 +229,7 @@ class ClassifierDataset(BaseDataset):
         last_start_time = sf.info(path_to_file).frames - requested_seq_length
         # Do all this stuff only to calls in training set, because otherwise _slice_sequence has already been done
         if self.mode == "train":
-            if seg_length > requested_seq_length:
+            if seg_length >= requested_seq_length:
                 # Only for calls we can safely add sections out of the call and label it as call
                 if (self.margin_ratio != 0) and (label > 0):
                     # self.margin_ratio ranges from 0 to 1 - indicates the relative part from seq_len to exceed call_length
@@ -245,7 +245,6 @@ class ClassifierDataset(BaseDataset):
             else:  # We know we can only arrive here with label > 0 because we filtered out short bg segments.
                 # If the call is too short, the selected interval can be any interval of length requested_seq_length
                 # that contains it.
-                # TODO: Account for the edge-case of two calls with different classes in the same interval.
                 short_call_margin = requested_seq_length - seg_length
                 # start time is between short_call_margin before begin time, and the latest time you can start and still
                 # both contain the whole call and not get out of the file
