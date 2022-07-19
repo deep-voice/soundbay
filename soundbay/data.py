@@ -1,18 +1,20 @@
-import torchvision
-from torch.utils.data import Dataset
-import torch
-from torchvision import transforms
-import torchaudio
-import pandas as pd
 import random
-import soundfile as sf
 from itertools import starmap, repeat
-from hydra.utils import instantiate
-from typing import Union
-from omegaconf import DictConfig
 from pathlib import Path
+from typing import Union
+
+import librosa
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
+import soundfile as sf
+import torch
+import torchaudio
+import torchvision
+from hydra.utils import instantiate
+from omegaconf import DictConfig
+from torch.utils.data import Dataset
+from torchvision import transforms
+
 from soundbay.data_augmentation import ChainedAugmentations
 
 
@@ -22,7 +24,7 @@ class BaseDataset(Dataset):
     '''
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, len_buffer=0.1, data_sample_rate=44100, sample_rate=44100, mode="train",
-                  slice_flag=False, margin_ratio=0,
+                 slice_flag=False, margin_ratio=0,
                  split_metadata_by_label=False):
         """
         __init__ method initiates ClassifierDataset instance:
@@ -286,6 +288,26 @@ class PeakNormalize:
     def __call__(self, sample):
 
         return (sample - sample.min()) / (sample.max() - sample.min())
+
+
+class MinFreqSpectrogram:
+    """Cut the spectrogram frequency axis to make it start from min_freq"""
+    def __init__(self, min_freq_spectrogram, sample_rate, n_fft):
+        self.min_freq_spectrogram = min_freq_spectrogram
+        self.sample_rate = sample_rate
+        self.n_fft = n_fft #TODO probably remove? redundant with current implementation
+
+    def edit_spectrogram_axis(self, sample):
+
+        max_freq_in_spectrogram = self.sample_rate / 2
+        min_value = sample.size(dim=1) * self.min_freq_spectrogram / max_freq_in_spectrogram
+        min_value = np.floor(min_value)
+        sample = sample[:, min_value:, :]
+        return sample
+
+    def __call__(self, sample):
+
+        return self.edit_spectrogram_axis(sample)
 
 
 class UnitNormalize:
