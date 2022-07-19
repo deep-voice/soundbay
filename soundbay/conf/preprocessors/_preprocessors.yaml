@@ -4,6 +4,11 @@ _preprocessors:
     _target_: torchaudio.transforms.Spectrogram
     n_fft: ${data.n_fft}
     hop_length: ${data.hop_length}
+  min_freq:
+    _target_: soundbay.data.MinFreqSpectrogram
+    min_freq_spectrogram: ${data.min_freq_spectrogram}
+    sample_rate: ${data.sample_rate}
+    n_fft: ${data.n_fft}
   amplitude_2_db:
     _target_: torchaudio.transforms.AmplitudeToDB
   peak_norm:
