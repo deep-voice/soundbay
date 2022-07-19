@@ -23,8 +23,7 @@ class BaseDataset(Dataset):
     '''
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, data_sample_rate=44100, sample_rate=44100, mode="train",
-                 equalize_data=False, slice_flag=False, margin_ratio=0,
-                 split_metadata_by_label=False):
+                 slice_flag=False, margin_ratio=0, split_metadata_by_label=False):
         """
         __init__ method initiates ClassifierDataset instance:
         Input:
@@ -47,7 +46,7 @@ class BaseDataset(Dataset):
         self.sample_rate = sample_rate
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
-        self._preprocess_metadata(equalize_data, slice_flag)
+        self._preprocess_metadata(slice_flag)
         self.augmenter = self._set_augmentations(augmentations, augmentations_p)
         self.preprocessor = self.set_preprocessor(preprocessors)
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
@@ -71,32 +70,15 @@ class BaseDataset(Dataset):
         audio_paths = data_path.rglob('*.wav')
         return {x.name.replace('.wav', ''): x for x in audio_paths}
 
-    def _preprocess_metadata(self, equalize=False, slice_flag=False):
+    def _preprocess_metadata(self, slice_flag=False):
         """
         function _preprocesses_metadata grabs calls with minimal length of self.seq_length + len_buffer
         Input:
-            equalize: bool, default = False
-                If true, the metadata file is equalized to contain the same number of each label.
             slice_flag: bool, default = False
                 If true, the metadata file is sliced into segments of lengths self.seq_length.
         Output:
         ClassifierDataset object with self.metadata dataframe after applying the condition
         """
-
-        def _equalize_distribution(df_object):
-            # TODO: Adapt this to multiclass
-            len_pos = len(df_object[df_object['label'] == 1])
-            len_neg = len(df_object[df_object['label'] == 0])
-            diff = len_pos - len_neg
-            if diff == 0:
-                return df_object
-            label = 0 if diff > 0 else 1
-            multiplier = int(np.ceil(abs(diff) / min(len_neg, len_pos)))
-            additive = pd.concat(deepcopy([self.metadata[self.metadata['label'] == label]]) * multiplier)
-            additive = additive[:abs(diff)]
-            df_object = pd.concat([df_object, additive])
-            assert len(df_object[df_object['label'] == 1]) == len(df_object[df_object['label'] == 0])
-            return df_object
 
         # All calls are worthy (because we can later create a bigger slice contain them that is still a call in
         # _get_audio) but only long enough background sections will do.
@@ -105,8 +87,6 @@ class BaseDataset(Dataset):
             (self.metadata['label'] > 0)
             ]
 
-        if equalize:
-            self.metadata = _equalize_distribution(self.metadata)
         if slice_flag:
             self._slice_sequence()
 
