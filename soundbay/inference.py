@@ -14,6 +14,7 @@ import datetime
 from hydra.utils import instantiate
 from soundbay.utils.logging import Logger
 from soundbay.utils.checkpoint_utils import merge_with_checkpoint
+import wandb
 
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
                   device: torch.device = torch.device('cpu'),
@@ -123,10 +124,17 @@ def inference_to_file(
 
     results_df = pandas.DataFrame(predict_prob)
     if hasattr(test_dataset, 'metadata'):
+        _logger = wandb
+        _logger.init(project="deepvoice-experiments", name=None, group=None,
+                     id=None, resume=None)
+        logger = Logger(_logger, debug_mode=False,
+                        artifacts_upload_limit=64)
         concat_dataset = pandas.concat([test_dataset.metadata, results_df], axis=1) #TODO: make sure metadata column order matches the prediction df order
         metrics_dict = Logger.get_metrics_dict(concat_dataset["label"].values.tolist(),
                                                np.argmax(predict_prob, axis=1).tolist(),
                                                results_df.values)
+        logger.calc_metrics(0, 'test', None)
+        logger.log(0, 'test')
         print(metrics_dict)
     else:
         concat_dataset = results_df
