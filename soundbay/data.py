@@ -16,7 +16,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 
 from soundbay.data_augmentation import ChainedAugmentations
-
+import matplotlib.pyplot as plt
 
 class BaseDataset(Dataset):
     '''
@@ -292,17 +292,16 @@ class PeakNormalize:
 
 class MinFreqSpectrogram:
     """Cut the spectrogram frequency axis to make it start from min_freq"""
-    def __init__(self, min_freq_spectrogram, sample_rate, n_fft):
+    def __init__(self, min_freq_spectrogram, sample_rate):
         self.min_freq_spectrogram = min_freq_spectrogram
         self.sample_rate = sample_rate
-        self.n_fft = n_fft #TODO probably remove? redundant with current implementation
 
     def edit_spectrogram_axis(self, sample):
-
         max_freq_in_spectrogram = self.sample_rate / 2
         min_value = sample.size(dim=1) * self.min_freq_spectrogram / max_freq_in_spectrogram
-        min_value = np.floor(min_value)
+        min_value = int(np.floor(min_value))
         sample = sample[:, min_value:, :]
+
         return sample
 
     def __call__(self, sample):
