@@ -83,7 +83,7 @@ def modeling(
 
     # Define dataloader for training and validation datasets as well as optimizers arguments
     if equalize_data:
-        sampler = WeightedRandomSampler(1/train_dataset.items_per_classes, len(train_dataset) ) 
+        sampler = WeightedRandomSampler(train_dataset.samples_weight, len(train_dataset)) 
     else:
         sampler = None
     train_dataloader = DataLoader(
