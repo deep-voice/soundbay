@@ -52,6 +52,9 @@ class BaseDataset(Dataset):
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
         self.items_per_classes = np.unique(self.metadata['label'], return_counts=True)[1]
+        weights = 1 / self.items_per_classes
+        self.samples_weight = np.array([weights[t] for t in self.metadata['label'] ])
+
 
     @staticmethod
     def _update_metadata_by_mode(metadata, mode, split_metadata_by_label):
