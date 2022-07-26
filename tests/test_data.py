@@ -14,7 +14,7 @@ def test_dataloader() -> None:
                                         augmentations=cfg.data.train_dataset.augmentations,
                                         augmentations_p=cfg.data.train_dataset.augmentations_p,
                                         preprocessors=cfg.data.train_dataset.preprocessors)
-        assert data_loader.metadata.shape[1] == 5  # make sure metadata has 5 columns
+        assert data_loader.metadata.shape[1] in (5, 6)  # make sure metadata has 5/6 columns (account for channel)
         assert data_loader.metadata.shape[0] > 0  # make sure metadata is not empty
         data_size = data_loader.metadata.shape[0]
         value = randint(0, data_size)
