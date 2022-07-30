@@ -18,7 +18,6 @@ data:
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
     seq_length: 1 
-    len_buffer: 0.1
     margin_ratio: 0.5
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
@@ -32,7 +31,6 @@ data:
     augmentations: null
     preprocessors: ${_preprocessors}
     seq_length: 1
-    len_buffer: 0.1
     margin_ratio: 0
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
