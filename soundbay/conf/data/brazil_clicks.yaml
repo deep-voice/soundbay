@@ -3,7 +3,7 @@ data:
   label_names: ['Noise', 'Call']
   batch_size: 128
   num_workers: 4
-  sample_rate: 100000
+  sample_rate: 96000
   data_sample_rate: 96000
   max_freq: 48000
   n_fft: 1024
@@ -16,12 +16,10 @@ data:
     augmentations_p: 0.5
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
-    seq_length: 0.29
-    len_buffer: 0.01
+    seq_length: 1
     margin_ratio: 0.3
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
-    equalize_data: true
     slice_flag: false
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
@@ -31,10 +29,8 @@ data:
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
-    seq_length: 0.29
-    len_buffer: 0.01
+    seq_length: 1
     margin_ratio: 0
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
-    equalize_data: false
     slice_flag: true
