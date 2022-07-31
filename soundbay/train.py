@@ -15,6 +15,7 @@ using the command line when running main.py (e.g. "main.py experiment.debug=True
 * make sure to install all the packages stated in the requirements.txt file prior to running this script
 
 """
+
 import torch
 from torch.utils.data import DataLoader, WeightedRandomSampler
 import wandb
@@ -30,7 +31,6 @@ from soundbay.utils.app import App
 from soundbay.utils.logging import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
 from soundbay.trainers import Trainer
-
 
 
 def modeling(
@@ -83,7 +83,7 @@ def modeling(
 
     # Define dataloader for training and validation datasets as well as optimizers arguments
     if equalize_data:
-        sampler = WeightedRandomSampler(train_dataset.samples_weight, len(train_dataset))
+        sampler = WeightedRandomSampler(train_dataset.samples_weight, len(train_dataset)) 
     else:
         sampler = None
     train_dataloader = DataLoader(
@@ -135,6 +135,7 @@ def main(args):
     experiment_name = get_experiment_name(args)
     _logger.init(project="finding_willy", name=experiment_name, group=args.experiment.group_name,
                  id=args.experiment.run_id, resume=args.experiment.checkpoint.resume)
+
     # Set device
     if not torch.cuda.is_available():
         print('CPU!!!!!!!!!!!')
