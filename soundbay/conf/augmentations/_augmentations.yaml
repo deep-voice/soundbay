@@ -17,4 +17,4 @@ _augmentations:
     min_freq_in_segment: 2000
     max_freq_in_segment: ${data.max_freq}
     attenuation_gain: 120
-    bandwidth_to_filter_out: 5000
+    bandwidth_to_filter_out: 1
