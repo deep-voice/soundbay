@@ -118,7 +118,7 @@ def main():
     Calls_2018_04_2kHz, Calls_2018_04_EvenDays_MF, Calls_2018_04_200Hz,EvenDays_AllRuns_v2 = metadata
 
 
-    chosen_categories = ['Delph sp.   ', 'Fin whale   ', 'Mn          ']
+    chosen_categories = ['Delph sp.   ', 'Fin whale   ', 'Mn          ', 'Pm          ']
     filtered_categories_df = EvenDays_AllRuns_v2[EvenDays_AllRuns_v2['Species_ID'].isin(chosen_categories)]
     total_df = []
     for _, row in filtered_categories_df.iterrows():
@@ -138,4 +138,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
