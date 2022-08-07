@@ -165,8 +165,12 @@ class Logger:
 
         # Spectrograms batch
         artifact_spec = torch.squeeze(audio).detach().cpu().numpy()
-        axes = [plt.subplots(nrows=1, ncols=1) for _ in range(artifact_spec.shape[0])]
-        specs = [librosa.display.specshow(artifact_spec[x,...], ax=axes[x][1]) for x in range(artifact_spec.shape[0])]
+        specs = []
+        for artifact_id in range(artifact_spec.shape[0]):
+            ax = plt.subplots(nrows=1, ncols=1)
+            specs.append(librosa.display.specshow(artifact_spec[artifact_id,...], ax=ax[1]))
+            plt.close('all')
+            del ax
         list_of_specs_objects = [wandb.Image(data_or_path=spec, caption=f'label_{lab}_{ind}_train') for spec, ind, lab in zip(specs,idx, label)]
         log_wavs = {f'First batch {flag} original wavs': list_of_wavs_objects}
         log_specs = {f'First batch {flag} augmented spectrograms': list_of_specs_objects}
@@ -174,10 +178,6 @@ class Logger:
         # Upload to W&B
         wandb.log(log_wavs, commit=False)
         wandb.log(log_specs, commit=False)
-
-        # Clear figures
-        plt.figure().clear()
-        return
 
     @staticmethod
     def get_metrics_dict(label_list: Union[list, np.ndarray], pred_list: Union[list, np.ndarray],
