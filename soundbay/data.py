@@ -309,17 +309,29 @@ class PeakNormalize:
         return (sample - sample.min()) / (sample.max() - sample.min())
 
 
-class MinFreqSpectrogram:
-    """Cut the spectrogram frequency axis to make it start from min_freq"""
-    def __init__(self, min_freq_spectrogram, sample_rate):
-        self.min_freq_spectrogram = min_freq_spectrogram
+class MinFreqFiltering:
+    """Cut the spectrogram frequency axis to make it start from min_freq
+    ***Note: In case a MaxFreqFiltering is implemented, the max_freq should be greater than min_freq***
+
+    input:
+        min_freq_filtering - int
+        sample_rate - int
+
+    output:
+        spectrogram - pytorch tensor (3-D array)
+    """
+
+    def __init__(self, min_freq_filtering, sample_rate):
+        self.min_freq_filtering = min_freq_filtering
         self.sample_rate = sample_rate
 
     def edit_spectrogram_axis(self, sample):
+        if self.min_freq_filtering > self.sample_rate / 2 or self.min_freq_filtering < 0:
+            raise ValueError("min_freq_filtering should be greater than 0, and smaller than sample_rate/2")
         max_freq_in_spectrogram = self.sample_rate / 2
-        min_value = sample.size(dim=1) * self.min_freq_spectrogram / max_freq_in_spectrogram
+        min_value = sample.size(dim=1) * self.min_freq_filtering / max_freq_in_spectrogram
         min_value = int(np.floor(min_value))
-        sample = sample[:, min_value:, :]
+        sample = sample[:, :-min_value, :]
 
         return sample
 
