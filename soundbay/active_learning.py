@@ -106,7 +106,8 @@ if __name__ == "__main__":
     parser.add_argument('--thresh', dest='gain_threshold', type=int, default='0.35',
                         help='desired gain threshold for considering a segment as valuable')
     args = parser.parse_args()
+
     ranked_chunks = get_ranked_segments_from_inference_dir(args.inference_dir, args.chunk_len_in_seconds,
                                                            args.gain_threshold)
 
-    # save results
+    ranked_chunks.to_csv(args.output_dir)
