@@ -12,6 +12,9 @@ import os
 import pandas
 import datetime
 from hydra.utils import instantiate
+import soundfile as sf
+
+from soundbay.results_analysis import inference_csv_to_raven
 from soundbay.utils.logging import Logger
 from soundbay.utils.checkpoint_utils import merge_with_checkpoint
 
@@ -109,36 +112,60 @@ def inference_to_file(
         model_path: directory for the wanted trained model
         output_path: directory to save the prediction file
     """
-    # set paths and create dataset
-    test_dataset = instantiate(dataset_args)
+    # Check how many channels
+    data_sample, _ = sf.read(dataset_args.file_path, start=0, stop=10)
 
-    # load model
-    model = load_model(model_args, checkpoint_state_dict).to(device)
+    all_channel_list = []
+    all_channel_raven_list = []
+    for channel in range(data_sample.shape[1]):
+        # set paths and create dataset
+        test_dataset = instantiate(dataset_args, channel=channel)
 
-    test_dataloader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size, num_workers=0,
-                                 pin_memory=False)
+        # load model
+        model = load_model(model_args, checkpoint_state_dict).to(device)
 
-    # predict
-    predict_prob = predict_proba(model, test_dataloader, device, None)
+        test_dataloader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size, num_workers=0,
+                                     pin_memory=False)
 
-    results_df = pandas.DataFrame(predict_prob)
-    if hasattr(test_dataset, 'metadata'):
-        concat_dataset = pandas.concat([test_dataset.metadata, results_df], axis=1) #TODO: make sure metadata column order matches the prediction df order
-        metrics_dict = Logger.get_metrics_dict(concat_dataset["label"].values.tolist(),
-                                               np.argmax(predict_prob, axis=1).tolist(),
-                                               results_df.values)
-        print(metrics_dict)
-    else:
-        concat_dataset = results_df
-        print("Notice: The dataset has no ground truth labels")
+        # predict
+        predict_prob = predict_proba(model, test_dataloader, device, None)
+
+        results_df = pandas.DataFrame(predict_prob)
+        if hasattr(test_dataset, 'metadata'):
+            concat_dataset = pandas.concat([test_dataset.metadata, results_df], axis=1) #TODO: make sure metadata column order matches the prediction df order
+            metrics_dict = Logger.get_metrics_dict(concat_dataset["label"].values.tolist(),
+                                                   np.argmax(predict_prob, axis=1).tolist(),
+                                                   results_df.values)
+            print(metrics_dict)
+        else:
+            concat_dataset = results_df
+            print("Notice: The dataset has no ground truth labels")
+
+        # create raven file
+        if save_raven:
+            all_channel_raven_list.append(
+                inference_csv_to_raven(results_df, predict_prob.shape[1], dataset_args.seq_length, 1, threshold, 'call',
+                                       channel, dataset_args.data_sample_rate // 2)
+            )
+
+        # add to general inference result
+        concat_dataset.insert(0, 'channel', [channel + 1] * len(concat_dataset))
+        all_channel_list.append(concat_dataset)
 
     #save file
     dataset_name = Path(test_dataset.metadata_path).stem
     filename = f"Inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.csv"
     output_file = output_path / filename
-    concat_dataset.to_csv(index=False, path_or_buf=output_file)
+    pd.concat(all_channel_list, axis=0).to_csv(index=False, path_or_buf=output_file)
 
-    # save raven file
+    # Save raven file
+    if save_raven:
+        raven_filename = f"Raven inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.raven"
+        raven_output_file = output_path / raven_filename
+        raven_out_df = pd.concat(all_channel_raven_list, axis=0
+                  ).sort_values('Begin Time (s)')
+        raven_out_df['Selection'] = np.arange(1, len(raven_out_df)+1)
+        raven_out_df.to_csv(index=False, path_or_buf=raven_output_file, sep='\t')
 
     return
 
