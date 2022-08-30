@@ -331,7 +331,7 @@ class MinFreqFiltering:
         max_freq_in_spectrogram = self.sample_rate / 2
         min_value = sample.size(dim=1) * self.min_freq_filtering / max_freq_in_spectrogram
         min_value = int(np.floor(min_value))
-        sample = sample[:, :-min_value, :]
+        sample = sample[:, min_value:, :]
 
         return sample
 
