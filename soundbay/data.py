@@ -15,8 +15,8 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 from torch.utils.data import Dataset
 from torchvision import transforms
+from audiomentations import Compose
 
-from soundbay.data_augmentation import ChainedAugmentations
 import matplotlib.pyplot as plt
 
 
@@ -32,7 +32,7 @@ class BaseDataset(Dataset):
         Input:
         data_path - string
         metadata_path - string
-        augmentations - list of classes (not instances) from data_augmentation.py
+        augmentations - list of classes audiogemtations
         augmentations_p - array of probabilities (float64)
         preprocessors - list of classes from preprocessors (TBD function)
 
@@ -151,7 +151,9 @@ class BaseDataset(Dataset):
             augmentations_list = [instantiate(args) for args in augmentations_dict.values()]
         else:
             augmentations_list = []
-        augmenter = ChainedAugmentations(augmentations_list, augmentations_p) if self.mode == 'train' else torch.nn.Identity()
+        augmenter = lambda x: torch.tensor(
+            Compose(augmentations_list, p=augmentations_p, shuffle=True)(x, self.sample_rate)
+        , dtype=torch.float32) if self.mode == 'train' else torch.nn.Identity()
         return augmenter
 
     @staticmethod
