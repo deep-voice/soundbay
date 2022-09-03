@@ -1,20 +1,24 @@
 # @package _global_
 _augmentations:
   random_noise:
-    _target_: soundbay.data_augmentation.AddGaussianNoise
+    _target_: audiomentations.AddGaussianSNR
     p: 0.5
-    sr: ${data.sample_rate}
-    snr: 15
+    min_snr_in_db: 10
+    max_snr_in_db: 20
+  freq_shift:
+    _target_: audiomentations.PitchShift
+    min_semitones: -4
+    max_semitones: 4
+    p: 0.5
   time_masking:
-    _target_: soundbay.data_augmentation.TemporalMasking
+    _target_: audiomentations.TimeMask
+    min_band_part: 0.05
+    max_band_part: 0.2
     p: 0.5
-    sr: ${data.sample_rate}
-    max_secs: 0.2
   frequency_masking:
-    _target_: soundbay.data_augmentation.FrequencyMasking
+    _target_: audiomentations.BandStopFilter
+    min_center_freq: 500
+    max_center_freq: ${data.max_freq}
+    min_bandwidth_fraction: 0.05
+    max_bandwidth_fraction: 0.2
     p: 0.5
-    sr: ${data.sample_rate}
-    min_freq_in_segment: 200
-    max_freq_in_segment: ${data.max_freq}
-    attenuation_gain: 120
-    bandwidth_to_filter_out: 50
