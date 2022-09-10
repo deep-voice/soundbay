@@ -151,10 +151,14 @@ class BaseDataset(Dataset):
             augmentations_list = [instantiate(args) for args in augmentations_dict.values()]
         else:
             augmentations_list = []
-        augmenter = lambda x: torch.tensor(
-            Compose(augmentations_list, p=augmentations_p, shuffle=True)(x, self.sample_rate)
-        , dtype=torch.float32) if self.mode == 'train' else torch.nn.Identity()
-        return augmenter
+        self._train_augmenter = Compose(augmentations_list, p=augmentations_p, shuffle=True)
+        self._val_augmenter = torch.nn.Identity()
+
+    def augment(self, x):
+        if self.mode == 'train':
+            return torch.tensor(self._train_augmenter(x.numpy(), self.sample_rate), dtype=torch.float32)
+        else:
+            return self._val_augmenter(x)
 
     @staticmethod
     def set_preprocessor(preprocessors_args):
@@ -194,7 +198,7 @@ class BaseDataset(Dataset):
         path_to_file, begin_time, end_time, label, channel = self._grab_fields(idx)
         audio = self._get_audio(path_to_file, begin_time, end_time, label, channel)
         audio_raw = self.sampler(audio)
-        audio_augmented = self.augmenter(audio_raw)
+        audio_augmented = self.augment(audio_raw)
         audio_processed = self.preprocessor(audio_augmented)
 
         if self.mode == "train" or self.mode == "val":
