@@ -127,7 +127,7 @@ def modeling(
 
 
 # TODO check how to use hydra without path override
-@hydra.main(config_name="runs/main", config_path="conf")
+@hydra.main(config_name=os.path.join("runs", "main"), config_path="conf")
 def main(args):
 
     # Set logger
