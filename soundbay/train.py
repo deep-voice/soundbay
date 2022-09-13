@@ -21,9 +21,10 @@ from torch.utils.data import DataLoader, WeightedRandomSampler
 import wandb
 from functools import partial
 from pathlib import Path
-import hydra
-from hydra.utils import instantiate
+from omegaconf import OmegaConf
 
+
+import sys
 import random
 from unittest.mock import Mock
 import os
@@ -127,8 +128,11 @@ def modeling(
 
 
 # TODO check how to use hydra without path override
-@hydra.main(config_name="runs/main", config_path="conf")
+# @hydra.main(config_name="runs/main", config_path="conf")
 def main(args):
+
+    #Load default YAML conf
+    conf = OmegaConf.load('../soundbay/conf/omegaconf/main.yml')
 
     # Set logger
     _logger = wandb if not args.experiment.debug else Mock()
@@ -211,4 +215,5 @@ def main(args):
         
 
 if __name__ == "__main__":
-    main()
+    args = sys.argv[1:]
+    main(args)
