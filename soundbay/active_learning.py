@@ -10,23 +10,34 @@ def get_recording_name_from_inference_file_name(inference_file_name):
 
 
 def load_data_from_dir(inference_dir: str) -> pd.DataFrame:
-    df = pd.DataFrame(
+    df_all_recordings = pd.DataFrame(
         columns=['segment_id', 'recording', 'class0_prob', 'class1_prob', 'segment_start_sec', 'segment_end_sec'])
 
     for filename in os.listdir(inference_dir):
-        recording_name = get_recording_name_from_inference_file_name(filename)
-        inference_full_path = os.path.join(inference_dir, filename)
-        one_recording_df = pd.read_csv(inference_full_path)
-        one_recording_df.insert(0, 'recording', recording_name)
-        one_recording_df['segment_start_sec'] = one_recording_df.index
-        one_recording_df['segment_id'] = one_recording_df['recording'] + '_' + one_recording_df[
-            'segment_start_sec'].astype(
-            str)
-        df = pd.concat([df, one_recording_df], ignore_index=True)
+        one_recording_df = create_inference_df_for_one_recording(filename, inference_dir)
+        df_all_recordings = pd.concat([df_all_recordings, one_recording_df], ignore_index=True)
 
-    df['segment_end_sec'] = df['segment_start_sec'] + 1
-    df.insert(0, 'chunk_id', '')
-    return df
+    df_all_recordings['segment_end_sec'] = df_all_recordings['segment_start_sec'] + 1
+    df_all_recordings.insert(0, 'chunk_id', '')
+    return df_all_recordings
+
+
+def create_inference_df_for_one_recording(filename, inference_dir):
+    """
+    Load inference file and create DataFrame for one recording.
+    :param filename: str
+    :param inference_dir: str
+    :return: pd.DataFrame
+    """
+    recording_name = get_recording_name_from_inference_file_name(filename)
+    inference_full_path = os.path.join(inference_dir, filename)
+    one_recording_df = pd.read_csv(inference_full_path)
+    one_recording_df.insert(0, 'recording', recording_name)
+    one_recording_df['segment_start_sec'] = one_recording_df.index
+    one_recording_df['segment_id'] = one_recording_df['recording'] + '_' + one_recording_df[
+        'segment_start_sec'].astype(
+        str)
+    return one_recording_df
 
 
 def validate_chunk_end_sec(chunk_end_sec: int, chunk_start_sec: int, chunk_actual_size: int) -> int:
