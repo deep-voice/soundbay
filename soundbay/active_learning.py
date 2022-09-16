@@ -9,17 +9,18 @@ def get_recording_name_from_inference_file_name(inference_file_name):
     return recording_name
 
 
-def load_data_from_dir(inference_dir: str) -> pd.DataFrame:
-    df_all_recordings = pd.DataFrame(
+def load_inference_results_from_dir(inference_dir: str) -> pd.DataFrame:
+    df_all_recordings_inference = pd.DataFrame(
         columns=['segment_id', 'recording', 'class0_prob', 'class1_prob', 'segment_start_sec', 'segment_end_sec'])
 
     for filename in os.listdir(inference_dir):
-        one_recording_df = create_inference_df_for_one_recording(filename, inference_dir)
-        df_all_recordings = pd.concat([df_all_recordings, one_recording_df], ignore_index=True)
+        df_one_recording_inference = create_inference_df_for_one_recording(filename, inference_dir)
+        df_all_recordings_inference = pd.concat([df_all_recordings_inference, df_one_recording_inference],
+                                                ignore_index=True)
 
-    df_all_recordings['segment_end_sec'] = df_all_recordings['segment_start_sec'] + 1
-    df_all_recordings.insert(0, 'chunk_id', '')
-    return df_all_recordings
+    df_all_recordings_inference['segment_end_sec'] = df_all_recordings_inference['segment_start_sec'] + 1
+    df_all_recordings_inference.insert(0, 'chunk_id', '')
+    return df_all_recordings_inference
 
 
 def create_inference_df_for_one_recording(filename, inference_dir):
@@ -135,7 +136,7 @@ def format_ranked_chunks_for_output(ranked_chunks: pd.Series) -> pd.DataFrame:
 
 def get_ranked_segments_from_inference_dir(inference_dir: str, chunk_len_in_seconds: int,
                                            gain_threshold: float) -> pd.DataFrame:
-    df = load_data_from_dir(inference_dir)
+    df = load_inference_results_from_dir(inference_dir)
     for recording_id in df.recording.unique():
         df = add_chunk_id_per_recording(df, recording_id, chunk_len_in_seconds)
     df = compute_potential_gain_per_segment(df)
