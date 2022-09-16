@@ -32,13 +32,14 @@ def create_inference_df_for_one_recording(filename, inference_dir):
     """
     recording_name = get_recording_name_from_inference_file_name(filename)
     inference_full_path = os.path.join(inference_dir, filename)
-    one_recording_df = pd.read_csv(inference_full_path)
-    one_recording_df.insert(0, 'recording', recording_name)
-    one_recording_df['segment_start_sec'] = one_recording_df.index
-    one_recording_df['segment_id'] = one_recording_df['recording'] + '_' + one_recording_df[
-        'segment_start_sec'].astype(
-        str)
-    return one_recording_df
+    df_one_recording_inference = pd.read_csv(inference_full_path)
+    df_one_recording_inference.insert(0, 'recording', recording_name)
+    df_one_recording_inference['segment_start_sec'] = df_one_recording_inference.index
+    df_one_recording_inference['segment_id'] = df_one_recording_inference['recording'] + '_' + \
+                                               df_one_recording_inference[
+                                                   'segment_start_sec'].astype(
+                                                   str)
+    return df_one_recording_inference
 
 
 def validate_chunk_end_sec(chunk_end_sec: int, chunk_start_sec: int, chunk_actual_size: int) -> int:
