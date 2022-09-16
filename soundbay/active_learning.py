@@ -125,7 +125,7 @@ def n_high_priority_segments(df_chunk: pd.DataFrame, threshold) -> int:
 
 def format_ranked_chunks_for_output(ranked_chunks: pd.Series) -> pd.DataFrame:
     '''
-    Format a pandas series of ranked chunks into the dataframe that will serve as final output.
+    Reformat a Pandas series of ranked chunks into the dataframe that serves as final output.
     :param ranked_chunks: pandas series containing chunk_id (as index) and the chunk gain score (the higher score, the more valuable the chunk).
     :return: pandas DataFrame with chunk_id (as index), chunk score (see above), and ranking (starting at 1; the lower the ranking, the more valuable the chunk).
     '''
