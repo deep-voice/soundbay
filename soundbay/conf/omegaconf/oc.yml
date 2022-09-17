@@ -111,8 +111,7 @@ _preprocessors:
   peak_norm:
     _target_: soundbay.data.PeakNormalize
 model:
-  criterion:
-    _target_: torch.nn.CrossEntropyLoss
+  criterion: cross_entropy 
   model:
     _target_: models.ResNet1Channel
     layers:

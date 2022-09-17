@@ -22,9 +22,11 @@ import wandb
 from functools import partial
 from pathlib import Path
 from omegaconf import OmegaConf
+import hydra
+from hydra.utils import instantiate
 
 
-import sys
+import conf.omegaconf.classes_enums as classes_dict
 import random
 from unittest.mock import Mock
 import os
@@ -129,10 +131,15 @@ def modeling(
 
 # TODO check how to use hydra without path override
 # @hydra.main(config_name="runs/main", config_path="conf")
-def main(args):
+def main():
+
+    #CLI args 
+    cli_conf = OmegaConf.from_cli()
 
     #Load default YAML conf
-    conf = OmegaConf.load('../soundbay/conf/omegaconf/main.yml')
+    default_args = OmegaConf.load('../soundbay/conf/omegaconf/oc.yml')
+
+    args = OmegaConf.merge(default_args, cli_conf)
 
     # Set logger
     _logger = wandb if not args.experiment.debug else Mock()
@@ -149,7 +156,8 @@ def main(args):
         device = torch.device("cuda")
 
     # Convert filepaths, convenient if you wish to use relative paths
-    working_dirpath = Path(hydra.utils.get_original_cwd())
+    working_dirpath = Path(os.getcwd())
+    # working_dirpath = Path(hydra.utils.get_original_cwd())
     output_dirpath = Path.cwd()
     os.chdir(working_dirpath)
 
@@ -167,7 +175,8 @@ def main(args):
     App.init(args)
 
     # Define criterion
-    criterion = instantiate(args.model.criterion)
+    # criterion = instantiate(args.model.criterion)
+    criterion = classes_dict.criterion[args.model.criterion].value
 
     # Seed script
     if args.experiment.manual_seed is None:
@@ -215,5 +224,6 @@ def main(args):
         
 
 if __name__ == "__main__":
-    args = sys.argv[1:]
-    main(args)
+    # args = sys.argv[1:]
+    main()
+    # main()
