@@ -1,0 +1,146 @@
+data:
+  label_names:
+  - Noise
+  - Call
+  batch_size: 64
+  num_workers: 10
+  sample_rate: 16000
+  data_sample_rate: 44100
+  max_freq: 8000
+  min_freq_filtering: 0
+  n_fft: 1024
+  hop_length: 256
+  train_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: ../tests/assets/data/
+    mode: train
+    metadata_path: ../tests/assets/annotations/sample_annotations.csv
+    augmentations_p: 0.8
+    augmentations:
+      random_noise:
+        _target_: soundbay.data_augmentation.AddGaussianNoise
+        p: 0.5
+        sr: 16000
+        snr: 15
+      time_masking:
+        _target_: soundbay.data_augmentation.TemporalMasking
+        p: 0.5
+        sr: 16000
+        max_secs: 0.2
+      frequency_masking:
+        _target_: soundbay.data_augmentation.FrequencyMasking
+        p: 0.5
+        sr: 16000
+        min_freq_in_segment: 200
+        max_freq_in_segment: 8000
+        attenuation_gain: 120
+        bandwidth_to_filter_out: 50
+    preprocessors:
+      spectrogram:
+        _target_: torchaudio.transforms.Spectrogram
+        n_fft: 1024
+        hop_length: 256
+      min_freq_filtering:
+        _target_: soundbay.data.MinFreqFiltering
+        min_freq_filtering: 0
+        sample_rate: 16000
+      amplitude_2_db:
+        _target_: torchaudio.transforms.AmplitudeToDB
+      peak_norm:
+        _target_: soundbay.data.PeakNormalize
+    seq_length: 1
+    margin_ratio: 0.5
+    data_sample_rate: 44100
+    sample_rate: 16000
+    slice_flag: false
+  val_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: ../tests/assets/data
+    mode: val
+    metadata_path: ../tests/assets/annotations/sample_annotations.csv
+    augmentations_p: 0
+    augmentations: null
+    preprocessors:
+      spectrogram:
+        _target_: torchaudio.transforms.Spectrogram
+        n_fft: 1024
+        hop_length: 256
+      min_freq_filtering:
+        _target_: soundbay.data.MinFreqFiltering
+        min_freq_filtering: 0
+        sample_rate: 16000
+      amplitude_2_db:
+        _target_: torchaudio.transforms.AmplitudeToDB
+      peak_norm:
+        _target_: soundbay.data.PeakNormalize
+    seq_length: 1
+    margin_ratio: 0
+    data_sample_rate: 44100
+    sample_rate: 16000
+    slice_flag: true
+_augmentations:
+  random_noise:
+    _target_: soundbay.data_augmentation.AddGaussianNoise
+    p: 0.5
+    sr: 16000
+    snr: 15
+  time_masking:
+    _target_: soundbay.data_augmentation.TemporalMasking
+    p: 0.5
+    sr: 16000
+    max_secs: 0.2
+  frequency_masking:
+    _target_: soundbay.data_augmentation.FrequencyMasking
+    p: 0.5
+    sr: 16000
+    min_freq_in_segment: 200
+    max_freq_in_segment: 8000
+    attenuation_gain: 120
+    bandwidth_to_filter_out: 50
+_preprocessors:
+  spectrogram:
+    _target_: torchaudio.transforms.Spectrogram
+    n_fft: 1024
+    hop_length: 256
+  min_freq_filtering:
+    _target_: soundbay.data.MinFreqFiltering
+    min_freq_filtering: 0
+    sample_rate: 16000
+  amplitude_2_db:
+    _target_: torchaudio.transforms.AmplitudeToDB
+  peak_norm:
+    _target_: soundbay.data.PeakNormalize
+model:
+  criterion:
+    _target_: torch.nn.CrossEntropyLoss
+  model:
+    _target_: models.ResNet1Channel
+    layers:
+    - 3
+    - 4
+    - 6
+    - 3
+    block: torchvision.models.resnet.Bottleneck
+    num_classes: 2
+optim:
+  epochs: 100
+  optimizer:
+    _target_: torch.optim.Adam
+    lr: 0.001
+  scheduler:
+    _target_: torch.optim.lr_scheduler.ExponentialLR
+    gamma: 0.995
+  freeze_layers_for_finetune: false
+experiment:
+  debug: false
+  manual_seed: 1234
+  name: null
+  run_id: null
+  group_name: null
+  bucket_name: deepvoice-experiments
+  artifacts_upload_limit: 64
+  equalize_data: true
+  checkpoint:
+    path: null
+    resume: allow
+    load_optimizer_state: false
