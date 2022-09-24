@@ -11,7 +11,7 @@ data:
   n_fft: 1024
   hop_length: 256
   train_dataset:
-    _target_: soundbay.data.ClassifierDataset
+    _target_: classifier_dataset
     data_path: ../tests/assets/data/
     mode: train
     metadata_path: ../tests/assets/annotations/sample_annotations.csv
@@ -54,7 +54,7 @@ data:
     sample_rate: 16000
     slice_flag: false
   val_dataset:
-    _target_: soundbay.data.ClassifierDataset
+    _target_: classifier_dataset
     data_path: ../tests/assets/data
     mode: val
     metadata_path: ../tests/assets/annotations/sample_annotations.csv

@@ -70,8 +70,17 @@ def modeling(
 
     """
     # Set paths and create dataset
-    train_dataset = instantiate(train_dataset_args)
-    val_dataset = instantiate(val_dataset_args)
+    train_dataset_class = classes_dict.dataset[train_dataset_args._target_].value 
+    train_dataset = train_dataset_class(data_path=train_dataset_args.data_path,
+    metadata_path=train_dataset_args.metadata_path, augmentations=train_dataset_args.augmentations,
+    augmentations_p=train_dataset_args.augmentations_p, preprocessors=train_dataset_args.preprocessors)
+
+
+    val_dataset_class = classes_dict.dataset[val_dataset_args._target_].value 
+    val_dataset = val_dataset_class(data_path=val_dataset_args.data_path,
+    metadata_path=val_dataset_args.metadata_path, augmentations=val_dataset_args.augmentations,
+    augmentations_p=val_dataset_args.augmentations_p, preprocessors=val_dataset_args.preprocessors)
+
 
     # Define model and device for training
     model = instantiate(model_args)
@@ -176,7 +185,7 @@ def main():
 
     # Define criterion
     # criterion = instantiate(args.model.criterion)
-    criterion = classes_dict.criterion[args.model.criterion].value
+    criterion = classes_dict.Criterion[args.model.criterion].value
 
     # Seed script
     if args.experiment.manual_seed is None:
