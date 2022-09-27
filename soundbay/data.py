@@ -1,26 +1,29 @@
-import torchvision
-from torch.utils.data import Dataset
-import torch
-from torchvision import transforms
-import torchaudio
-import pandas as pd
 import random
-import soundfile as sf
 from itertools import starmap, repeat
-from hydra.utils import instantiate
-from typing import Union
-from omegaconf import DictConfig
 from pathlib import Path
 from copy import deepcopy
+from typing import Union
+
+import librosa
 import numpy as np
-import matplotlib.pyplot as plt
+import pandas as pd
+import soundfile as sf
+import torch
+import torchaudio
+import torchvision
+from hydra.utils import instantiate
+from omegaconf import DictConfig
+from torch.utils.data import Dataset
+from torchvision import transforms
+
 from soundbay.data_augmentation import ChainedAugmentations
+import matplotlib.pyplot as plt
 
 
 class BaseDataset(Dataset):
-    '''
+    """
     class for storing and loading data.
-    '''
+    """
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, data_sample_rate=44100, sample_rate=44100, mode="train",
                  slice_flag=False, margin_ratio=0, split_metadata_by_label=False):
@@ -55,7 +58,6 @@ class BaseDataset(Dataset):
         weights = 1 / self.items_per_classes
         self.samples_weight = np.array([weights[t] for t in self.metadata['label'] ])
 
-
     @staticmethod
     def _update_metadata_by_mode(metadata, mode, split_metadata_by_label):
         if split_metadata_by_label:
@@ -80,7 +82,7 @@ class BaseDataset(Dataset):
             slice_flag: bool, default = False
                 If true, the metadata file is sliced into segments of lengths self.seq_length.
         Output:
-        ClassifierDataset object with self.metadata dataframe after applying the condition
+            ClassifierDataset object with self.metadata dataframe after applying the condition
         """
 
         # All calls are worthy (because we can later create a bigger slice contain them that is still a call in
@@ -117,7 +119,6 @@ class BaseDataset(Dataset):
         else:
             channel = None
         return path_to_file, begin_time, end_time, label, channel
-
 
     def _slice_sequence(self):
         """
@@ -208,11 +209,10 @@ class BaseDataset(Dataset):
 
 
 class ClassifierDataset(BaseDataset):
-    '''
+    """
     This class inherits all the traits from BaseDataset and handles cases that include Background noise
     (margin ratio feature is implemented)
-    '''
-
+    """
 
     def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
         """
@@ -267,11 +267,9 @@ class ClassifierDataset(BaseDataset):
 
 
 class NoBackGroundDataset(BaseDataset):
-    '''
+    """
     This  class inherits all the traits from BaseDataset and handles cases with no Background noise (calls only dataset)
-    '''
-
-
+    """
 
     def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
         """
@@ -309,6 +307,37 @@ class PeakNormalize:
     def __call__(self, sample):
 
         return (sample - sample.min()) / (sample.max() - sample.min())
+
+
+class MinFreqFiltering:
+    """Cut the spectrogram frequency axis to make it start from min_freq
+    ***Note: In case a MaxFreqFiltering is implemented, the max_freq should be greater than min_freq***
+
+    input:
+        min_freq_filtering - int
+        sample_rate - int
+
+    output:
+        spectrogram - pytorch tensor (3-D array)
+    """
+
+    def __init__(self, min_freq_filtering, sample_rate):
+        self.min_freq_filtering = min_freq_filtering
+        self.sample_rate = sample_rate
+
+    def edit_spectrogram_axis(self, sample):
+        if self.min_freq_filtering > self.sample_rate / 2 or self.min_freq_filtering < 0:
+            raise ValueError("min_freq_filtering should be greater than 0, and smaller than sample_rate/2")
+        max_freq_in_spectrogram = self.sample_rate / 2
+        min_value = sample.size(dim=1) * self.min_freq_filtering / max_freq_in_spectrogram
+        min_value = int(np.floor(min_value))
+        sample = sample[:, min_value:, :]
+
+        return sample
+
+    def __call__(self, sample):
+
+        return self.edit_spectrogram_axis(sample)
 
 
 class UnitNormalize:
