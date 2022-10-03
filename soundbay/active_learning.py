@@ -9,36 +9,35 @@ def get_recording_name_from_inference_file_name(inference_file_name):
     return recording_name
 
 
-def load_inference_results_from_dir(inference_dir: str) -> pd.DataFrame:
+def load_inference_results_from_dir(inference_dir: str, segment_length_in_seconds: int) -> pd.DataFrame:
     df_all_recordings_inference = pd.DataFrame(
         columns=['segment_id', 'recording', 'class0_prob', 'class1_prob', 'segment_start_sec', 'segment_end_sec'])
 
     for filename in os.listdir(inference_dir):
-        df_one_recording_inference = create_inference_df_for_one_recording(filename, inference_dir)
+        df_one_recording_inference = create_inference_df_for_one_recording(filename, inference_dir,
+                                                                           segment_length_in_seconds)
         df_all_recordings_inference = pd.concat([df_all_recordings_inference, df_one_recording_inference],
                                                 ignore_index=True)
 
-    df_all_recordings_inference['segment_end_sec'] = df_all_recordings_inference['segment_start_sec'] + 1
     df_all_recordings_inference.insert(0, 'chunk_id', '')
     return df_all_recordings_inference
 
 
-def create_inference_df_for_one_recording(filename, inference_dir):
+def create_inference_df_for_one_recording(filename: str, inference_dir: str, segment_length_in_seconds: int):
     """
     Load inference file and create DataFrame for one recording.
-    :param filename: str
-    :param inference_dir: str
     :return: pd.DataFrame
     """
     recording_name = get_recording_name_from_inference_file_name(filename)
     inference_full_path = os.path.join(inference_dir, filename)
     df_one_recording_inference = pd.read_csv(inference_full_path)
     df_one_recording_inference.insert(0, 'recording', recording_name)
-    df_one_recording_inference['segment_start_sec'] = df_one_recording_inference.index
+    df_one_recording_inference['segment_start_sec'] = pd.Series(
+        np.arange(df_one_recording_inference.shape[0] * segment_length_in_seconds, step=segment_length_in_seconds))
+    df_one_recording_inference['segment_end_sec'] = df_one_recording_inference[
+                                                        'segment_start_sec'] + segment_length_in_seconds
     df_one_recording_inference['segment_id'] = df_one_recording_inference['recording'] + '_' + \
-                                               df_one_recording_inference[
-                                                   'segment_start_sec'].astype(
-                                                   str)
+                                               df_one_recording_inference['segment_start_sec'].astype(str)
     return df_one_recording_inference
 
 
@@ -136,8 +135,8 @@ def format_ranked_chunks_for_output(ranked_chunks: pd.Series) -> pd.DataFrame:
 
 
 def get_ranked_segments_from_inference_dir(inference_dir: str, chunk_len_in_seconds: int,
-                                           gain_threshold: float) -> pd.DataFrame:
-    df = load_inference_results_from_dir(inference_dir)
+                                           gain_threshold: float, segment_length_in_seconds: int) -> pd.DataFrame:
+    df = load_inference_results_from_dir(inference_dir, segment_length_in_seconds)
     for recording_id in df.recording.unique():
         df = add_chunk_id_per_recording(df, recording_id, chunk_len_in_seconds)
     df = compute_potential_gain_per_segment(df)
@@ -154,12 +153,19 @@ if __name__ == "__main__":
     parser.add_argument('output_dir', type=str, default='.', help='path where the output file should be saved')
     parser.add_argument('--chunk_len', dest='chunk_len_in_seconds', type=int, default='180',
                         help='required chunk length (in seconds)')
+    parser.add_argument('--seg_len', dest='segment_length_in_seconds', type=int, default='1',
+                        help='required segment length (in seconds)')
     parser.add_argument('--thresh', dest='gain_threshold', type=float, default='0.35',
                         help='desired gain threshold for considering a segment as valuable')
     args = parser.parse_args()
 
     ranked_chunks = get_ranked_segments_from_inference_dir(args.inference_dir, args.chunk_len_in_seconds,
-                                                           args.gain_threshold)
+                                                           args.gain_threshold, args.segment_length_in_seconds)
     output_full_path = os.path.join(args.output_dir, 'ranked_chunks.csv')
     ranked_chunks.to_csv(output_full_path)
-    print(f'Ranked chunks csv saved at <{output_full_path}>')
+    print(
+        f'Chunk ranking computed based on the following parameters: chunk length {args.chunk_len_in_seconds} seconds, segment '
+        f'length {args.segment_length_in_seconds} seconds, gain threshold {args.gain_threshold}.\nRanked chunks csv '
+        f'saved at <{output_full_path}>')
+
+#
