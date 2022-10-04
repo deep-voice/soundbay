@@ -3,6 +3,25 @@ import numpy as np
 import pandas as pd
 import os
 
+"""
+The purpose of this algorithm is to rank chunks of data based on how much they would improve the predictive model, 
+should they be annotated and added to its training set.
+The input to this algorithm is the csv file with inference results that is outputted by our predictive model.
+The output of this algorithm is a csv file ranking the different chunks from 1 (highest priority for annotation) to n, 
+n being the total number of chunks.
+
+Terminology:
+- Segment: the sequence length of audio sample processed by the model. Detection probabilities are given per segment 
+            (default segment length is 1 second).
+- Chunk: a bunch of consecutive segments.
+ 
+This algorithm ranks chunks, and not segments, in order to make the end result more easily usable for the end user (the 
+intended annotator).
+Chunk length is negatively correlated with how valuable the ranking is (with shorter chunk length, the 
+difference in predicted value between each two chunks is bigger), but positively correlated with ease of use by future 
+annotators (longer chunks -> easier to use when annotating).
+"""
+
 
 def get_recording_name_from_inference_file_name(inference_file_name):
     recording_name = inference_file_name.split('\\')[-1].split('.')[0].split('-')[-1]
