@@ -15,7 +15,7 @@ Terminology:
             (default segment length is 1 second).
 - Chunk: a bunch of consecutive segments.
  
-This algorithm ranks chunks, and not segments, in order to make the end result more easily usable for the end user (the 
+The algorithm ranks chunks, and not segments, in order to make the end result more easily usable for the end user (the 
 intended annotator).
 Chunk length is negatively correlated with how valuable the ranking is (with shorter chunk length, the 
 difference in predicted value between each two chunks is bigger), but positively correlated with ease of use by future 
@@ -51,10 +51,14 @@ def create_inference_df_for_one_recording(filename: str, inference_dir: str, seg
     inference_full_path = os.path.join(inference_dir, filename)
     df_one_recording_inference = pd.read_csv(inference_full_path)
     df_one_recording_inference.insert(0, 'recording', recording_name)
-    df_one_recording_inference['segment_start_sec'] = pd.Series(
-        np.arange(df_one_recording_inference.shape[0] * segment_length_in_seconds, step=segment_length_in_seconds))
-    df_one_recording_inference['segment_end_sec'] = df_one_recording_inference[
-                                                        'segment_start_sec'] + segment_length_in_seconds
+    if 'begin_time' in df_one_recording_inference.columns:
+        df_one_recording_inference = df_one_recording_inference.rename(
+            {'begin_time': 'segment_start_sec', 'end_time': 'segment_end_sec'}, axis=1)
+    else:
+        df_one_recording_inference['segment_start_sec'] = pd.Series(
+            np.arange(df_one_recording_inference.shape[0] * segment_length_in_seconds, step=segment_length_in_seconds))
+        df_one_recording_inference['segment_end_sec'] = df_one_recording_inference[
+                                                            'segment_start_sec'] + segment_length_in_seconds
     df_one_recording_inference['segment_id'] = df_one_recording_inference['recording'] + '_' + \
                                                df_one_recording_inference['segment_start_sec'].astype(str)
     return df_one_recording_inference
