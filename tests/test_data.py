@@ -12,7 +12,7 @@ def test_dataloader() -> None:
     seed(1)
     with initialize(config_path=os.path.join("..", 'soundbay', 'conf')):
         # config is relative to a module
-        cfg = compose(config_name=os.path.join("runs", "main"))
+        cfg = compose(config_name="main")
         dataset = ClassifierDataset(cfg.data.train_dataset.data_path, cfg.data.train_dataset.metadata_path,
                                         augmentations=cfg.data.train_dataset.augmentations,
                                         augmentations_p=cfg.data.train_dataset.augmentations_p,
