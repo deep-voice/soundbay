@@ -91,26 +91,81 @@ def load_model(model_params, checkpoint_state_dict):
     model.load_state_dict(checkpoint_state_dict)
     return model
 
-
-def inference_to_file(
-    device,
-    batch_size,
-    dataset_args,
-    model_args,
-    checkpoint_state_dict,
-    output_path,
-    model_name,
-    save_raven,
-    threshold
+def infer_multi_file(
+        device,
+        batch_size,
+        dataset_args,
+        model_args,
+        checkpoint_state_dict,
+        output_path,
+        model_name,
+        save_raven,
+        threshold
 ):
     """
-    This functions takes the dataset and produces the model prediction to a file
-    Input:
-        device: cpu/gpu
-        batch_size: the number of samples the model will infer at once
-        dataset_args: the required arguments for the dataset class
-        model_path: directory for the wanted trained model
-        output_path: directory to save the prediction file
+        This functions takes the ClassifierDataset dataset and produces the model prediction to a file
+        Input:
+            device: cpu/gpu
+            batch_size: the number of samples the model will infer at once
+            dataset_args: the required arguments for the dataset class
+            model_path: directory for the wanted trained model
+            output_path: directory to save the prediction file
+        """
+    # set paths and create dataset
+    test_dataset = instantiate(dataset_args)
+
+    # load model
+    model = load_model(model_args, checkpoint_state_dict).to(device)
+
+    test_dataloader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size, num_workers=0,
+                                 pin_memory=False)
+
+    # predict
+    predict_prob = predict_proba(model, test_dataloader, device, None)
+
+    results_df = pandas.DataFrame(predict_prob)
+    if hasattr(test_dataset, 'metadata'):
+        concat_dataset = pandas.concat([test_dataset.metadata, results_df],
+                                       axis=1)  # TODO: make sure metadata column order matches the prediction df order
+        metrics_dict = Logger.get_metrics_dict(concat_dataset["label"].values.tolist(),
+                                               np.argmax(predict_prob, axis=1).tolist(),
+                                               results_df.values)
+        print(metrics_dict)
+    else:
+        concat_dataset = results_df
+        print("Notice: The dataset has no ground truth labels")
+
+    # save file
+    dataset_name = Path(test_dataset.metadata_path).stem
+    filename = f"Inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.csv"
+    output_file = output_path / filename
+    concat_dataset.to_csv(index=False, path_or_buf=output_file)
+
+    # save raven file
+
+    return
+
+
+def infer_single_file(
+        device,
+        batch_size,
+        dataset_args,
+        model_args,
+        checkpoint_state_dict,
+        output_path,
+        model_name,
+        save_raven,
+        threshold
+):
+    """
+        This functions takes the InferenceDataset dataset and produces the model prediction to a file, by iterating
+        on all channels in the file and concatenating the results.
+        Input:
+            device: cpu/gpu
+            batch_size: the number of samples the model will infer at once
+            dataset_args: the required arguments for the dataset class
+            model_path: directory for the wanted trained model
+            output_path: directory to save the prediction file
     """
     # Check how many channels
     data_sample, _ = sf.read(dataset_args.file_path, start=0, stop=10)
@@ -170,8 +225,51 @@ def inference_to_file(
     return
 
 
+def inference_to_file(
+    device,
+    batch_size,
+    dataset_args,
+    model_args,
+    checkpoint_state_dict,
+    output_path,
+    model_name,
+    save_raven,
+    threshold
+):
+    """
+    This functions takes the dataset and produces the model prediction to a file
+    Input:
+        device: cpu/gpu
+        batch_size: the number of samples the model will infer at once
+        dataset_args: the required arguments for the dataset class
+        model_path: directory for the wanted trained model
+        output_path: directory to save the prediction file
+    """
+    if dataset_args._target_.endswith('ClassifierDataset'):
+        infer_multi_file(device,
+                         batch_size,
+                         dataset_args,
+                         model_args,
+                         checkpoint_state_dict,
+                         output_path,
+                         model_name,
+                         save_raven,
+                         threshold)
+    elif dataset_args._target_.endswith('InferenceDataset'):
+        infer_single_file(device,
+                          batch_size,
+                          dataset_args,
+                          model_args,
+                          checkpoint_state_dict,
+                          output_path,
+                          model_name,
+                          save_raven,
+                          threshold)
+    else:
+        raise ValueError('Only ClassifierDataset or InferenceDataset allowed in inference')
 
-@hydra.main(config_name="runs/main_inference", config_path="conf")
+
+@hydra.main(config_name="runs/inference_single_audio", config_path="conf")
 def inference_main(args) -> None:
     """
     The main function for running predictions using a trained model on a wanted dataset. The arguments are inserted
