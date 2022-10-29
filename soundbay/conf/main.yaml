@@ -6,6 +6,3 @@ defaults:
   - model: defaults
   - optim: defaults
   - experiment: defaults
-
-
-# some_var: -1  # this will raise a ValueError
