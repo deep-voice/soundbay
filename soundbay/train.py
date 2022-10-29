@@ -31,12 +31,6 @@ import os
 from soundbay.utils.app import App
 from soundbay.utils.logging import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
-# from hydra.core.config_store import ConfigStore
-# from pydantic.dataclasses import dataclass
-# from pydantic import validator, BaseModel
-
-
-
 from soundbay.trainers import Trainer
 
 
@@ -75,9 +69,6 @@ def modeling(
 
     """
     # Set paths and create dataset
-
-
-
     train_dataset = instantiate(train_dataset_args, _recursive_=False)
     val_dataset = instantiate(val_dataset_args, _recursive_=False)
 
