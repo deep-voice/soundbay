@@ -21,7 +21,9 @@ from torch.utils.data import DataLoader, WeightedRandomSampler
 import wandb
 from functools import partial
 from pathlib import Path
-from omegaconf import DictConfig, OmegaConf, ListConfig
+from omegaconf import OmegaConf 
+from soundbay.utils.conf_validator import Config
+
 
 
 
@@ -34,7 +36,6 @@ import os
 from soundbay.utils.app import App
 from soundbay.utils.logging import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
-from soundbay.utils.conf_validator import Config
 # from hydra.core.config_store import ConfigStore
 # from pydantic.dataclasses import dataclass
 # from pydantic import validator, BaseModel
@@ -141,16 +142,13 @@ def modeling(
     return
 
 
-
-
 # TODO check how to use hydra without path override
 @hydra.main(config_name="main", config_path="conf", version_base='1.1')
-def main(validate_args: Config) -> None:
+def main(validate_args) -> None:
     
     args = validate_args.copy()
     OmegaConf.resolve(validate_args)
-    r_model = Config(**validate_args)
-    # x_model = OmegaConf.to_object(validate_args)
+    Config(**validate_args)
     # Set logger
     _logger = wandb if not args.experiment.debug else Mock()
     experiment_name = get_experiment_name(args)

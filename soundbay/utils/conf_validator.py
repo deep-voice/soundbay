@@ -1,5 +1,5 @@
+from typing import Optional
 from pydantic import BaseModel, validator
-
 
 
 class Dataset(BaseModel):
@@ -16,7 +16,6 @@ class Dataset(BaseModel):
     val_dataset: dict
     class Config:
         title = "Dataset"
-        # max_anystr_length = 10
         allow_mutation = False
         validate_assignment = True
         anystr_lower = False
@@ -43,7 +42,6 @@ class Model(BaseModel):
 
     class Config:
         title = "Model"
-        # max_anystr_length = 10
         allow_mutation = False
         validate_assignment = True
         anystr_lower = True
@@ -66,6 +64,69 @@ class Model(BaseModel):
             raise ValueError(f"'This model is not allowed: {model['_target_']}")
         return model
 
+
+class Augmentations(BaseModel):
+    frequency_masking: dict
+    time_masking: dict
+    random_noise: Optional[dict]
+
+    class Config:
+        title = "Augmentations"
+        validate_assignment = True
+        anystr_lower = True
+        validate_all = True
+        use_enum_values = True
+
+
+    @validator("frequency_masking")
+    def validate_frequency_masking(cls, frequency_masking:dict):
+        return frequency_masking        
+    
+    @validator("time_masking")
+    def validate_time_masking(cls, time_masking:dict):
+        return time_masking     
+        
+    @validator("random_noise")
+    def validate_random_noise(cls, random_noise:dict):
+        return random_noise     
+
+
+class Preprocessors(BaseModel):
+    sliding_window_norm: Optional[dict]
+    spectrogram: Optional[dict]
+    resize: Optional[dict]
+
+    class Config:
+        title = "Preprocessors"
+        validate_assignment = True
+        anystr_lower = True
+        validate_all = True
+        use_enum_values = True
+
+
+    @validator("sliding_window_norm")
+    def validate_sliding_window_norm(cls, sliding_window_norm:dict):
+        return sliding_window_norm        
+    
+    @validator("spectrogram")
+    def validate_spectrogram(cls, spectrogram:dict):
+        return spectrogram     
+        
+    @validator("resize")
+    def validate_resize(cls, resize:dict):
+        return resize   
+    
 class Config(BaseModel):
     data: Dataset
     model: Model
+    augmentations: Augmentations
+    preprocessors: Preprocessors
+    # optim: Optimizer
+    # experiment: Experiment
+    class Config:
+        title = "Config"
+        fields = {'augmentations': '_augmentations',
+                    'preprocessors': '_preprocessors'} # pydantic ignores private varibles - need to add alias
+
+
+
