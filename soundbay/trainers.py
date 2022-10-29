@@ -94,7 +94,7 @@ class Trainer:
             audio, label, raw_wav, idx = batch
             audio, label  = audio.to(self.device), label.to(self.device)
 
-            if it == 0 and not self.debug:
+            if (it == 0) and (not self.debug) and ((epoch % 5) == 0):
                 self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='train')
 
             # estimate and calc losses
@@ -125,7 +125,7 @@ class Trainer:
                     break
                 audio, label, raw_wav, idx = batch
                 audio, label = audio.to(self.device), label.to(self.device)
-                if it == 0 and not self.debug:
+                if (it == 0) and (not self.debug) and ((epoch % 5) == 0):
                     self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='val')
 
                 # estimate and calc losses
