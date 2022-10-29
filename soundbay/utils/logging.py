@@ -173,7 +173,7 @@ class Logger:
             del ax
         list_of_specs_objects = [wandb.Image(data_or_path=spec, caption=f'label_{lab}_{ind}_train') for spec, ind, lab in zip(specs,idx, label)]
         log_wavs = {f'First batch {flag} original wavs': list_of_wavs_objects}
-        log_specs = {f'First batch {flag} augmented spectrograms': list_of_specs_objects}
+        log_specs = {f'First batch {flag} augmented spectrogram\'s': list_of_specs_objects}
 
         # Upload to W&B
         wandb.log(log_wavs, commit=False)
