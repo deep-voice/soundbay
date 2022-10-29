@@ -1,5 +1,7 @@
 import pytest
 import torch
+import pathlib
+import os
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
@@ -21,6 +23,7 @@ def own_model(request):
 def test_model(own_model):
     data_transform = transforms.Compose([transforms.Grayscale(num_output_channels=1),
                                          transforms.ToTensor()])
-    dataset = ImageFolder('assets/demi_image_data', transform=data_transform)
+    current_path = pathlib.Path(__file__).parent.resolve()
+    dataset = ImageFolder(os.path.join(current_path, 'assets', 'demi_image_data'), transform=data_transform)
     data = DataLoader(dataset, batch_size=16, shuffle=True)
     assert torch.sum(own_model(next(iter(data))[0])).detach().numpy() != 0
