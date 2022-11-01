@@ -9,12 +9,12 @@ from typing import List
 
 # TODO add tests to the utils in this file
 
-def load_n_adapt_raven_annotation_table_to_dv_dataset_requirements(annotation_path: str,
+def load_n_adapt_raven_annotation_table_to_dv_dataset_requirements(annotation_file_path: str,
                                                                    filename_suffix: str = ".Table.1.selections.txt"
                                                                    ) -> pd.DataFrame:
     # todo: decide whether to add annotation treatment
-    df_annotations = pd.read_csv(annotation_path, sep="\t")
-    df_annotations['filename'] = os.path.basename(annotation_path).replace(filename_suffix, '')
+    df_annotations = pd.read_csv(annotation_file_path, sep="\t")
+    df_annotations['filename'] = os.path.basename(annotation_file_path).replace(filename_suffix, '')
     df_annotations = df_annotations.rename(columns={'Begin Time (s)': 'begin_time', 'End Time (s)': 'end_time'})
     df_annotations['call_length'] = df_annotations['end_time'] - df_annotations['begin_time']
     return df_annotations
@@ -46,7 +46,7 @@ def raven_to_df_annotations(annotations_path: str,
     print('Number of Labels:', metadata.shape[0])
     for tag in positive_tag_names:
         metadata['Annotation'] = metadata['Annotation'].replace(np.nan, tag, regex=True)
-    #add recording length to dataframe
+    # add recording length to dataframe
     wav_filelist = list(recording.glob('*.wav'))
     wav_filedict = {re.search("\.Table.1.selections", file.as_posix()).group(): {'path': file} for file in wav_filelist
                     if re.search("\.Table.1.selections", file.as_posix())}
@@ -138,6 +138,7 @@ def reorder_columns_to_default_view(df: pd.DataFrame):
 
     Returns: a dataframe with reordered column, so the default order view will be kept
     """
+
     def get_metadata_fields():
         return ['begin_time', 'end_time', 'filename', 'call_length', 'label']
 
