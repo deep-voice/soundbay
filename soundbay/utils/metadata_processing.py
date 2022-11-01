@@ -20,6 +20,18 @@ def load_n_adapt_raven_annotation_table_to_dv_dataset_requirements(annotation_fi
     return df_annotations
 
 
+def load_n_adapt_raven_annotation_dir_to_dv_dataset_requirements(annotation_dir_path: str,
+                                                                 filename_suffix: str = '.Table.1.selections.txt',
+                                                                 ) -> pd.DataFrame:
+    df_list = []
+    for filename in os.listdir(annotation_dir_path):
+        annotation_file_path = os.path.join(annotation_dir_path, filename)
+        small_df = load_n_adapt_raven_annotation_table_to_dv_dataset_requirements(annotation_file_path)
+        df_list.append(small_df)
+    df_all_annotations = pd.concat(df_list)
+    return df_all_annotations
+
+
 # <<<<<<< feature/EDA_script
 def raven_to_df_annotations(annotations_path: str,
                             recording_path: str,
