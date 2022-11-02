@@ -211,3 +211,44 @@ def bg_from_non_overlap_calls(df: pd.DataFrame):
     bg_df = pd.concat(bg_calls)
     bg_df['label'] = 0
     return pd.concat([bg_df, df], ignore_index=True)
+
+
+def merge_overlapping_calls(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Receives an annotation dataframe with (possibly) overlapping calls, and goes through merge-and-drop iterations until
+    no more overlaps are found.
+    :param df: Pandas DataFrame with the following columns: ['filename', 'begin_time', 'end_time']
+    :return: pd.DataFrame
+    """
+    df = df.sort_values(['filename', 'begin_time']).reset_index(drop=True)
+    df = reset_overlap_accessory_columns(df)
+    df = mark_overlapping_rows(df)
+
+    while 1 in df.overlap.unique():
+        df = merge_overlapping_rows(df)
+        df = reset_overlap_accessory_columns(df)
+        df = mark_overlapping_rows(df)
+
+    df = df.drop(['overlap', 'next_begin_time', 'next_end_time'], axis=1)
+    return df
+
+
+def merge_overlapping_rows(df) -> pd.DataFrame:
+    """
+    Merge (and drop) overlapping rows.
+    """
+    df.loc[df.overlap == 1, 'end_time'] = df[df.overlap == 1]['next_end_time']
+    df = df.drop_duplicates(subset=['filename', 'end_time'], keep='first')
+    return df
+
+
+def reset_overlap_accessory_columns(df) -> pd.DataFrame:
+    df['overlap'] = np.NaN
+    df['next_begin_time'] = df.groupby('filename').begin_time.shift(-1)
+    df['next_end_time'] = df.groupby('filename').end_time.shift(-1)
+    return df
+
+
+def mark_overlapping_rows(df) -> pd.DataFrame:
+    df.loc[df.next_begin_time < df.end_time, 'overlap'] = 1
+    return df
