@@ -189,7 +189,7 @@ def correct_call_times_with_duration(df: pd.DataFrame, audio_files_path: str):
     return df.drop('audio_length', axis=1)
 
 
-def bg_from_non_overlap_calls(df: pd.DataFrame):
+def extract_background_from_non_overlap_calls_df(df: pd.DataFrame):
     """
     Args:
         df: a dataframe of the annotations metadata, with calls that don't overlap
