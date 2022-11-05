@@ -32,6 +32,8 @@ from soundbay.utils.app import App
 from soundbay.utils.logging import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
 from soundbay.trainers import Trainer
+from soundbay.data import ClassifierDataset
+from soundbay.models import ResNet1Channel
 
 
 
@@ -69,11 +71,34 @@ def modeling(
 
     """
     # Set paths and create dataset
-    train_dataset = instantiate(train_dataset_args, _recursive_=False)
-    val_dataset = instantiate(val_dataset_args, _recursive_=False)
+    # train_dataset = instantiate(train_dataset_args, _recursive_=False)
+
+    if train_dataset_args['_target_'] == 'soundbay.data.ClassifierDataset':
+        train_dataset = ClassifierDataset(data_path = train_dataset_args['metadata_path'],
+        metadata_path=train_dataset_args['metadata_path'], augmentations=train_dataset_args['augmentations'],
+        augmentations_p=train_dataset_args['augmentations_p'],
+        preprocessors=train_dataset_args['preprocessors'])
+
+
+    if val_dataset_args['_target_'] == 'soundbay.data.ClassifierDataset':
+        val_dataset = ClassifierDataset(data_path = val_dataset_args['metadata_path'],
+        metadata_path=val_dataset_args['metadata_path'], augmentations=val_dataset_args['augmentations'],
+        augmentations_p=val_dataset_args['augmentations_p'],
+        preprocessors=val_dataset_args['preprocessors'])
+
+
+    # val_dataset = instantiate(val_dataset_args, _recursive_=False)
 
     # Define model and device for training
     model = instantiate(model_args)
+    if model_args['_target_'] == 'models.ResNet1Channel':
+        model = ResNet1Channel(layers=model_args['layers'],block=model_args['block'],
+        num_classes=model_args['num_classes']) 
+        
+
+
+
+
     model.to(device)
 
     # Assert number of labels in the dataset and the number of labels in the model
