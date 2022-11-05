@@ -24,7 +24,7 @@ from pathlib import Path
 from omegaconf import OmegaConf 
 from soundbay.utils.conf_validator import Config
 import hydra
-from hydra.utils import instantiate
+# from hydra.utils import instantiate
 import random
 from unittest.mock import Mock
 import os
@@ -74,14 +74,14 @@ def modeling(
     # train_dataset = instantiate(train_dataset_args, _recursive_=False)
 
     if train_dataset_args['_target_'] == 'soundbay.data.ClassifierDataset':
-        train_dataset = ClassifierDataset(data_path = train_dataset_args['metadata_path'],
+        train_dataset = ClassifierDataset(data_path = train_dataset_args['data_path'],
         metadata_path=train_dataset_args['metadata_path'], augmentations=train_dataset_args['augmentations'],
         augmentations_p=train_dataset_args['augmentations_p'],
         preprocessors=train_dataset_args['preprocessors'])
 
 
     if val_dataset_args['_target_'] == 'soundbay.data.ClassifierDataset':
-        val_dataset = ClassifierDataset(data_path = val_dataset_args['metadata_path'],
+        val_dataset = ClassifierDataset(data_path = val_dataset_args['data_path'],
         metadata_path=val_dataset_args['metadata_path'], augmentations=val_dataset_args['augmentations'],
         augmentations_p=val_dataset_args['augmentations_p'],
         preprocessors=val_dataset_args['preprocessors'])
@@ -90,11 +90,11 @@ def modeling(
     # val_dataset = instantiate(val_dataset_args, _recursive_=False)
 
     # Define model and device for training
-    model = instantiate(model_args)
+    # model = instantiate(model_args)
     if model_args['_target_'] == 'models.ResNet1Channel':
         model = ResNet1Channel(layers=model_args['layers'],block=model_args['block'],
         num_classes=model_args['num_classes']) 
-        
+
 
 
 
@@ -129,8 +129,12 @@ def modeling(
             pin_memory=True,
         )
 
-    optimizer = instantiate(optimizer_args, model.parameters())
-    scheduler = instantiate(scheduler_args, optimizer)
+    # optimizer = instantiate(optimizer_args, model.parameters())
+    if optimizer_args._target_ == 'torch.optim.Adam':
+        optimizer = torch.optim.Adam(model.parameters(), lr=optimizer_args.lr)
+
+    if scheduler_args._target_ == 'torch.optim.lr_scheduler.ExponentialLR':
+        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=scheduler_args['gamma'])
 
     # Add the rest of the parameters to trainer instance
     _trainer = trainer(
@@ -193,7 +197,9 @@ def main(validate_args) -> None:
     App.init(args)
 
     # Define criterion
-    criterion = instantiate(args.model.criterion)
+    # criterion = instantiate(args.model.criterion)
+    if args.model.criterion._target_ == 'torch.nn.CrossEntropyLoss':
+        criterion = torch.nn.CrossEntropyLoss
 
     # Seed script
     if args.experiment.manual_seed is None:
