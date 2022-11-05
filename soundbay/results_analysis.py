@@ -62,8 +62,9 @@ def inference_csv_to_raven(probs_df: pd.DataFrame, num_classes, seq_len: float, 
 
     begin_times = all_begin_times[if_positive]  # get the begin times of the positive segments
     end_times = np.round(begin_times+seq_len, decimals=3)
-    if end_times[-1] > round(len_dataset*seq_len,1):
-        end_times[-1] = round(len_dataset*seq_len,1)  # cut off last bbox if exceeding eof
+    if len(end_times >= 1):
+        if end_times[-1] > round(len_dataset*seq_len,1):
+            end_times[-1] = round(len_dataset*seq_len,1)  # cut off last bbox if exceeding eof
 
     # create columns for raven format
     low_freq = np.zeros_like(begin_times)
