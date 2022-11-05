@@ -446,7 +446,8 @@ class InferenceDataset(Dataset):
                  preprocessors: DictConfig,
                  seq_length: float = 1,
                  data_sample_rate: int = 44100,
-                 sample_rate: int = 44100):
+                 sample_rate: int = 44100,
+                 channel: int = None):
         """
         __init__ method initiates InferenceDataset instance:
         Input:
@@ -461,6 +462,7 @@ class InferenceDataset(Dataset):
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
         self.preprocessor = ClassifierDataset.set_preprocessor(preprocessors)
+        self.channel = channel
         self._create_start_times()
 
     def _create_start_times(self):
@@ -489,6 +491,8 @@ class InferenceDataset(Dataset):
         """
         data, orig_sample_rate = sf.read(self.file_path, start=begin_time,
                           stop=begin_time + int(self.seq_length * self.data_sample_rate))
+        if (self.channel is not None) and (data.shape[1] > 1):
+            data = data[:, self.channel]
         assert orig_sample_rate == self.data_sample_rate, \
             f'sample rate is {orig_sample_rate}, should be {self.data_sample_rate}'
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
