@@ -24,7 +24,6 @@ from pathlib import Path
 from omegaconf import OmegaConf 
 from soundbay.utils.conf_validator import Config
 import hydra
-# from hydra.utils import instantiate
 import random
 from unittest.mock import Mock
 import os
@@ -71,20 +70,28 @@ def modeling(
 
     """
     # Set paths and create dataset
-    # train_dataset = instantiate(train_dataset_args, _recursive_=False)
 
     if train_dataset_args['_target_'] == 'soundbay.data.ClassifierDataset':
         train_dataset = ClassifierDataset(data_path = train_dataset_args['data_path'],
         metadata_path=train_dataset_args['metadata_path'], augmentations=train_dataset_args['augmentations'],
         augmentations_p=train_dataset_args['augmentations_p'],
-        preprocessors=train_dataset_args['preprocessors'])
+        preprocessors=train_dataset_args['preprocessors'],
+        seq_length=train_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
+        sample_rate=train_dataset_args['sample_rate'], margin_ratio=train_dataset_args['margin_ratio'],
+        slice_flag=train_dataset_args['slice_flag'], mode=train_dataset_args['mode']
+        )
 
 
     if val_dataset_args['_target_'] == 'soundbay.data.ClassifierDataset':
         val_dataset = ClassifierDataset(data_path = val_dataset_args['data_path'],
         metadata_path=val_dataset_args['metadata_path'], augmentations=val_dataset_args['augmentations'],
         augmentations_p=val_dataset_args['augmentations_p'],
-        preprocessors=val_dataset_args['preprocessors'])
+        preprocessors=val_dataset_args['preprocessors'],
+        seq_length=val_dataset_args['seq_length'], data_sample_rate=val_dataset_args['data_sample_rate'],
+        sample_rate=val_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
+        slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode']
+        )
+
 
 
     # val_dataset = instantiate(val_dataset_args, _recursive_=False)
@@ -199,7 +206,7 @@ def main(validate_args) -> None:
     # Define criterion
     # criterion = instantiate(args.model.criterion)
     if args.model.criterion._target_ == 'torch.nn.CrossEntropyLoss':
-        criterion = torch.nn.CrossEntropyLoss
+        criterion = torch.nn.CrossEntropyLoss()
 
     # Seed script
     if args.experiment.manual_seed is None:
