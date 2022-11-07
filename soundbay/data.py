@@ -1,26 +1,29 @@
-import torchvision
-from torch.utils.data import Dataset
-import torch
-from torchvision import transforms
-import torchaudio
-import pandas as pd
 import random
-import soundfile as sf
 from itertools import starmap, repeat
-from hydra.utils import instantiate
-from typing import Union
-from omegaconf import DictConfig
 from pathlib import Path
 from copy import deepcopy
+from typing import Union
+
+import librosa
 import numpy as np
+import pandas as pd
+import soundfile as sf
+import torch
+import torchaudio
+import torchvision
+from hydra.utils import instantiate
+from omegaconf import DictConfig
+from torch.utils.data import Dataset
+from torchvision import transforms
+from audiomentations import Compose
+
 import matplotlib.pyplot as plt
-from soundbay.data_augmentation import ChainedAugmentations
 
 
 class BaseDataset(Dataset):
-    '''
+    """
     class for storing and loading data.
-    '''
+    """
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, data_sample_rate=44100, sample_rate=44100, mode="train",
                  slice_flag=False, margin_ratio=0, split_metadata_by_label=False):
@@ -29,7 +32,7 @@ class BaseDataset(Dataset):
         Input:
         data_path - string
         metadata_path - string
-        augmentations - list of classes (not instances) from data_augmentation.py
+        augmentations - list of classes audiogemtations
         augmentations_p - array of probabilities (float64)
         preprocessors - list of classes from preprocessors (TBD function)
 
@@ -55,7 +58,6 @@ class BaseDataset(Dataset):
         weights = 1 / self.items_per_classes
         self.samples_weight = np.array([weights[t] for t in self.metadata['label'] ])
 
-
     @staticmethod
     def _update_metadata_by_mode(metadata, mode, split_metadata_by_label):
         if split_metadata_by_label:
@@ -80,7 +82,7 @@ class BaseDataset(Dataset):
             slice_flag: bool, default = False
                 If true, the metadata file is sliced into segments of lengths self.seq_length.
         Output:
-        ClassifierDataset object with self.metadata dataframe after applying the condition
+            ClassifierDataset object with self.metadata dataframe after applying the condition
         """
 
         # All calls are worthy (because we can later create a bigger slice contain them that is still a call in
@@ -118,7 +120,6 @@ class BaseDataset(Dataset):
             channel = None
         return path_to_file, begin_time, end_time, label, channel
 
-
     def _slice_sequence(self):
         """
         function _slice_sequence process metadata list call lengths to be sliced according to self.seq_length
@@ -150,8 +151,14 @@ class BaseDataset(Dataset):
             augmentations_list = [instantiate(args) for args in augmentations_dict.values()]
         else:
             augmentations_list = []
-        augmenter = ChainedAugmentations(augmentations_list, augmentations_p) if self.mode == 'train' else torch.nn.Identity()
-        return augmenter
+        self._train_augmenter = Compose(augmentations_list, p=augmentations_p, shuffle=True)
+        self._val_augmenter = torch.nn.Identity()
+
+    def augment(self, x):
+        if self.mode == 'train':
+            return torch.tensor(self._train_augmenter(x.numpy(), self.sample_rate), dtype=torch.float32)
+        else:
+            return self._val_augmenter(x)
 
     @staticmethod
     def set_preprocessor(preprocessors_args):
@@ -191,7 +198,7 @@ class BaseDataset(Dataset):
         path_to_file, begin_time, end_time, label, channel = self._grab_fields(idx)
         audio = self._get_audio(path_to_file, begin_time, end_time, label, channel)
         audio_raw = self.sampler(audio)
-        audio_augmented = self.augmenter(audio_raw)
+        audio_augmented = self.augment(audio_raw)
         audio_processed = self.preprocessor(audio_augmented)
 
         if self.mode == "train" or self.mode == "val":
@@ -208,11 +215,10 @@ class BaseDataset(Dataset):
 
 
 class ClassifierDataset(BaseDataset):
-    '''
+    """
     This class inherits all the traits from BaseDataset and handles cases that include Background noise
     (margin ratio feature is implemented)
-    '''
-
+    """
 
     def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
         """
@@ -267,11 +273,9 @@ class ClassifierDataset(BaseDataset):
 
 
 class NoBackGroundDataset(BaseDataset):
-    '''
+    """
     This  class inherits all the traits from BaseDataset and handles cases with no Background noise (calls only dataset)
-    '''
-
-
+    """
 
     def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
         """
@@ -309,6 +313,37 @@ class PeakNormalize:
     def __call__(self, sample):
 
         return (sample - sample.min()) / (sample.max() - sample.min())
+
+
+class MinFreqFiltering:
+    """Cut the spectrogram frequency axis to make it start from min_freq
+    ***Note: In case a MaxFreqFiltering is implemented, the max_freq should be greater than min_freq***
+
+    input:
+        min_freq_filtering - int
+        sample_rate - int
+
+    output:
+        spectrogram - pytorch tensor (3-D array)
+    """
+
+    def __init__(self, min_freq_filtering, sample_rate):
+        self.min_freq_filtering = min_freq_filtering
+        self.sample_rate = sample_rate
+
+    def edit_spectrogram_axis(self, sample):
+        if self.min_freq_filtering > self.sample_rate / 2 or self.min_freq_filtering < 0:
+            raise ValueError("min_freq_filtering should be greater than 0, and smaller than sample_rate/2")
+        max_freq_in_spectrogram = self.sample_rate / 2
+        min_value = sample.size(dim=1) * self.min_freq_filtering / max_freq_in_spectrogram
+        min_value = int(np.floor(min_value))
+        sample = sample[:, min_value:, :]
+
+        return sample
+
+    def __call__(self, sample):
+
+        return self.edit_spectrogram_axis(sample)
 
 
 class UnitNormalize:
@@ -411,7 +446,8 @@ class InferenceDataset(Dataset):
                  preprocessors: DictConfig,
                  seq_length: float = 1,
                  data_sample_rate: int = 44100,
-                 sample_rate: int = 44100):
+                 sample_rate: int = 44100,
+                 channel: int = None):
         """
         __init__ method initiates InferenceDataset instance:
         Input:
@@ -426,6 +462,7 @@ class InferenceDataset(Dataset):
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
         self.preprocessor = ClassifierDataset.set_preprocessor(preprocessors)
+        self.channel = channel
         self._create_start_times()
 
     def _create_start_times(self):
@@ -454,6 +491,8 @@ class InferenceDataset(Dataset):
         """
         data, orig_sample_rate = sf.read(self.file_path, start=begin_time,
                           stop=begin_time + int(self.seq_length * self.data_sample_rate))
+        if (self.channel is not None) and (data.shape[1] > 1):
+            data = data[:, self.channel]
         assert orig_sample_rate == self.data_sample_rate, \
             f'sample rate is {orig_sample_rate}, should be {self.data_sample_rate}'
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
