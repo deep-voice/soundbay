@@ -4,7 +4,7 @@ Configuration dicts
 These dicts describe the allowed values of the soundbay framework
 '''
 from soundbay.models import ResNet1Channel, GoogleResNet50withPCEN
-from data import ClassifierDataset, BaseDataset
+from soundbay.data import ClassifierDataset, BaseDataset
 import torch
 from audiomentations import PitchShift, BandStopFilter, TimeMask, TimeStretch
 

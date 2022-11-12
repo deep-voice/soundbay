@@ -14,7 +14,7 @@ import datetime
 from hydra.utils import instantiate
 from soundbay.utils.logging import Logger
 from soundbay.utils.checkpoint_utils import merge_with_checkpoint
-from conf_dict import  models_dict
+from soundbay.conf_dict import models_dict
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
                   device: torch.device = torch.device('cpu'),
                   selected_class_idx: Union[None, int] = None,
