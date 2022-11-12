@@ -84,7 +84,10 @@ def load_model(model_params, checkpoint_state_dict):
         model: nn.Module object of the model
     """
 
-    model = instantiate(model_params)
+    # model = instantiate(model_params)
+    if model_params['_target_'] == 'models.ResNet1Channel':
+        model = ResNet1Channel(layers=model_params['layers'],block=model_params['block'],
+        num_classes=model_params['num_classes']) 
     model.load_state_dict(checkpoint_state_dict)
     return model
 
