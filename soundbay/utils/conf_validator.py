@@ -1,5 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel, validator
+from conf_dict import datasets_dict, criterion_dict, models_dict 
 
 
 class Dataset(BaseModel):
@@ -31,8 +32,7 @@ class Dataset(BaseModel):
 
     @validator("train_dataset")
     def validate_train_dataset(cls, train_dataset:dict) :
-        possible_train_datasets = ['soundbay.data.ClassifierDataset', 'soundbay.data.BaseDataset']
-        if train_dataset['_target_'] not in possible_train_datasets: 
+        if train_dataset['_target_'] not in datasets_dict.keys(): 
             raise ValueError(f"Train_dataset is not allowed from type {train_dataset['_target_']}")
         return train_dataset
 
@@ -50,17 +50,15 @@ class Model(BaseModel):
 
     @validator("criterion")
     def validate_criterion(cls, criterion:int):
-        # p = Path(path)
-        possible_values = ['torch.nn.MSELoss', 'torch.nn.CrossEntropyLoss']
-        if criterion['_target_'] not in possible_values:
+        if criterion['_target_'] not in criterion_dict.keys():
             raise ValueError(f"'This criterion is not allowed: {criterion['_target_']}")
         return criterion
 
 
     @validator("model")
     def validate_model(cls, model:dict):
-        possible_values = ['models.ResNet1Channel', 'models.GoogleResNet50withPCEN']
-        if model['_target_'] not in possible_values:
+        # possible_values = ['models.ResNet1Channel', 'models.GoogleResNet50withPCEN']
+        if model['_target_'] not in models_dict.keys():
             raise ValueError(f"'This model is not allowed: {model['_target_']}")
         return model
 
@@ -121,8 +119,6 @@ class Config(BaseModel):
     model: Model
     augmentations: Augmentations
     preprocessors: Preprocessors
-    # optim: Optimizer
-    # experiment: Experiment
     class Config:
         title = "Config"
         fields = {'augmentations': '_augmentations',
