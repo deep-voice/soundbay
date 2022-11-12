@@ -165,17 +165,10 @@ def modeling(
 
 
 # TODO check how to use hydra without path override
-# @hydra.main(config_name="main", config_path="conf", version_base='1.1')
-def main() -> None:
-    #CLI args 
-    cli_conf = OmegaConf.from_cli()
-
-    #Load default YAML conf
-    default_args = OmegaConf.load('../soundbay/conf/omegaconf/oc.yml')
-
-    args = OmegaConf.merge(default_args, cli_conf)
-
-    validate_args = args.copy()
+@hydra.main(config_name="main", config_path="conf", version_base='1.2')
+def main(validate_args) -> None:
+    
+    args = validate_args.copy()
     OmegaConf.resolve(validate_args)
     Config(**validate_args)
     # Set logger
