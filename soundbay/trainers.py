@@ -80,7 +80,7 @@ class Trainer:
             if self.verbose:  # show batch metrics in progress bar
                 s = 'epoch: ' + str(epoch) + ', ' + str(self.logger.metrics_dict)
                 iterator.set_postfix_str(s)
-            if self.debug and epoch > 1:
+            if self.debug and epoch > 2:
                 break
 
 
