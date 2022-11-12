@@ -31,9 +31,7 @@ from soundbay.utils.app import App
 from soundbay.utils.logging import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
 from soundbay.trainers import Trainer
-from soundbay.data import ClassifierDataset
-from soundbay.models import ResNet1Channel
-
+from soundbay.conf_dict import models_dict, criterion_dict, datasets_dict, optim_dict, scheduler_dict
 
 
 def modeling(
@@ -71,39 +69,29 @@ def modeling(
     """
     # Set paths and create dataset
 
-    if train_dataset_args['_target_'] == 'soundbay.data.ClassifierDataset':
-        train_dataset = ClassifierDataset(data_path = train_dataset_args['data_path'],
-        metadata_path=train_dataset_args['metadata_path'], augmentations=train_dataset_args['augmentations'],
-        augmentations_p=train_dataset_args['augmentations_p'],
-        preprocessors=train_dataset_args['preprocessors'],
-        seq_length=train_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
-        sample_rate=train_dataset_args['sample_rate'], margin_ratio=train_dataset_args['margin_ratio'],
-        slice_flag=train_dataset_args['slice_flag'], mode=train_dataset_args['mode']
-        )
+    train_dataset = datasets_dict[train_dataset_args['_target_']](data_path = train_dataset_args['data_path'],
+    metadata_path=train_dataset_args['metadata_path'], augmentations=train_dataset_args['augmentations'],
+    augmentations_p=train_dataset_args['augmentations_p'],
+    preprocessors=train_dataset_args['preprocessors'],
+    seq_length=train_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
+    sample_rate=train_dataset_args['sample_rate'], margin_ratio=train_dataset_args['margin_ratio'],
+    slice_flag=train_dataset_args['slice_flag'], mode=train_dataset_args['mode']
+    )
 
 
-    if val_dataset_args['_target_'] == 'soundbay.data.ClassifierDataset':
-        val_dataset = ClassifierDataset(data_path = val_dataset_args['data_path'],
-        metadata_path=val_dataset_args['metadata_path'], augmentations=val_dataset_args['augmentations'],
-        augmentations_p=val_dataset_args['augmentations_p'],
-        preprocessors=val_dataset_args['preprocessors'],
-        seq_length=val_dataset_args['seq_length'], data_sample_rate=val_dataset_args['data_sample_rate'],
-        sample_rate=val_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
-        slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode']
-        )
+    val_dataset = datasets_dict[val_dataset_args['_target_']](data_path = val_dataset_args['data_path'],
+    metadata_path=val_dataset_args['metadata_path'], augmentations=val_dataset_args['augmentations'],
+    augmentations_p=val_dataset_args['augmentations_p'],
+    preprocessors=val_dataset_args['preprocessors'],
+    seq_length=val_dataset_args['seq_length'], data_sample_rate=val_dataset_args['data_sample_rate'],
+    sample_rate=val_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
+    slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode']
+    )
 
-
-
-    # val_dataset = instantiate(val_dataset_args, _recursive_=False)
 
     # Define model and device for training
-    # model = instantiate(model_args)
-    if model_args['_target_'] == 'models.ResNet1Channel':
-        model = ResNet1Channel(layers=model_args['layers'],block=model_args['block'],
-        num_classes=model_args['num_classes']) 
-
-
-
+    model = models_dict[model_args['_target_']](layers=model_args['layers'], 
+    block=model_args['block'], num_classes=model_args['num_classes'])
 
 
     model.to(device)
@@ -136,12 +124,9 @@ def modeling(
             pin_memory=True,
         )
 
-    # optimizer = instantiate(optimizer_args, model.parameters())
-    if optimizer_args._target_ == 'torch.optim.Adam':
-        optimizer = torch.optim.Adam(model.parameters(), lr=optimizer_args.lr)
+    optimizer = optim_dict[optimizer_args._target_](model.parameters(), lr=optimizer_args.lr)
 
-    if scheduler_args._target_ == 'torch.optim.lr_scheduler.ExponentialLR':
-        scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=scheduler_args['gamma'])
+    scheduler = scheduler_dict[scheduler_args._target_](optimizer, gamma=scheduler_args['gamma'])
 
     # Add the rest of the parameters to trainer instance
     _trainer = trainer(
@@ -206,7 +191,9 @@ def main(validate_args) -> None:
     # Define criterion
     # criterion = instantiate(args.model.criterion)
     if args.model.criterion._target_ == 'torch.nn.CrossEntropyLoss':
-        criterion = torch.nn.CrossEntropyLoss()
+        criterion = criterion_dict[args.model.criterion._target_]
+    
+        # criterion = torch.nn.CrossEntropyLoss()
 
     # Seed script
     if args.experiment.manual_seed is None:

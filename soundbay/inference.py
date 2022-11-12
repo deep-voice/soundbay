@@ -14,7 +14,7 @@ import datetime
 from hydra.utils import instantiate
 from soundbay.utils.logging import Logger
 from soundbay.utils.checkpoint_utils import merge_with_checkpoint
-
+from conf_dict import  models_dict
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
                   device: torch.device = torch.device('cpu'),
                   selected_class_idx: Union[None, int] = None,
@@ -84,10 +84,8 @@ def load_model(model_params, checkpoint_state_dict):
         model: nn.Module object of the model
     """
 
-    # model = instantiate(model_params)
-    if model_params['_target_'] == 'models.ResNet1Channel':
-        model = ResNet1Channel(layers=model_params['layers'],block=model_params['block'],
-        num_classes=model_params['num_classes']) 
+    model = models_dict[model_params['_target_']](layers=model_params['layers'], 
+    block=model_params['block'], num_classes=model_params['num_classes'])
     model.load_state_dict(checkpoint_state_dict)
     return model
 
