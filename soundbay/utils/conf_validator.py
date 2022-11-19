@@ -25,8 +25,8 @@ class Dataset(BaseModel):
 
     @validator("num_workers")
     def validate_num_workers(cls, num_workers:int):
-        if num_workers > 4:
-            raise ValueError(f"Number of works is larger than 4 {num_workers}")
+        if num_workers < 0:
+            raise ValueError(f"Number of works is smaller than 0 {num_workers}")
         return num_workers
 
 
