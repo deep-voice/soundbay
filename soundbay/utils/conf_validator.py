@@ -4,7 +4,6 @@ from conf_dict import datasets_dict, criterion_dict, models_dict
 
 
 class Dataset(BaseModel):
-    # label_names: ListConfig
     batch_size: int
     num_workers: int
     sample_rate: int
@@ -36,6 +35,18 @@ class Dataset(BaseModel):
             raise ValueError(f"Train_dataset is not allowed from type {train_dataset['_target_']}")
         return train_dataset
 
+
+    @validator("data_sample_rate")
+    def validate_data_sample_rate(cls, data_sample_rate:int) :
+        if data_sample_rate < 0: 
+            raise ValueError(f"data_sample_rate must be a positive integer")
+        return data_sample_rate 
+
+    @validator("sample_rate")
+    def validate_sample_rate(cls, sample_rate:int) :
+        if sample_rate < 0: 
+            raise ValueError(f"sample_rate must be a positive integer")
+        return sample_rate
 class Model(BaseModel):
     criterion: dict
     model: dict
