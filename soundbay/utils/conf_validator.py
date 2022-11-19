@@ -49,7 +49,7 @@ class Model(BaseModel):
         use_enum_values = True
 
     @validator("criterion")
-    def validate_criterion(cls, criterion:int):
+    def validate_criterion(cls, criterion:dict):
         if criterion['_target_'] not in criterion_dict.keys():
             raise ValueError(f"'This criterion is not allowed: {criterion['_target_']}")
         return criterion
@@ -57,7 +57,6 @@ class Model(BaseModel):
 
     @validator("model")
     def validate_model(cls, model:dict):
-        # possible_values = ['models.ResNet1Channel', 'models.GoogleResNet50withPCEN']
         if model['_target_'] not in models_dict.keys():
             raise ValueError(f"'This model is not allowed: {model['_target_']}")
         return model
