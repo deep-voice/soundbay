@@ -7,8 +7,6 @@ from soundbay.utils.logging import Logger
 import argparse
 
 
-bb_height = 20000 # just tall enough bounding box for visibility, in Hz
-
 def make_parser():
     parser = argparse.ArgumentParser("Results Analysis")
 
@@ -39,7 +37,7 @@ def analysis_logging(results_df,num_classes):
                                        results_array)
     print(metrics_dict)
 
-def inference_csv_to_raven(probs_df: pd.DataFrame, num_classes, seq_len: float, selected_class: str,threshold: float = 0.5, class_name: str = "call") -> pd.DataFrame:
+def inference_csv_to_raven(probs_df: pd.DataFrame, num_classes, seq_len: float, selected_class: str,threshold: float = 0.5, class_name: str = "call", channel: int = 1, max_freq: float = 20_000) -> pd.DataFrame:
     """ Converts a csv file containing the inference results to a raven csv file.
         Args: probsdataframe: a pandas dataframe containing the inference results.
                       num_classes: the number of classes in the dataset.
@@ -62,16 +60,17 @@ def inference_csv_to_raven(probs_df: pd.DataFrame, num_classes, seq_len: float, 
 
     begin_times = all_begin_times[if_positive]  # get the begin times of the positive segments
     end_times = np.round(begin_times+seq_len, decimals=3)
-    if end_times[-1] > round(len_dataset*seq_len,1):
-        end_times[-1] = round(len_dataset*seq_len,1)  # cut off last bbox if exceeding eof
+    if len(end_times >= 1):
+        if end_times[-1] > round(len_dataset*seq_len,1):
+            end_times[-1] = round(len_dataset*seq_len,1)  # cut off last bbox if exceeding eof
 
     # create columns for raven format
     low_freq = np.zeros_like(begin_times)
-    high_freq = np.ones_like(begin_times)*bb_height
+    high_freq = np.ones_like(begin_times)*max_freq
     view = ['Spectrogram 1']*len(begin_times)
     selection = np.arange(1,len(begin_times)+1)
     annotation = [class_name]*len(begin_times)
-    channel = np.ones_like(begin_times).astype(int)
+    channel = np.ones_like(begin_times).astype(int) * channel
     bboxes = {'Selection': selection, 'View': view, 'Channel': channel,
               'Begin Time (s)': begin_times, 'End Time (s)': end_times,
               'Low Freq (Hz)': low_freq, 'High Freq (Hz)': high_freq, 'Annotation': annotation}
