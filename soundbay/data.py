@@ -108,7 +108,7 @@ class BaseDataset(Dataset):
         filename = self.metadata['filename'][idx]
         begin_time = self.metadata['begin_time'][idx]
         end_time = self.metadata['end_time'][idx]
-        path_to_file = self.audio_dict[filename] 
+        path_to_file = self.audio_dict[filename]
         orig_sample_rate = sf.info(path_to_file).samplerate
         assert orig_sample_rate == self.data_sample_rate
         begin_time = int(begin_time * orig_sample_rate)
