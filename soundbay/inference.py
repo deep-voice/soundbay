@@ -217,6 +217,8 @@ def infer_single_file(
     if save_raven:
         raven_filename = f"Raven inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.raven"
         raven_output_file = output_path / raven_filename
+        print(f'saving file in: {output_file}')
+
         raven_out_df = pd.concat(all_channel_raven_list, axis=0
                   ).sort_values('Begin Time (s)')
         raven_out_df['Selection'] = np.arange(1, len(raven_out_df)+1)

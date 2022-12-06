@@ -1,6 +1,7 @@
 # @package _global_
 defaults:
   - data: defaults
+  - data: defaults_multiclass
   - augmentations: _augmentations
   - preprocessors: _preprocessors
   - model: defaults
