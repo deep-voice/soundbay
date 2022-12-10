@@ -3,5 +3,5 @@ experiment:
   checkpoint:
     path: ???
     load_optimizer_state: False
-  save_raven: False
-  threshold: 0.5
+  save_raven: True
+  threshold: 0.999

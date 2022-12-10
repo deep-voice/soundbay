@@ -8,6 +8,7 @@ data:
   max_freq: 48000
   n_fft: 1024
   hop_length: 512
+  min_freq_filtering: 16000
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
     data_path: '../datasets/brazil/audio_files'
