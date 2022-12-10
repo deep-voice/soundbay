@@ -21,9 +21,9 @@ from torch.utils.data import DataLoader, WeightedRandomSampler
 import wandb
 from functools import partial
 from pathlib import Path
+from omegaconf import OmegaConf 
+from soundbay.utils.conf_validator import Config
 import hydra
-from hydra.utils import instantiate
-
 import random
 from unittest.mock import Mock
 import os
@@ -31,6 +31,7 @@ from soundbay.utils.app import App
 from soundbay.utils.logging import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
 from soundbay.trainers import Trainer
+from soundbay.conf_dict import models_dict, criterion_dict, datasets_dict, optim_dict, scheduler_dict
 
 
 def modeling(
@@ -67,11 +68,32 @@ def modeling(
 
     """
     # Set paths and create dataset
-    train_dataset = instantiate(train_dataset_args)
-    val_dataset = instantiate(val_dataset_args)
+
+    train_dataset = datasets_dict[train_dataset_args['_target_']](data_path = train_dataset_args['data_path'],
+    metadata_path=train_dataset_args['metadata_path'], augmentations=train_dataset_args['augmentations'],
+    augmentations_p=train_dataset_args['augmentations_p'],
+    preprocessors=train_dataset_args['preprocessors'],
+    seq_length=train_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
+    sample_rate=train_dataset_args['sample_rate'], margin_ratio=train_dataset_args['margin_ratio'],
+    slice_flag=train_dataset_args['slice_flag'], mode=train_dataset_args['mode']
+    )
+
+
+    val_dataset = datasets_dict[val_dataset_args['_target_']](data_path = val_dataset_args['data_path'],
+    metadata_path=val_dataset_args['metadata_path'], augmentations=val_dataset_args['augmentations'],
+    augmentations_p=val_dataset_args['augmentations_p'],
+    preprocessors=val_dataset_args['preprocessors'],
+    seq_length=val_dataset_args['seq_length'], data_sample_rate=val_dataset_args['data_sample_rate'],
+    sample_rate=val_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
+    slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode']
+    )
+
 
     # Define model and device for training
-    model = instantiate(model_args)
+    model = models_dict[model_args['_target_']](layers=model_args['layers'], 
+    block=model_args['block'], num_classes=model_args['num_classes'])
+
+
     model.to(device)
 
     # Assert number of labels in the dataset and the number of labels in the model
@@ -102,8 +124,9 @@ def modeling(
             pin_memory=True,
         )
 
-    optimizer = instantiate(optimizer_args, model.parameters())
-    scheduler = instantiate(scheduler_args, optimizer)
+    optimizer = optim_dict[optimizer_args._target_](model.parameters(), lr=optimizer_args.lr)
+
+    scheduler = scheduler_dict[scheduler_args._target_](optimizer, gamma=scheduler_args['gamma'])
 
     # Add the rest of the parameters to trainer instance
     _trainer = trainer(
@@ -127,9 +150,12 @@ def modeling(
 
 
 # TODO check how to use hydra without path override
-@hydra.main(config_name=os.path.join("runs", "main"), config_path="conf")
-def main(args):
-
+@hydra.main(config_name="main", config_path="conf", version_base='1.2')
+def main(validate_args) -> None:
+    
+    args = validate_args.copy()
+    OmegaConf.resolve(validate_args)
+    Config(**validate_args)
     # Set logger
     _logger = wandb if not args.experiment.debug else Mock()
     experiment_name = get_experiment_name(args)
@@ -163,7 +189,11 @@ def main(args):
     App.init(args)
 
     # Define criterion
-    criterion = instantiate(args.model.criterion)
+    # criterion = instantiate(args.model.criterion)
+    if args.model.criterion._target_ == 'torch.nn.CrossEntropyLoss':
+        criterion = criterion_dict[args.model.criterion._target_]
+    
+        # criterion = torch.nn.CrossEntropyLoss()
 
     # Seed script
     if args.experiment.manual_seed is None:
