@@ -69,4 +69,4 @@ python inference.py --config-name runs/main_inference experiment.checkpoint.path
 
 ## License
 
-This library is licensed under the Apache 2.0 License.
+This library is licensed under the GNU Affero General Public License v3.0 License.
