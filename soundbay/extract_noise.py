@@ -39,7 +39,7 @@ def main():
     parser.add_argument('--path', required=True, help='path to dataset')
     parser.add_argument('--annot', required=True, help='path to annotation file for the training data')
     parser.add_argument('--out', required=True, help='path to output folder')
-    parser.add_argument('--len', type=float, required=True, help='length of noise only audio files to save')
+    parser.add_argument('--len', type=float, required=True, help='length of noise only audio files to save (seconds)')
     parser.add_argument('--keep', type=int, default=10, help='save one in keep sections of the original file')
     parser.add_argument('--seed', type=int, default=42, help='random seed')
     parser.add_argument('--force', action='store_true', help='force overwrite of existing files')
@@ -64,7 +64,7 @@ def main():
 
         # Extract begin and end times for times with signal at some channel
         no_channel = file_annotations[['begin_time', 'end_time', 'label']].groupby(['begin_time', 'end_time']).max()
-        signal = no_channel[no_channel.label == 1]
+        signal = no_channel[no_channel.label != 0]
 
         if len(signal) == 0:
             # If no signal is present, write the whole file as noise
