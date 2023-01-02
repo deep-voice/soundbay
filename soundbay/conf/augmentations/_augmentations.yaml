@@ -1,12 +1,12 @@
 # @package _global_
 _augmentations:
-  add_noise:
-    _target_: soundbay.custom_audiomentations.AddMultichannelBackgroundNoise
-    sounds_path:  '/mnt/c/Users/noam/whale/all_brazil_noise'
-    min_snr_in_db: 3
-    max_snr_in_db: 30
-    lru_cache_size: 100
-    p: 0.5
+  # add_noise:
+  #   _target_: soundbay.custom_audiomentations.AddMultichannelBackgroundNoise
+  #   sounds_path:  '/mnt/c/Users/noam/whale/all_brazil_noise'
+  #   min_snr_in_db: 3
+  #   max_snr_in_db: 30
+  #   lru_cache_size: 100
+  #   p: 0.5
   freq_shift:
     _target_: audiomentations.PitchShift
     min_semitones: -4
