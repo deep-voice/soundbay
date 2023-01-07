@@ -6,8 +6,9 @@ data:
   sample_rate: 96000
   data_sample_rate: 96000
   max_freq: 48000
-  n_fft: 1024
-  hop_length: 512
+  n_fft: 2048
+  hop_length: 480
+  win_length: 980
   min_freq_filtering: 16000
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
