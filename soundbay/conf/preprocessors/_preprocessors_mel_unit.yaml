@@ -1,0 +1,16 @@
+# @package _global_
+_preprocessors:
+  mel_spectrogram:
+    _target_: torchaudio.transforms.MelSpectrogram
+    sample_rate: ${data.sample_rate}
+    n_fft: ${data.n_fft}
+    hop_length: ${data.hop_length}
+    win_length: ${data.win_length}
+    pad_mode: 'constant'
+    n_mels: 64
+    f_min: ${data.min_freq_filtering}
+    f_max: ${data.max_freq}
+  amplitude_2_db:
+    _target_: torchaudio.transforms.AmplitudeToDB
+  unit_norm:
+    _target_: soundbay.data.UnitNormalize
