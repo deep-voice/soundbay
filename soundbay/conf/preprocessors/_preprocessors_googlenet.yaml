@@ -1,0 +1,14 @@
+# @package _global_
+_preprocessors:
+  spectrogram:
+    _target_: torchaudio.transforms.Spectrogram
+    n_fft: ${data.n_fft}
+    hop_length: ${data.hop_length}
+  min_freq_filtering:
+    _target_: soundbay.data.MinFreqFiltering
+    min_freq_filtering: ${data.min_freq_filtering}
+    sample_rate: ${data.sample_rate}
+  amplitude_2_db:
+    _target_: torchaudio.transforms.AmplitudeToDB
+  peak_norm:
+    _target_: soundbay.data.PeakNormalize
