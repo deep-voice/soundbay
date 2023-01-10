@@ -12,10 +12,12 @@ import os
 import pandas
 import datetime
 from hydra.utils import instantiate
+import soundfile as sf
+
+from soundbay.results_analysis import inference_csv_to_raven
 from soundbay.utils.logging import Logger
 from soundbay.utils.checkpoint_utils import merge_with_checkpoint
-import wandb
-
+from soundbay.conf_dict import models_dict
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
                   device: torch.device = torch.device('cpu'),
                   selected_class_idx: Union[None, int] = None,
@@ -85,9 +87,143 @@ def load_model(model_params, checkpoint_state_dict):
         model: nn.Module object of the model
     """
 
-    model = instantiate(model_params)
+    model = models_dict[model_params['_target_']](layers=model_params['layers'], 
+    block=model_params['block'], num_classes=model_params['num_classes'])
     model.load_state_dict(checkpoint_state_dict)
     return model
+
+def infer_multi_file(
+        device,
+        batch_size,
+        dataset_args,
+        model_args,
+        checkpoint_state_dict,
+        output_path,
+        model_name,
+        save_raven,
+        threshold
+):
+    """
+        This functions takes the ClassifierDataset dataset and produces the model prediction to a file
+        Input:
+            device: cpu/gpu
+            batch_size: the number of samples the model will infer at once
+            dataset_args: the required arguments for the dataset class
+            model_path: directory for the wanted trained model
+            output_path: directory to save the prediction file
+        """
+    # set paths and create dataset
+    test_dataset = instantiate(dataset_args)
+
+    # load model
+    model = load_model(model_args, checkpoint_state_dict).to(device)
+
+    test_dataloader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size, num_workers=0,
+                                 pin_memory=False)
+
+    # predict
+    predict_prob = predict_proba(model, test_dataloader, device, None)
+
+    results_df = pandas.DataFrame(predict_prob)
+    if hasattr(test_dataset, 'metadata'):
+        concat_dataset = pandas.concat([test_dataset.metadata, results_df],
+                                       axis=1)  # TODO: make sure metadata column order matches the prediction df order
+        metrics_dict = Logger.get_metrics_dict(concat_dataset["label"].values.tolist(),
+                                               np.argmax(predict_prob, axis=1).tolist(),
+                                               results_df.values)
+        print(metrics_dict)
+    else:
+        concat_dataset = results_df
+        print("Notice: The dataset has no ground truth labels")
+
+    # save file
+    dataset_name = Path(test_dataset.metadata_path).stem
+    filename = f"Inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.csv"
+    output_file = output_path / filename
+    concat_dataset.to_csv(index=False, path_or_buf=output_file)
+
+    # save raven file
+
+    return
+
+
+def infer_single_file(
+        device,
+        batch_size,
+        dataset_args,
+        model_args,
+        checkpoint_state_dict,
+        output_path,
+        model_name,
+        save_raven,
+        threshold
+):
+    """
+        This functions takes the InferenceDataset dataset and produces the model prediction to a file, by iterating
+        on all channels in the file and concatenating the results.
+        Input:
+            device: cpu/gpu
+            batch_size: the number of samples the model will infer at once
+            dataset_args: the required arguments for the dataset class
+            model_path: directory for the wanted trained model
+            output_path: directory to save the prediction file
+    """
+    # Check how many channels
+    data_sample, _ = sf.read(dataset_args.file_path, start=0, stop=10)
+
+    all_channel_list = []
+    all_channel_raven_list = []
+    for channel in range(data_sample.shape[1]):
+        # set paths and create dataset
+        test_dataset = instantiate(dataset_args, channel=channel)
+
+        # load model
+        model = load_model(model_args, checkpoint_state_dict).to(device)
+
+        test_dataloader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size, num_workers=0,
+                                     pin_memory=False)
+
+        # predict
+        predict_prob = predict_proba(model, test_dataloader, device, None)
+
+        results_df = pandas.DataFrame(predict_prob)
+        if hasattr(test_dataset, 'metadata'):
+            concat_dataset = pandas.concat([test_dataset.metadata, results_df], axis=1) #TODO: make sure metadata column order matches the prediction df order
+            metrics_dict = Logger.get_metrics_dict(concat_dataset["label"].values.tolist(),
+                                                   np.argmax(predict_prob, axis=1).tolist(),
+                                                   results_df.values)
+            print(metrics_dict)
+        else:
+            concat_dataset = results_df
+            print("Notice: The dataset has no ground truth labels")
+
+        # create raven file
+        if save_raven:
+            all_channel_raven_list.append(
+                inference_csv_to_raven(results_df, predict_prob.shape[1], dataset_args.seq_length, 1, threshold, 'call',
+                                       channel, dataset_args.data_sample_rate // 2)
+            )
+
+        # add to general inference result
+        concat_dataset.insert(0, 'channel', [channel + 1] * len(concat_dataset))
+        all_channel_list.append(concat_dataset)
+
+    #save file
+    dataset_name = Path(test_dataset.metadata_path).stem
+    filename = f"Inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.csv"
+    output_file = output_path / filename
+    pd.concat(all_channel_list, axis=0).to_csv(index=False, path_or_buf=output_file)
+
+    # Save raven file
+    if save_raven:
+        raven_filename = f"Raven inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.raven"
+        raven_output_file = output_path / raven_filename
+        raven_out_df = pd.concat(all_channel_raven_list, axis=0
+                  ).sort_values('Begin Time (s)')
+        raven_out_df['Selection'] = np.arange(1, len(raven_out_df)+1)
+        raven_out_df.to_csv(index=False, path_or_buf=raven_output_file, sep='\t')
+
+    return
 
 
 def inference_to_file(
@@ -110,49 +246,31 @@ def inference_to_file(
         model_path: directory for the wanted trained model
         output_path: directory to save the prediction file
     """
-    # set paths and create dataset
-    test_dataset = instantiate(dataset_args)
-
-    # load model
-    model = load_model(model_args, checkpoint_state_dict).to(device)
-
-    test_dataloader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size, num_workers=0,
-                                 pin_memory=False)
-
-    # predict
-    predict_prob = predict_proba(model, test_dataloader, device, None)
-
-    results_df = pandas.DataFrame(predict_prob)
-    if hasattr(test_dataset, 'metadata'):
-        # _logger = wandb
-        # _logger.init(project="deepvoice-experiments", name=None, group=None,
-        #              id=None, resume=None)
-        # logger = Logger(_logger, debug_mode=False,
-        #                 artifacts_upload_limit=64)
-        concat_dataset = pandas.concat([test_dataset.metadata, results_df], axis=1) #TODO: make sure metadata column order matches the prediction df order
-        metrics_dict = Logger.get_metrics_dict(concat_dataset["label"].values.tolist(),
-                                               np.argmax(predict_prob, axis=1).tolist(),
-                                               results_df.values)
-        # logger.calc_metrics(0, 'test', None)
-        # logger.log(0, 'test')
-        print(metrics_dict)
+    if dataset_args._target_.endswith('ClassifierDataset'):
+        infer_multi_file(device,
+                         batch_size,
+                         dataset_args,
+                         model_args,
+                         checkpoint_state_dict,
+                         output_path,
+                         model_name,
+                         save_raven,
+                         threshold)
+    elif dataset_args._target_.endswith('InferenceDataset'):
+        infer_single_file(device,
+                          batch_size,
+                          dataset_args,
+                          model_args,
+                          checkpoint_state_dict,
+                          output_path,
+                          model_name,
+                          save_raven,
+                          threshold)
     else:
-        concat_dataset = results_df
-        print("Notice: The dataset has no ground truth labels")
-
-    #save file
-    dataset_name = Path(test_dataset.metadata_path).stem
-    filename = f"Inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.csv"
-    output_file = output_path / filename
-    concat_dataset.to_csv(index=False, path_or_buf=output_file)
-
-    # save raven file
-
-    return
+        raise ValueError('Only ClassifierDataset or InferenceDataset allowed in inference')
 
 
-
-@hydra.main(config_name="runs/main_inference", config_path="conf")
+@hydra.main(config_name="runs/inference_single_audio", config_path="conf")
 def inference_main(args) -> None:
     """
     The main function for running predictions using a trained model on a wanted dataset. The arguments are inserted

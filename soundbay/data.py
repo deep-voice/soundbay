@@ -15,8 +15,8 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 from torch.utils.data import Dataset
 from torchvision import transforms
+from audiomentations import Compose
 
-from soundbay.data_augmentation import ChainedAugmentations
 import matplotlib.pyplot as plt
 
 
@@ -32,7 +32,7 @@ class BaseDataset(Dataset):
         Input:
         data_path - string
         metadata_path - string
-        augmentations - list of classes (not instances) from data_augmentation.py
+        augmentations - list of classes audiogemtations
         augmentations_p - array of probabilities (float64)
         preprocessors - list of classes from preprocessors (TBD function)
 
@@ -151,8 +151,14 @@ class BaseDataset(Dataset):
             augmentations_list = [instantiate(args) for args in augmentations_dict.values()]
         else:
             augmentations_list = []
-        augmenter = ChainedAugmentations(augmentations_list, augmentations_p) if self.mode == 'train' else torch.nn.Identity()
-        return augmenter
+        self._train_augmenter = Compose(augmentations_list, p=augmentations_p, shuffle=True)
+        self._val_augmenter = torch.nn.Identity()
+
+    def augment(self, x):
+        if self.mode == 'train':
+            return torch.tensor(self._train_augmenter(x.numpy(), self.sample_rate), dtype=torch.float32)
+        else:
+            return self._val_augmenter(x)
 
     @staticmethod
     def set_preprocessor(preprocessors_args):
@@ -192,7 +198,7 @@ class BaseDataset(Dataset):
         path_to_file, begin_time, end_time, label, channel = self._grab_fields(idx)
         audio = self._get_audio(path_to_file, begin_time, end_time, label, channel)
         audio_raw = self.sampler(audio)
-        audio_augmented = self.augmenter(audio_raw)
+        audio_augmented = self.augment(audio_raw)
         audio_processed = self.preprocessor(audio_augmented)
 
         if self.mode == "train" or self.mode == "val":
@@ -440,7 +446,8 @@ class InferenceDataset(Dataset):
                  preprocessors: DictConfig,
                  seq_length: float = 1,
                  data_sample_rate: int = 44100,
-                 sample_rate: int = 44100):
+                 sample_rate: int = 44100,
+                 channel: int = None):
         """
         __init__ method initiates InferenceDataset instance:
         Input:
@@ -455,6 +462,7 @@ class InferenceDataset(Dataset):
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
         self.preprocessor = ClassifierDataset.set_preprocessor(preprocessors)
+        self.channel = channel
         self._create_start_times()
 
     def _create_start_times(self):
@@ -483,6 +491,8 @@ class InferenceDataset(Dataset):
         """
         data, orig_sample_rate = sf.read(self.file_path, start=begin_time,
                           stop=begin_time + int(self.seq_length * self.data_sample_rate))
+        if (self.channel is not None) and (data.shape[1] > 1):
+            data = data[:, self.channel]
         assert orig_sample_rate == self.data_sample_rate, \
             f'sample rate is {orig_sample_rate}, should be {self.data_sample_rate}'
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)

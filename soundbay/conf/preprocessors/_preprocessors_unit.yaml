@@ -2,8 +2,8 @@
 _preprocessors:
   spectrogram:
     _target_: torchaudio.transforms.Spectrogram
-    n_fft: 1024
-    hop_length: 256
+    n_fft: ${data.n_fft}
+    hop_length: ${data.hop_length}
   min_freq_filtering:
     _target_: soundbay.data.MinFreqFiltering
     min_freq_filtering: ${data.min_freq_filtering}

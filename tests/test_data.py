@@ -1,3 +1,6 @@
+import pathlib
+import os
+
 from hydra.experimental import compose, initialize
 from random import randint
 from random import seed
@@ -7,18 +10,18 @@ import numpy as np
 
 def test_dataloader() -> None:
     seed(1)
-    with initialize(config_path="../soundbay/conf"):
+    with initialize(config_path=os.path.join("..", 'soundbay', 'conf')):
         # config is relative to a module
-        cfg = compose(config_name="runs/main")
-        data_loader = ClassifierDataset(cfg.data.train_dataset.data_path, cfg.data.train_dataset.metadata_path,
+        cfg = compose(config_name="main")
+        dataset = ClassifierDataset(cfg.data.train_dataset.data_path, cfg.data.train_dataset.metadata_path,
                                         augmentations=cfg.data.train_dataset.augmentations,
                                         augmentations_p=cfg.data.train_dataset.augmentations_p,
                                         preprocessors=cfg.data.train_dataset.preprocessors)
-        assert data_loader.metadata.shape[1] in (5, 6)  # make sure metadata has 5/6 columns (account for channel)
-        assert data_loader.metadata.shape[0] > 0  # make sure metadata is not empty
-        data_size = data_loader.metadata.shape[0]
+        assert dataset.metadata.shape[1] in (5, 6)  # make sure metadata has 5/6 columns (account for channel)
+        assert dataset.metadata.shape[0] > 0  # make sure metadata is not empty
+        data_size = dataset.metadata.shape[0]
         value = randint(0, data_size)
-        sample = data_loader[value]
+        sample = dataset[value]
         assert np.issubdtype(sample[1], np.integer)
         if 'spectrogram' in cfg.data.train_dataset.preprocessors:
             assert len(sample[0].shape) == 3
