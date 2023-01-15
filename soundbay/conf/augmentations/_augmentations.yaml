@@ -18,7 +18,7 @@ _augmentations:
     max_rate: 1.1
     p: 0.5
   time_masking:
-    _target_: audiomentations.TimeMask
+    _target_: soundbay.custom_audiomentations.MeanTimeMask
     min_band_part: 0.05
     max_band_part: 0.2
     p: 0.5

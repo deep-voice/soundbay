@@ -3,7 +3,7 @@
 import warnings
 import numpy as np
 
-from audiomentations import AddBackgroundNoise
+from audiomentations import AddBackgroundNoise, TimeMask
 from audiomentations.core.utils import (
     calculate_desired_noise_rms,
     calculate_rms,
@@ -72,3 +72,13 @@ class AddMultichannelBackgroundNoise(AddBackgroundNoise):
 
         # Return a mix of the input sound and the background noise sound
         return samples + np.tile(noise_sound, (n_channels, 1))
+
+
+class MeanTimeMask(TimeMask):
+
+    def apply(self, samples, sample_rate):
+        new_samples = samples.copy()
+        t = self.parameters["t"]
+        t0 = self.parameters["t0"]
+        new_samples[:, t0:(t0 + t)] = new_samples.mean(axis=1)
+        return new_samples
