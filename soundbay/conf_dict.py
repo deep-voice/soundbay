@@ -11,7 +11,8 @@ from audiomentations import PitchShift, BandStopFilter, TimeMask, TimeStretch
 
 
 models_dict = {'models.ResNet1Channel':ResNet1Channel,
-'models.GoogleResNet50withPCEN': GoogleResNet50withPCEN}
+'models.GoogleResNet50withPCEN': GoogleResNet50withPCEN,
+'models.ChristophCNN':ChristophCNN}
 
 
 datasets_dict = {'soundbay.data.ClassifierDataset':ClassifierDataset}
