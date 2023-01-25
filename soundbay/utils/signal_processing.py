@@ -1,7 +1,7 @@
 import librosa
 import numpy as np
 import torch
-
+from colormap_matrices import cmaps
 
 class LibrosaMelSpectrogram:
     """
@@ -71,4 +71,22 @@ class DuplicateChannels(object):
     # this method takes the 2D spectrogram of size (b,H,W) and duplicates the channels to make it 3D of size (b,3,H,W)
     def __call__(self, spectrogram):
         return spectrogram.repeat(1, 3, 1, 1)
+
+class RGBSpectrogram(object):
+    # this method takes the 2D spectrogram of size (b,H,W) and converts it to 3D of size (b,3,H,W) with RGB values from colormap
+    def __call__(self, spectrogram):
+        parula = cmaps['parula']
+        parula_tensor = torch.from_numpy(parula(np.arange(256))).float()
+        #normalize spectrogram tensor
+        spectrogram = spectrogram - spectrogram.min()
+        spectrogram = spectrogram / spectrogram.max()
+        spectrogram = spectrogram * 255
+        spectrogram = spectrogram.long()
+        #convert spectrogram to RGB
+        spectrogram = torch.index_select(parula_tensor, 0, spectrogram)
+        return spectrogram
+
+
+
+
 

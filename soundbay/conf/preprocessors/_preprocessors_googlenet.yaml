@@ -5,7 +5,7 @@ _preprocessors:
     n_fft: ${data.n_fft}
     hop_length: ${data.hop_length}
   DuplicateChannels:
-    _target_: soundbay.utils.signal_processing.DuplicateChannels
+    _target_: soundbay.utils.signal_processing.RGBSpectrogram
   min_freq_filtering:
     _target_: soundbay.data.MinFreqFiltering
     min_freq_filtering: ${data.min_freq_filtering}
