@@ -15,7 +15,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 from torch.utils.data import Dataset
 from torchvision import transforms
-from audiomentations import Compose
+from audiomentations import Compose, SpecCompose
 
 import matplotlib.pyplot as plt
 
@@ -24,7 +24,7 @@ class BaseDataset(Dataset):
     """
     class for storing and loading data.
     """
-    def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
+    def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors, post_augmentations=None,
                  seq_length=1, data_sample_rate=44100, sample_rate=44100, mode="train",
                  slice_flag=False, margin_ratio=0, split_metadata_by_label=False):
         """
@@ -35,6 +35,7 @@ class BaseDataset(Dataset):
         augmentations - list of classes audiogemtations
         augmentations_p - array of probabilities (float64)
         preprocessors - list of classes from preprocessors (TBD function)
+        post_augmentations - list of classes from post_augmentations (acts after preprocessing)
 
         Output:
         ClassifierDataset Object - inherits from Dataset object in PyTorch package
@@ -50,7 +51,8 @@ class BaseDataset(Dataset):
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
         self._preprocess_metadata(slice_flag)
-        self.augmenter = self._set_augmentations(augmentations, augmentations_p)
+        self._set_augmentations(augmentations, augmentations_p)
+        self._set_post_augmentations(post_augmentations, augmentations_p)
         self.preprocessor = self.set_preprocessor(preprocessors)
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
@@ -160,6 +162,22 @@ class BaseDataset(Dataset):
         else:
             return self._val_augmenter(x)
 
+    def _set_post_augmentations(self, post_augmentations_dict, augmentations_p):
+        """
+        get augmentations list and instantiate - TBD
+        """
+        if post_augmentations_dict is not None:
+            post_augmentations_list = [instantiate(args) for args in post_augmentations_dict.values()]
+        else:
+            post_augmentations_list = []
+        self._post_augmenter = SpecCompose(post_augmentations_list, p=augmentations_p, shuffle=True)
+
+    def post_augment(self, x):
+        if self.mode == 'train':
+            return self._post_augmenter(x)
+        else:
+            return self._val_augmenter(x)
+
     @staticmethod
     def set_preprocessor(preprocessors_args):
         """
@@ -200,6 +218,7 @@ class BaseDataset(Dataset):
         audio_raw = self.sampler(audio)
         audio_augmented = self.augment(audio_raw)
         audio_processed = self.preprocessor(audio_augmented)
+        audio_processed = self.post_augment(audio_processed)
 
         if self.mode == "train" or self.mode == "val":
             label = self.metadata["label"][idx]

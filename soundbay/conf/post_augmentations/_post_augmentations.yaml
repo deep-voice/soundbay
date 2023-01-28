@@ -1,0 +1,8 @@
+# @package _global_
+_post_augmentations:
+#  time_wrap:
+#    _target_: soundbay.spec_augment.TimeWarp
+  freq_mask:
+    _target_: soundbay.spec_augment.FreqMask
+  time_mask:
+    _target_: soundbay.spec_augment.TimeMask
