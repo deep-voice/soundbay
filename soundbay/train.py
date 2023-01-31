@@ -154,6 +154,7 @@ def modeling(
 def main(validate_args) -> None:
     
     args = validate_args.copy()
+    print(validate_args)
     OmegaConf.resolve(validate_args)
     Config(**validate_args)
     # Set logger

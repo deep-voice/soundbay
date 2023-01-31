@@ -3,7 +3,7 @@ Configuration dicts
 -------
 These dicts describe the allowed values of the soundbay framework
 '''
-from soundbay.models import ResNet1Channel, GoogleResNet50withPCEN
+from soundbay.models import ResNet1Channel, GoogleResNet50withPCEN, GoogLeNet
 from soundbay.data import ClassifierDataset, BaseDataset
 import torch
 from audiomentations import PitchShift, BandStopFilter, TimeMask, TimeStretch
@@ -11,13 +11,15 @@ from audiomentations import PitchShift, BandStopFilter, TimeMask, TimeStretch
 
 
 models_dict = {'models.ResNet1Channel':ResNet1Channel,
-'models.GoogleResNet50withPCEN': GoogleResNet50withPCEN}
+'models.GoogleResNet50withPCEN': GoogleResNet50withPCEN,
+'models.GoogLeNet': GoogLeNet}
 
 
 datasets_dict = {'soundbay.data.ClassifierDataset':ClassifierDataset}
 
 
-optim_dict = {'torch.optim.Adam':torch.optim.Adam}
+optim_dict = {'torch.optim.Adam':torch.optim.Adam,
+        'torch.optim.SGD': torch.optim.SGD}
 
 
 

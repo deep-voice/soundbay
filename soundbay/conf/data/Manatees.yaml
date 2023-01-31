@@ -16,7 +16,7 @@ data:
     metadata_path: '../datasets/Manatees/Manatee_train_val_splits.csv'
     augmentations_p: 0.8
     augmentations: ${_augmentations}
-    preprocessors: ${_preprocessors}
+    preprocessors: ${_preprocessors_googlenet}
     seq_length: 0.2
     len_buffer: 0.1
     data_sample_rate: ${data.data_sample_rate}
@@ -31,7 +31,7 @@ data:
     metadata_path: '../datasets/Manatees/Manatee_train_val_splits.csv'
     augmentations_p: 0
     augmentations: null
-    preprocessors: ${_preprocessors}
+    preprocessors: ${_preprocessors_googlenet}
     seq_length: 0.2 # this dataset has shorter call length
     len_buffer: 0.1
     data_sample_rate: ${data.data_sample_rate}

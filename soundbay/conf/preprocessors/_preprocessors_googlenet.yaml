@@ -1,5 +1,5 @@
 # @package _global_
-_preprocessors:
+_preprocessors_googlenet:
   spectrogram:
     _target_: torchaudio.transforms.Spectrogram
     n_fft: ${data.n_fft}

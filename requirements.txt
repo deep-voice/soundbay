@@ -1,9 +1,9 @@
-numba>=0.54.0
+#numba>=0.54.0
 numpy<1.21.0
 librosa>=0.9.0
 tqdm>=4.0.0
 hydra-core==1.2.0
-pydantic>=1.10.2
+pydantic>=1.9.2
 pytest>=5.4.1
 scikit-learn>=0.22.1
 omegaconf>=2.0.0
@@ -13,8 +13,8 @@ wandb>=0.12.0
 beautifulsoup4>=4.9.1
 joblib>=1.0.0
 lxml>=4.4.0
-PyQt5>=5.14.0
+#PyQt5>=5.14.0
 future-fstrings>=1.0.0
 boto3>=1.20.0
 matplotlib>=2.0.0
-audiomentations>=0.26.0
+audiomentations>=0.24.0
