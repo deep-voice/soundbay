@@ -32,6 +32,7 @@ from soundbay.utils.logging import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
 from soundbay.trainers import Trainer
 from soundbay.conf_dict import models_dict, criterion_dict, datasets_dict, optim_dict, scheduler_dict
+from slowfast.models.build import build_model
 
 
 def modeling(
@@ -75,7 +76,8 @@ def modeling(
     preprocessors=train_dataset_args['preprocessors'],
     seq_length=train_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
     sample_rate=train_dataset_args['sample_rate'], margin_ratio=train_dataset_args['margin_ratio'],
-    slice_flag=train_dataset_args['slice_flag'], mode=train_dataset_args['mode']
+    slice_flag=train_dataset_args['slice_flag'], mode=train_dataset_args['mode'],
+    mode_dual_pathways=model_args['mode_dual_pathways']
     )
 
 
@@ -85,20 +87,30 @@ def modeling(
     preprocessors=val_dataset_args['preprocessors'],
     seq_length=val_dataset_args['seq_length'], data_sample_rate=val_dataset_args['data_sample_rate'],
     sample_rate=val_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
-    slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode']
+    slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode'],
+    mode_dual_pathways=model_args['mode_dual_pathways']
     )
 
 
     # Define model and device for training
     model = models_dict[model_args['_target_']](layers=model_args['layers'], 
     block=model_args['block'], num_classes=model_args['num_classes'])
-
-
-    model.to(device)
-
     # Assert number of labels in the dataset and the number of labels in the model
     assert model_args.num_classes == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
     "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
+
+    if model_args['mode_dual_pathways']:
+        print(f'mode_dual_pathways=True.\nReplacing the regular model with slow-fast dual stream model')
+        print('please make sure to manualy insert you num_frames and num_frequencies into slowfast\'s config file')
+        from slowfast.create_cfg import load_config_from_yaml
+        model_args = load_config_from_yaml(file_path='../slowfast/config.yaml')
+        model = build_model(model_args)
+        # Assert number of labels in the dataset and the number of labels in the model
+        assert model_args.MODEL.NUM_CLASSES[0] == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
+            "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
+
+
+    model.to(device)
 
     # Add model watch to WANDB
     logger.log_writer.watch(model)

@@ -26,7 +26,8 @@ class BaseDataset(Dataset):
     """
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, data_sample_rate=44100, sample_rate=44100, mode="train",
-                 slice_flag=False, margin_ratio=0, split_metadata_by_label=False):
+                 slice_flag=False, margin_ratio=0, split_metadata_by_label=False, mode_dual_pathways=False,
+                 slowfast_alpha=4):
         """
         __init__ method initiates ClassifierDataset instance:
         Input:
@@ -57,6 +58,8 @@ class BaseDataset(Dataset):
         self.items_per_classes = np.unique(self.metadata['label'], return_counts=True)[1]
         weights = 1 / self.items_per_classes
         self.samples_weight = np.array([weights[t] for t in self.metadata['label'] ])
+        self.mode_dual_pathways=mode_dual_pathways
+        self.slowfast_alpha = slowfast_alpha
 
     @staticmethod
     def _update_metadata_by_mode(metadata, mode, split_metadata_by_label):
@@ -114,7 +117,7 @@ class BaseDataset(Dataset):
         begin_time = int(begin_time * orig_sample_rate)
         end_time = int(end_time * orig_sample_rate)
         label = self.metadata['label'][idx]
-        if 'channel' in self.metadata.columns:
+        if 'channel' in self.metadata.columns or 'Channel' in self.metadata.columns:
             channel = self.metadata['channel'][idx]
         else:
             channel = None
@@ -200,7 +203,7 @@ class BaseDataset(Dataset):
         audio_raw = self.sampler(audio)
         audio_augmented = self.augment(audio_raw)
         audio_processed = self.preprocessor(audio_augmented)
-
+        audio_processed = self.pack_pathway_output(audio_processed, self.slowfast_alpha) if self.mode_dual_pathways else audio_processed
         if self.mode == "train" or self.mode == "val":
             label = self.metadata["label"][idx]
             return audio_processed, label, audio_raw, idx
@@ -211,6 +214,29 @@ class BaseDataset(Dataset):
     def __len__(self):
         return self.metadata.shape[0]
 
+    def pack_pathway_output(self, spectrogram, SLOWFAST_ALPHA=4):
+        """
+        Prepare output as a list of tensors. Each tensor corresponding to a
+        unique pathway.
+        Args:
+            spectrogram (tensor): frames of spectrograms sampled from the complete spectrogram. The
+                dimension is `channel` x `num frames` x `num frequencies`.
+        Returns:
+            spectrogram_list (list): list of tensors with the dimension of
+                `channel` x `num frames` x `num frequencies`.
+        """
+        fast_pathway = spectrogram
+        # Perform temporal sampling from the fast pathway.
+        slow_pathway = torch.index_select(
+            spectrogram,
+            1,
+            torch.linspace(
+                0, spectrogram.shape[1] - 1, spectrogram.shape[1] // SLOWFAST_ALPHA
+            ).long(),
+        )
+        spectrogram_list = [slow_pathway, fast_pathway]
+
+        return spectrogram_list
 
 
 
