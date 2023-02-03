@@ -1115,14 +1115,14 @@ viridis = cmaps['viridis']
 parula = cmaps['parula']
 
 # create array and plot colormap parula
-x = np.linspace(0, 1, 256)
-X = np.vstack((x, x))
-#plot
-print('Plotting colormap parula')
-fig, ax = plt.subplots(1, figsize=(6, 2))
-ax.set_title('Perula')
-ax.imshow(X, cmap=parula, aspect='auto', origin='lower')
-plt.show()
+# x = np.linspace(0, 1, 256)
+# X = np.vstack((x, x))
+# #plot
+# print('Plotting colormap parula')
+# fig, ax = plt.subplots(1, figsize=(6, 2))
+# ax.set_title('Perula')
+# ax.imshow(X, cmap=parula, aspect='auto', origin='lower')
+# plt.show()
 
 
 

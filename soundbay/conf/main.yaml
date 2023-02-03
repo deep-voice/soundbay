@@ -6,7 +6,3 @@ defaults:
   - optim: defaults
   - preprocessors: _preprocessors
   - experiment: defaults
-  - override preprocessors: _preprocessors_googlenet
-  - override model: googlenet_22
-  - override optim: googlenet_22
-  - override data: Manatees
