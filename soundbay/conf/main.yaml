@@ -1,8 +1,12 @@
 # @package _global_
 defaults:
-  - data: Manatees
+  - data: defaults
   - augmentations: _augmentations
-  - preprocessors: _preprocessors_googlenet
-  - model: googlenet_22
-  - optim: googlenet_22
+  - model: defaults
+  - optim: defaults
+  - preprocessors: _preprocessors
   - experiment: defaults
+  - override preprocessors: _preprocessors_googlenet
+  - override model: googlenet_22
+  - override optim: googlenet_22
+  - override data: Manatees

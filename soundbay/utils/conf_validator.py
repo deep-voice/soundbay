@@ -124,34 +124,15 @@ class Preprocessors(BaseModel):
     def validate_resize(cls, resize:dict):
         return resize   
  
-class Preprocessors_googlenet(BaseModel):
-   # pdb.set_trace()
-    spectrogram: Optional[dict]
-
-    class Config:
-        title = "Preprocessors_googlenet"
-        #validate_assignment = True
-        anystr_lower = True
-        #validate_all = True
-        use_enum_values = True
-    
-    @validator("spectrogram")
-    def validate_spec(cls, spectrogram:dict):
-   #     pdb.set_trace()
-        return spectrogram
-      
 class Config(BaseModel):
     data: Dataset
     model: Model
     augmentations: Augmentations
     preprocessors: Preprocessors
-   # pdb.set_trace()
-    preprocessors_googlenet: Preprocessors_googlenet
     class Config:
         title = "Config"
         fields = {'augmentations': '_augmentations',
-                    'preprocessors': '_preprocessors',
-                    'preprocessors_googlenet': '_preprocessors_googlenet'} # pydantic ignores private varibles - need to add alias
+                    'preprocessors': '_preprocessors'} # pydantic ignores private varibles - need to add alias
 
 
     
