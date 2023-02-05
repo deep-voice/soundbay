@@ -17,7 +17,7 @@ models_dict = {'models.ResNet1Channel':ResNet1Channel,
 datasets_dict = {'soundbay.data.ClassifierDataset':ClassifierDataset}
 
 
-optim_dict = {'torch.optim.Adam':torch.optim.Adam}
+optim_dict = {'torch.optim.Adam':torch.optim.Adam, 'torch.optim.SGD':torch.optim.SGD}
 
 
 
