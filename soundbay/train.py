@@ -31,6 +31,7 @@ from soundbay.utils.app import App
 from soundbay.utils.logging import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
 from soundbay.trainers import Trainer
+from slowfast.models.build import build_model
 
 
 def modeling(
@@ -70,13 +71,24 @@ def modeling(
     train_dataset = instantiate(train_dataset_args)
     val_dataset = instantiate(val_dataset_args)
 
-    # Define model and device for training
-    model = instantiate(model_args)
-    model.to(device)
+    if model_args['mode_dual_pathways']:
+        print(f'mode_dual_pathways=True.\nReplacing the regular model with slow-fast dual stream model')
+        print('please make sure to manualy insert you num_frames and num_frequencies into slowfast\'s config file')
+        from slowfast.create_cfg import load_config_from_yaml
+        model_args = load_config_from_yaml(file_path='../slowfast/config.yaml')
+        model = build_model(model_args)
+        # Assert number of labels in the dataset and the number of labels in the model
+        assert model_args.MODEL.NUM_CLASSES[0] == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
+            "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
+    else:
+        # Define model and device for training
+        model = instantiate(model_args)
 
-    # Assert number of labels in the dataset and the number of labels in the model
-    assert model_args.num_classes == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
-    "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
+        # Assert number of labels in the dataset and the number of labels in the model
+        assert model_args.num_classes == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
+            "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
+
+    model.to(device)
 
     # Add model watch to WANDB
     logger.log_writer.watch(model)
@@ -127,7 +139,7 @@ def modeling(
 
 
 # TODO check how to use hydra without path override
-@hydra.main(config_name=os.path.join("runs", "main"), config_path="conf")
+@hydra.main(config_name=os.path.join("runs", "main_mel"), config_path="conf")
 def main(args):
 
     # Set logger
@@ -159,7 +171,7 @@ def main(args):
     # Logging
     logger = Logger(_logger, debug_mode=args.experiment.debug, artifacts_upload_limit=args.experiment.artifacts_upload_limit)
     flattenArgs = flatten(args)
-    logger.log_writer.config.update(flattenArgs)
+    logger.log_writer.config.update(flattenArgs, allow_val_change=True)
     App.init(args)
 
     # Define criterion

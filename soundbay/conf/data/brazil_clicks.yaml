@@ -1,8 +1,8 @@
 # @package _global_
 data:
   label_names: ['Noise', 'Call']
-  batch_size: 16
-  num_workers: 4
+  batch_size: 32
+  num_workers: 16
   sample_rate: 96000
   data_sample_rate: 96000
   max_freq: 48000
@@ -12,9 +12,9 @@ data:
   min_freq_filtering: 16000
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/brazil/audio_files'
+    data_path: '../../all_brazil'
     mode: train
-    metadata_path: '../datasets/brazil/annotation_train_clicks.csv'
+    metadata_path: '../datasets/brazil/annotation_train_all_no_whistles.csv'
     augmentations_p: 0.5
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
@@ -25,9 +25,9 @@ data:
     slice_flag: false
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/brazil/audio_files'
+    data_path: '../../all_brazil'
     mode: val
-    metadata_path: '../datasets/brazil/annotation_val_clicks.csv'
+    metadata_path: '../datasets/brazil/annotation_val_all_no_whistles.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}

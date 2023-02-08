@@ -92,14 +92,28 @@ class Trainer:
 
             self.model.zero_grad()
             audio, label, raw_wav, idx = batch
-            audio, label  = audio.to(self.device), label.to(self.device)
+            if isinstance(audio, list):
+                audio, label= [a.to(self.device) for a in audio], label.to(self.device)
+                #print(f'audio shape before the model: {[a.shape for a in audio]}', flush=True)
+            else:
+                audio, label  = audio.to(self.device), label.to(self.device)
 
             if (it == 0) and (not self.debug) and ((epoch % 5) == 0):
-                self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='train')
+                if isinstance(audio, list):
+                    for aud in audio:
+                        self.logger.upload_artifacts(aud, label, raw_wav, idx,
+                                                 sample_rate=self.train_dataloader.dataset.sample_rate, flag='train')
+                else:
+                    self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='train')
 
             # estimate and calc losses
             estimated_label = self.model(audio)
-            loss = self.criterion(estimated_label, label)
+            # print(f'estimated_label shapes: {[e.shape for e in estimated_label]}, gt shape: {label.shape}', flush=True)
+            if estimated_label.__len__()>1:
+                loss = sum([self.criterion(e, label)/estimated_label.__len__() for e in estimated_label])
+                estimated_label = sum(estimated_label)/estimated_label.__len__()
+            else:
+                loss = self.criterion(estimated_label, label)
             loss.backward()
             self.optimizer.step()
 
@@ -124,13 +138,29 @@ class Trainer:
                 if it == 3 and self.debug:
                     break
                 audio, label, raw_wav, idx = batch
-                audio, label = audio.to(self.device), label.to(self.device)
+                if isinstance(audio, list):
+                    audio, label = [a.to(self.device) for a in audio], label.to(self.device)
+                    # print(f'audio shape before the model: {[a.shape for a in audio]}', flush=True)
+                else:
+                    audio, label = audio.to(self.device), label.to(self.device)
                 if (it == 0) and (not self.debug) and ((epoch % 5) == 0):
-                    self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='val')
+                    if isinstance(audio, list):
+                        for aud in audio:
+                            self.logger.upload_artifacts(aud, label, raw_wav, idx,
+                                                         sample_rate=self.train_dataloader.dataset.sample_rate,
+                                                         flag='val')
+                    else:
+                        self.logger.upload_artifacts(audio, label, raw_wav, idx,
+                                                     sample_rate=self.train_dataloader.dataset.sample_rate,
+                                                     flag='val')
 
                 # estimate and calc losses
                 estimated_label = self.model(audio)
-                loss = self.criterion(estimated_label, label)
+                if estimated_label.__len__() > 1:
+                    loss = sum([self.criterion(e, label) / estimated_label.__len__() for e in estimated_label])
+                    estimated_label = sum(estimated_label) / estimated_label.__len__()
+                else:
+                    loss = self.criterion(estimated_label, label)
 
                 # update losses
                 self.logger.update_losses(loss.detach(), flag='val')
