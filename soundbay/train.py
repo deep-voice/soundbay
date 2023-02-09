@@ -71,7 +71,14 @@ def modeling(
     train_dataset = instantiate(train_dataset_args)
     val_dataset = instantiate(val_dataset_args)
 
-    if model_args['mode_dual_pathways']:
+    # Define model and device for training
+    model = instantiate(model_args)
+
+    # Assert number of labels in the dataset and the number of labels in the model
+    assert model_args.num_classes == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
+        "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
+
+    if True:
         print(f'mode_dual_pathways=True.\nReplacing the regular model with slow-fast dual stream model')
         print('please make sure to manualy insert you num_frames and num_frequencies into slowfast\'s config file')
         from slowfast.create_cfg import load_config_from_yaml
@@ -79,13 +86,6 @@ def modeling(
         model = build_model(model_args)
         # Assert number of labels in the dataset and the number of labels in the model
         assert model_args.MODEL.NUM_CLASSES[0] == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
-            "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
-    else:
-        # Define model and device for training
-        model = instantiate(model_args)
-
-        # Assert number of labels in the dataset and the number of labels in the model
-        assert model_args.num_classes == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
             "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
 
     model.to(device)

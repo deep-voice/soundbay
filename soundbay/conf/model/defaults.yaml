@@ -7,4 +7,3 @@ model:
     layers: [3, 4, 6, 3]
     block: torchvision.models.resnet.Bottleneck
     num_classes: 2
-    mode_dual_pathways: True

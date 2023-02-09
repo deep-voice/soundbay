@@ -3,12 +3,13 @@ from itertools import starmap, repeat
 from pathlib import Path
 from copy import deepcopy
 from typing import Union
-
+import math
 import librosa
 import numpy as np
 import pandas as pd
 import soundfile as sf
 import torch
+import torch.nn.functional as F
 import torchaudio
 import torchvision
 from hydra.utils import instantiate
@@ -26,7 +27,7 @@ class BaseDataset(Dataset):
     """
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors, post_augmentations=None,
                  seq_length=1, data_sample_rate=44100, sample_rate=44100, mode="train",
-                 slice_flag=False, margin_ratio=0, split_metadata_by_label=False, mode_dual_pathways=False,
+                 slice_flag=False, margin_ratio=0, split_metadata_by_label=False, mode_dual_pathways=True,
                  slowfast_alpha=4):
         """
         __init__ method initiates ClassifierDataset instance:
@@ -245,6 +246,16 @@ class BaseDataset(Dataset):
             spectrogram_list (list): list of tensors with the dimension of
                 `channel` x `num frames` x `num frequencies`.
         """
+
+        # make sure the spectrogram T,F channels can be divided by 32 and by 4*alpha respectfully
+        # without remainders - needed to the model's head layer
+        number_of_frames, number_of_freqs = spectrogram.shape[-2:]
+        pad_in_frames = ((SLOWFAST_ALPHA*4) - number_of_frames % (SLOWFAST_ALPHA*4)) % (SLOWFAST_ALPHA*4)
+        pad_in_freqs = (32 - number_of_freqs % 32) % 32
+        spectrogram = F.pad(spectrogram[-2:],
+                            (math.floor(pad_in_freqs/2), math.ceil(pad_in_freqs/2),  # last dim
+                            math.floor(pad_in_frames/2), math.ceil(pad_in_frames/2)))  # second to last
+
         fast_pathway = spectrogram
         # Perform temporal sampling from the fast pathway.
         slow_pathway = torch.index_select(
