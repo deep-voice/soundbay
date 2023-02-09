@@ -96,8 +96,6 @@ def modeling(
     model = models_dict[model_args['_target_']](layers=model_args['layers'], 
     block=model_args['block'], num_classes=model_args['num_classes'])
     # Assert number of labels in the dataset and the number of labels in the model
-    assert model_args.num_classes == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
-    "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
 
     if model_args['mode_dual_pathways']:
         print(f'mode_dual_pathways=True.\nReplacing the regular model with slow-fast dual stream model')
@@ -107,6 +105,10 @@ def modeling(
         model = build_model(model_args)
         # Assert number of labels in the dataset and the number of labels in the model
         assert model_args.MODEL.NUM_CLASSES[0] == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
+            "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
+    else:
+        assert model_args.model.num_classes[0] == len(train_dataset.items_per_classes) == len(
+            val_dataset.items_per_classes), \
             "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
 
 
