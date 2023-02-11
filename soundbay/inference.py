@@ -270,7 +270,7 @@ def inference_to_file(
         raise ValueError('Only ClassifierDataset or InferenceDataset allowed in inference')
 
 
-@hydra.main(config_name="runs/inference_single_audio", config_path="conf")
+@hydra.main(config_name="runs/inference_single_audio", config_path="conf", version_base='1.2')
 def inference_main(args) -> None:
     """
     The main function for running predictions using a trained model on a wanted dataset. The arguments are inserted
