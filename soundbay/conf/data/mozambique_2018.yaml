@@ -11,7 +11,7 @@ data:
   hop_length: 256
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/mozambique_2018'
+    data_path: '../datasets/mozambique_2018/data'
     mode: train 
     metadata_path: '../datasets/mozambique_2018/combined_annotations_filtered_train.csv'
     augmentations_p: 0.8
@@ -25,7 +25,7 @@ data:
     slice_flag: false
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/mozambique_2018'
+    data_path: '../datasets/mozambique_2018/data'
     mode: val 
     metadata_path: '../datasets/mozambique_2018/combined_annotations_filtered_val.csv'
     augmentations_p: 0
