@@ -5,7 +5,7 @@ from torch import Tensor
 from torchvision.models.resnet import ResNet, BasicBlock, conv3x3, Bottleneck
 from torchvision.models.vgg import VGG
 from torchvision.models import squeezenet
-from torchvision.models import GoogLeNet
+from torchvision.models import googlenet
 import torch.nn.init as init
 
 
@@ -322,14 +322,10 @@ class PCENTransform(nn.Module):
         x = x.unsqueeze(dim=1).permute((0, 1, 3, 2))
         return x
 
-class GoogLeNet(GoogLeNet):
-    def __init__(self, num_classes=2, pretrained=True):
-        super().__init__(num_classes=num_classes, aux_logits=False, pretrained=pretrained) # use pretrained version on ImageNet
-        self.classifier = nn.Linear(1024, num_classes)
+class GoogLeNet(nn.Module):
+    def __init__(self, num_classes=2, use_pretrained=True):
+        super().__init__()
+        self.model = googlenet(pretrained=use_pretrained, num_classes=num_classes)
 
     def forward(self, x):
-        x = self.features(x)
-        x = self.avgpool(x)
-        x = x.view(x.size(0), -1)
-        x = self.classifier(x)
-        return x
+        return self.model(x)
