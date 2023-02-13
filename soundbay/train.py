@@ -90,14 +90,14 @@ def modeling(
 
 
     # Define model and device for training
-    model = models_dict[model_args['_target_']](layers=model_args['layers'], 
-    block=model_args['block'], num_classes=model_args['num_classes'])
+    model_args = dict(model_args)
+    model = models_dict[model_args.pop('_target_')](**model_args)
 
 
     model.to(device)
 
     # Assert number of labels in the dataset and the number of labels in the model
-    assert model_args.num_classes == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
+    assert model_args['num_classes'] == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
     "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
 
     # Add model watch to WANDB
@@ -124,7 +124,8 @@ def modeling(
             pin_memory=True,
         )
 
-    optimizer = optim_dict[optimizer_args._target_](model.parameters(), lr=optimizer_args.lr)
+    optimizer_args = dict(optimizer_args)
+    optimizer = optim_dict[optimizer_args.pop('_target_')](model.parameters(), **optimizer_args)
 
     scheduler = scheduler_dict[scheduler_args._target_](optimizer, gamma=scheduler_args['gamma'])
 
