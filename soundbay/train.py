@@ -150,7 +150,7 @@ def modeling(
 
 
 # TODO check how to use hydra without path override
-@hydra.main(config_name="main", config_path="conf", version_base='1.2')
+@hydra.main(config_name="/runs/main", config_path="conf", version_base='1.2')
 def main(validate_args) -> None:
     
     args = validate_args.copy()
