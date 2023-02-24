@@ -26,6 +26,7 @@ from soundbay.utils.conf_validator import Config
 import hydra
 import random
 from unittest.mock import Mock
+from copy import deepcopy
 import os
 from soundbay.utils.app import App
 from soundbay.utils.logging import Logger, flatten, get_experiment_name
@@ -153,7 +154,7 @@ def modeling(
 @hydra.main(config_name="/runs/main", config_path="conf", version_base='1.2')
 def main(validate_args) -> None:
     
-    args = validate_args.copy()
+    args = deepcopy(validate_args)
     OmegaConf.resolve(validate_args)
     Config(**validate_args)
     # Set logger
