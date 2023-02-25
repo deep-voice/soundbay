@@ -62,6 +62,7 @@ def merge_with_checkpoint(run_args, checkpoint_args):
     OmegaConf.set_struct(run_args, False)
     run_args.model = OmegaConf.to_container(checkpoint_args.model, resolve=True)
     run_args.data.test_dataset.preprocessors = OmegaConf.to_container(checkpoint_args.data.train_dataset.preprocessors, resolve=True)
+    run_args.data.test_dataset.seq_length = checkpoint_args.data.train_dataset.seq_length
     run_args.data.sample_rate = checkpoint_args.data.sample_rate
     OmegaConf.set_struct(run_args, True)
     return run_args

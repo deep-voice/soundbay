@@ -2,4 +2,3 @@
 defaults:
   - ../data: defaults_inference
   - ../experiment: inference
-  - ../experiment: null_hydra
