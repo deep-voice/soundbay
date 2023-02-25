@@ -17,7 +17,9 @@ import soundfile as sf
 from soundbay.results_analysis import inference_csv_to_raven
 from soundbay.utils.logging import Logger
 from soundbay.utils.checkpoint_utils import merge_with_checkpoint
-from soundbay.conf_dict import models_dict
+from soundbay.conf_dict import models_dict, datasets_dict
+
+
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
                   device: torch.device = torch.device('cpu'),
                   selected_class_idx: Union[None, int] = None,
@@ -168,18 +170,20 @@ def infer_single_file(
             model_path: directory for the wanted trained model
             output_path: directory to save the prediction file
     """
+    # load model
+    model = load_model(model_args, checkpoint_state_dict).to(device)
     # Check how many channels
-    data_sample, _ = sf.read(dataset_args.file_path, start=0, stop=10)
-
+    num_channels = sf.info(dataset_args.file_path).channels
     all_channel_list = []
     all_channel_raven_list = []
-    for channel in range(data_sample.shape[1]):
+    dataset_args = dict(dataset_args)
+    dataset_type = dataset_args.pop('_target_')
+    for channel in range(num_channels):
         # set paths and create dataset
-        test_dataset = instantiate(dataset_args, channel=channel)
-
-        # load model
-        model = load_model(model_args, checkpoint_state_dict).to(device)
-
+        # TODO it's pretty weird to iterate and create dataset for a single file,
+        #  the better solution imo should be an inference dataset that can handle multiple channels
+        #  and create num samples equal to num channels
+        test_dataset = datasets_dict[dataset_type](channel=channel, **dataset_args)
         test_dataloader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size, num_workers=0,
                                      pin_memory=False)
 
@@ -200,8 +204,8 @@ def infer_single_file(
         # create raven file
         if save_raven:
             all_channel_raven_list.append(
-                inference_csv_to_raven(results_df, predict_prob.shape[1], dataset_args.seq_length, 1, threshold, 'call',
-                                       channel, dataset_args.data_sample_rate // 2)
+                inference_csv_to_raven(results_df, predict_prob.shape[1], dataset_args['seq_length'], 1, threshold, 'call',
+                                       channel, dataset_args['data_sample_rate'] // 2)
             )
 
         # add to general inference result
