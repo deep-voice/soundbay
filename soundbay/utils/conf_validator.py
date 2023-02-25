@@ -70,6 +70,8 @@ class Model(BaseModel):
     def validate_model(cls, model:dict):
         if model['_target_'] not in models_dict.keys():
             raise ValueError(f"'This model is not allowed: {model['_target_']}")
+        if model['_target_'] == 'models.ChristophCNN':
+            print('Attention: Make sure to use the preprocessors=_preproccesors_sliding_window argument when running Chritoph CNN!')
         return model
 
 
