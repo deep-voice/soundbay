@@ -1,6 +1,6 @@
 # @package _global_
 defaults:
-  - ../data: Manatees
+  - ../data: defaults
   - ../augmentations: _augmentations
   - ../preprocessors: _preprocessors
   - ../model: defaults
