@@ -27,12 +27,12 @@ import hydra
 import random
 from unittest.mock import Mock
 from copy import deepcopy
-import os
 from soundbay.utils.app import App
 from soundbay.utils.logging import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
 from soundbay.trainers import Trainer
 from soundbay.conf_dict import models_dict, criterion_dict, datasets_dict, optim_dict, scheduler_dict
+import string
 
 
 def modeling(
@@ -159,7 +159,12 @@ def main(validate_args) -> None:
     OmegaConf.resolve(validate_args)
     Config(**validate_args)
     # Set logger
-    _logger = wandb if not args.experiment.debug else Mock()
+    if args.experiment.debug:
+        _logger = Mock()
+        _logger.run.id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    else:
+        _logger = wandb
+
     experiment_name = get_experiment_name(args)
     _logger.init(project="finding_willy", name=experiment_name, group=args.experiment.group_name,
                  id=args.experiment.run_id, resume=args.experiment.checkpoint.resume)
@@ -173,9 +178,13 @@ def main(validate_args) -> None:
         device = torch.device("cuda")
 
     # Convert filepaths, convenient if you wish to use relative paths
-    working_dirpath = Path(hydra.utils.get_original_cwd())
-    output_dirpath = Path.cwd()
-    os.chdir(working_dirpath)
+    hydra_dirpath = Path(hydra.utils.get_original_cwd())
+    working_dirpath = Path.cwd()
+    assert working_dirpath == hydra_dirpath, "hydra is doing funky stuff with the paths again, check it out"
+    output_dirpath = working_dirpath / f'../checkpoints/{_logger.run.id}'
+    output_dirpath.mkdir(parents=True)
+    OmegaConf.save(args, output_dirpath / 'args.yaml', resolve=False)  # we prefer to save the referenced version,
+    # we can always resolve once we load the conf again
 
     # Define checkpoint
     if args.experiment.checkpoint.path:
