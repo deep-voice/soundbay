@@ -5,7 +5,8 @@ from torch import Tensor
 from torchvision.models.resnet import ResNet, BasicBlock, conv3x3, Bottleneck
 from torchvision.models.vgg import VGG
 from torchvision.models import squeezenet
-from torchvision.models import googlenet
+from torchvision.models import GoogLeNet  #googlenet
+from torchvision.models.utils import load_state_dict_from_url
 import torch.nn.init as init
 
 
@@ -322,10 +323,32 @@ class PCENTransform(nn.Module):
         x = x.unsqueeze(dim=1).permute((0, 1, 3, 2))
         return x
 
-class GoogLeNet(nn.Module):
+class GoogLeNet_2classes(nn.Module):
     def __init__(self, num_classes=2, use_pretrained=True):
         super().__init__()
-        self.model = googlenet(pretrained=use_pretrained, num_classes=num_classes)
+        self.model_urls = {'googlenet': 'https://download.pytorch.org/models/googlenet-1378be20.pth'}
+        # self.model = googlenet(pretrained=use_pretrained, num_classes=num_classes)
+        self.model = self.my_googlenet(pretrained=use_pretrained, num_classes=num_classes)
+        self.model.fc = nn.Linear(1024, num_classes)
+
+        # TODO: take googlenet function from torchvision and modify it to return the model without the aux logits and fc layer (between load_state_dict_from_url and model.load_state_dict)
+        #the error was: size mismatch for aux1.fc2.weight (1000 vs 2), also with aux1.fc2.bias, aux2.fc2.weight, aux2.fc2.bias, fc.weight, fc.bias
 
     def forward(self, x):
         return self.model(x)
+
+    def my_googlenet(self, pretrained=False, progress=True, num_classes=1000, **kwargs):
+        model = GoogLeNet(num_classes=num_classes, **kwargs)
+        if pretrained:
+            state_dict = load_state_dict_from_url(self.model_urls['googlenet'], progress=progress)
+            # remove the aux logits and fc layer
+            del state_dict['aux1.fc2.weight']
+            del state_dict['aux1.fc2.bias']
+            del state_dict['aux2.fc2.weight']
+            del state_dict['aux2.fc2.bias']
+            del state_dict['fc.weight']
+            del state_dict['fc.bias']
+
+            model.load_state_dict(state_dict)
+
+        return model
