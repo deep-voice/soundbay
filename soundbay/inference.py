@@ -13,6 +13,7 @@ import pandas
 import datetime
 from hydra.utils import instantiate
 import soundfile as sf
+from omegaconf import OmegaConf
 
 from soundbay.results_analysis import inference_csv_to_raven
 from soundbay.utils.logging import Logger
@@ -89,8 +90,8 @@ def load_model(model_params, checkpoint_state_dict):
         model: nn.Module object of the model
     """
 
-    model = models_dict[model_params['_target_']](layers=model_params['layers'], 
-    block=model_params['block'], num_classes=model_params['num_classes'])
+    model_params = OmegaConf.to_container(model_params) 
+    model = models_dict[model_params.pop('_target_')](**model_params)
     model.load_state_dict(checkpoint_state_dict)
     return model
 
@@ -115,7 +116,15 @@ def infer_multi_file(
             output_path: directory to save the prediction file
         """
     # set paths and create dataset
-    test_dataset = instantiate(dataset_args)
+    test_dataset = datasets_dict[dataset_args['_target_']](data_path = dataset_args['data_path'],
+    metadata_path=dataset_args['metadata_path'], augmentations=dataset_args['augmentations'],
+    augmentations_p=dataset_args['augmentations_p'],
+    preprocessors=dataset_args['preprocessors'],
+    seq_length=dataset_args['seq_length'], data_sample_rate=dataset_args['data_sample_rate'],
+    sample_rate=dataset_args['sample_rate'], 
+    mode=dataset_args['mode']
+    )
+    # test_dataset = instantiate(dataset_args)
 
     # load model
     model = load_model(model_args, checkpoint_state_dict).to(device)
@@ -274,7 +283,7 @@ def inference_to_file(
         raise ValueError('Only ClassifierDataset or InferenceDataset allowed in inference')
 
 
-@hydra.main(config_name="runs/inference_single_audio", config_path="conf", version_base='1.2')
+@hydra.main(config_name="/runs/main_inference.yaml", config_path="conf", version_base='1.2')
 def inference_main(args) -> None:
     """
     The main function for running predictions using a trained model on a wanted dataset. The arguments are inserted
