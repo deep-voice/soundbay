@@ -124,7 +124,6 @@ def infer_multi_file(
     sample_rate=dataset_args['sample_rate'], 
     mode=dataset_args['mode']
     )
-    # test_dataset = instantiate(dataset_args)
 
     # load model
     model = load_model(model_args, checkpoint_state_dict).to(device)
