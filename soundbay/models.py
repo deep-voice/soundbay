@@ -335,10 +335,12 @@ class GoogLeNet_2classes(nn.Module):
         #the error was: size mismatch for aux1.fc2.weight (1000 vs 2), also with aux1.fc2.bias, aux2.fc2.weight, aux2.fc2.bias, fc.weight, fc.bias
 
     def forward(self, x):
-        return self.model(x)
+        output = self.model(x)
+        return output.logits
 
     def my_googlenet(self, pretrained=False, progress=True, num_classes=1000, **kwargs):
         model = GoogLeNet(num_classes=num_classes, aux_logits=True, **kwargs)
+
         if pretrained:
             state_dict = load_state_dict_from_url(self.model_urls['googlenet'], progress=progress)
             # remove the aux logits and fc layer
