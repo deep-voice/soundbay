@@ -351,6 +351,6 @@ class GoogLeNet_2classes(nn.Module):
             del state_dict['fc.weight']
             del state_dict['fc.bias']
 
-            model.load_state_dict(state_dict)
+            model.load_state_dict(state_dict, strict=False)
 
         return model
