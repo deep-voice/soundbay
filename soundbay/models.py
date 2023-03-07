@@ -338,7 +338,7 @@ class GoogLeNet_2classes(nn.Module):
         return self.model(x)
 
     def my_googlenet(self, pretrained=False, progress=True, num_classes=1000, **kwargs):
-        model = GoogLeNet(num_classes=num_classes, aux_logits=False, **kwargs)
+        model = GoogLeNet(num_classes=num_classes, aux_logits=True, **kwargs)
         if pretrained:
             state_dict = load_state_dict_from_url(self.model_urls['googlenet'], progress=progress)
             # remove the aux logits and fc layer
