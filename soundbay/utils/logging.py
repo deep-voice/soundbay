@@ -164,20 +164,26 @@ class Logger:
         list_of_wavs_objects = [wandb.Audio(data_or_path=wav, caption=f'label_{lab}_{ind}_train', sample_rate=sample_rate) for wav, ind, lab in zip(artifact_wav,idx, label)]
 
         # Spectrograms batch
-        artifact_spec = torch.squeeze(audio).detach().cpu().numpy()
-        specs = []
-        for artifact_id in range(artifact_spec.shape[0]):
-            ax = plt.subplots(nrows=1, ncols=1)
-            specs.append(librosa.display.specshow(artifact_spec[artifact_id,...], ax=ax[1]))
-            plt.close('all')
-            del ax
-        list_of_specs_objects = [wandb.Image(data_or_path=spec, caption=f'label_{lab}_{ind}_train') for spec, ind, lab in zip(specs,idx, label)]
-        log_wavs = {f'First batch {flag} original wavs': list_of_wavs_objects}
-        log_specs = {f'First batch {flag} augmented spectrogram\'s': list_of_specs_objects}
+        #avoid spectrogram upload if using 3 channel spectrograms (in googlenet), upload only wavs
+        if self.audio.size()[1] == 3:
+            log_wavs = {f'First batch {flag} original wavs': list_of_wavs_objects}
+            # Upload to W&B
+            wandb.log(log_wavs, commit=False)
+        else:
+            artifact_spec = torch.squeeze(audio).detach().cpu().numpy()
+            specs = []
+            for artifact_id in range(artifact_spec.shape[0]):
+                ax = plt.subplots(nrows=1, ncols=1)
+                specs.append(librosa.display.specshow(artifact_spec[artifact_id,...], ax=ax[1]))
+                plt.close('all')
+                del ax
+            list_of_specs_objects = [wandb.Image(data_or_path=spec, caption=f'label_{lab}_{ind}_train') for spec, ind, lab in zip(specs,idx, label)]
+            log_wavs = {f'First batch {flag} original wavs': list_of_wavs_objects}
+            log_specs = {f'First batch {flag} augmented spectrogram\'s': list_of_specs_objects}
 
-        # Upload to W&B
-        wandb.log(log_wavs, commit=False)
-        wandb.log(log_specs, commit=False)
+            # Upload to W&B
+            wandb.log(log_wavs, commit=False)
+            wandb.log(log_specs, commit=False)
 
     @staticmethod
     def get_metrics_dict(label_list: Union[list, np.ndarray], pred_list: Union[list, np.ndarray],
