@@ -85,6 +85,8 @@ class RGBSpectrogram(object):
         spectrogram = spectrogram.long()
         #convert spectrogram to RGB values according to parula colormap
         spectrogram_rgb = parula_tensor[spectrogram]
+        #get rid of the redundant dimension
+        spectrogram_rgb = spectrogram_rgb.squeeze(0)
         return spectrogram_rgb
 
 
