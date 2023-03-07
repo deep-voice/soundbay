@@ -76,15 +76,16 @@ class RGBSpectrogram(object):
     # this method takes the 2D spectrogram of size (b,H,W) and converts it to 3D of size (b,3,H,W) with RGB values from colormap
     def __call__(self, spectrogram):
         parula = cmaps['parula']
-        parula_tensor = torch.from_numpy(parula(np.arange(256))).float()
+        #convert colormap to torch tensor
+        parula_tensor = torch.from_numpy(parula(np.arange(256))).float()[:,:3]
         #normalize spectrogram tensor
         spectrogram = spectrogram - spectrogram.min()
         spectrogram = spectrogram / spectrogram.max()
         spectrogram = spectrogram * 255
         spectrogram = spectrogram.long()
-        #convert spectrogram to RGB
-        spectrogram = torch.index_select(parula_tensor, 0, spectrogram)
-        return spectrogram
+        #convert spectrogram to RGB values according to parula colormap
+        spectrogram_rgb = parula_tensor[spectrogram]
+        return spectrogram_rgb
 
 
 
