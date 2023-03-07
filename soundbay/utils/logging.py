@@ -165,7 +165,7 @@ class Logger:
 
         # Spectrograms batch
         #avoid spectrogram upload if using 3 channel spectrograms (in googlenet), upload only wavs
-        if self.audio.size()[1] == 3:
+        if audio.size()[1] == 3:
             log_wavs = {f'First batch {flag} original wavs': list_of_wavs_objects}
             # Upload to W&B
             wandb.log(log_wavs, commit=False)
