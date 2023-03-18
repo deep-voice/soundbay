@@ -90,14 +90,14 @@ def modeling(
 
 
     # Define model and device for training
-    model = models_dict[model_args['_target_']](layers=model_args['layers'], 
-    block=model_args['block'], num_classes=model_args['num_classes'])
+    model_args = dict(model_args)
+    model = models_dict[model_args.pop('_target_')](**model_args)
 
 
     model.to(device)
 
     # Assert number of labels in the dataset and the number of labels in the model
-    assert model_args.num_classes == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
+    assert model_args['num_classes'] == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
     "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
 
     # Add model watch to WANDB
@@ -235,9 +235,9 @@ def main(validate_args) -> None:
         equalize_data=args.experiment.equalize_data
     )
 
-    if args.experiment.bucket_name and not args.experiment.debug:
-        upload_experiment_to_s3(experiment_id=logger.log_writer.run.id, dir_path=output_dirpath,
-                                bucket_name=args.experiment.bucket_name, include_parent=True, logger=logger)
+    # if args.experiment.bucket_name and not args.experiment.debug:
+    #     upload_experiment_to_s3(experiment_id=logger.log_writer.run.id, dir_path=output_dirpath,
+    #                             bucket_name=args.experiment.bucket_name, include_parent=True, logger=logger)
         
 
 if __name__ == "__main__":
