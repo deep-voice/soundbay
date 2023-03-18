@@ -1,7 +1,7 @@
 import pathlib
 import os
 
-from hydra.experimental import compose, initialize
+from hydra import compose, initialize
 from random import randint
 from random import seed
 from soundbay.data import ClassifierDataset
@@ -10,9 +10,9 @@ import numpy as np
 
 def test_dataloader() -> None:
     seed(1)
-    with initialize(config_path=os.path.join("..", 'soundbay', 'conf')):
+    with initialize(config_path=os.path.join("..", 'soundbay', 'conf/runs/'), version_base='1.2'):
         # config is relative to a module
-        cfg = compose(config_name=os.path.join("runs", "main"))
+        cfg = compose(config_name="main")
         dataset = ClassifierDataset(cfg.data.train_dataset.data_path, cfg.data.train_dataset.metadata_path,
                                         augmentations=cfg.data.train_dataset.augmentations,
                                         augmentations_p=cfg.data.train_dataset.augmentations_p,

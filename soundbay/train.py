@@ -15,23 +15,25 @@ using the command line when running main.py (e.g. "main.py experiment.debug=True
 * make sure to install all the packages stated in the requirements.txt file prior to running this script
 
 """
-
+import os
 import torch
 from torch.utils.data import DataLoader, WeightedRandomSampler
 import wandb
 from functools import partial
 from pathlib import Path
+from omegaconf import OmegaConf 
+from soundbay.utils.conf_validator import Config
 import hydra
-from hydra.utils import instantiate
-
 import random
 from unittest.mock import Mock
-import os
+from copy import deepcopy
 from soundbay.utils.app import App
 from soundbay.utils.logging import Logger, flatten, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
 from soundbay.trainers import Trainer
 from slowfast.models.build import build_model
+from soundbay.conf_dict import models_dict, criterion_dict, datasets_dict, optim_dict, scheduler_dict
+import string
 
 
 def modeling(
@@ -68,17 +70,36 @@ def modeling(
 
     """
     # Set paths and create dataset
-    train_dataset = instantiate(train_dataset_args)
-    val_dataset = instantiate(val_dataset_args)
+
+    train_dataset = datasets_dict[train_dataset_args['_target_']](data_path = train_dataset_args['data_path'],
+    metadata_path=train_dataset_args['metadata_path'], augmentations=train_dataset_args['augmentations'],
+    augmentations_p=train_dataset_args['augmentations_p'],
+    preprocessors=train_dataset_args['preprocessors'],
+    seq_length=train_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
+    sample_rate=train_dataset_args['sample_rate'], margin_ratio=train_dataset_args['margin_ratio'],
+    slice_flag=train_dataset_args['slice_flag'], mode=train_dataset_args['mode']
+    )
+
+
+    val_dataset = datasets_dict[val_dataset_args['_target_']](data_path = val_dataset_args['data_path'],
+    metadata_path=val_dataset_args['metadata_path'], augmentations=val_dataset_args['augmentations'],
+    augmentations_p=val_dataset_args['augmentations_p'],
+    preprocessors=val_dataset_args['preprocessors'],
+    seq_length=val_dataset_args['seq_length'], data_sample_rate=val_dataset_args['data_sample_rate'],
+    sample_rate=val_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
+    slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode']
+    )
+
 
     # Define model and device for training
-    model = instantiate(model_args)
-
+    model_args = dict(model_args)
+    mode_dual_pathways = model_args.pop('mode_dual_pathways')
+    model = models_dict[model_args.pop('_target_')](**model_args)
     # Assert number of labels in the dataset and the number of labels in the model
-    assert model_args.num_classes == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
+    assert model_args['num_classes'] == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
         "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
 
-    if True:
+    if mode_dual_pathways:
         print(f'mode_dual_pathways=True.\nReplacing the regular model with slow-fast dual stream model')
         print('please make sure to manualy insert you num_frames and num_frequencies into slowfast\'s config file')
         from slowfast.create_cfg import load_config_from_yaml
@@ -114,8 +135,10 @@ def modeling(
             pin_memory=True,
         )
 
-    optimizer = instantiate(optimizer_args, model.parameters())
-    scheduler = instantiate(scheduler_args, optimizer)
+    optimizer_args = dict(optimizer_args)
+    optimizer = optim_dict[optimizer_args.pop('_target_')](model.parameters(), **optimizer_args)
+
+    scheduler = scheduler_dict[scheduler_args._target_](optimizer, gamma=scheduler_args['gamma'])
 
     # Add the rest of the parameters to trainer instance
     _trainer = trainer(
@@ -139,11 +162,19 @@ def modeling(
 
 
 # TODO check how to use hydra without path override
-@hydra.main(config_name=os.path.join("runs", "main_mel"), config_path="conf")
-def main(args):
-
+@hydra.main(config_name=os.path.join("runs", "main_mel"), config_path="conf", version_base='1.2')
+def main(validate_args) -> None:
+    
+    args = deepcopy(validate_args)
+    OmegaConf.resolve(validate_args)
+    Config(**validate_args)
     # Set logger
-    _logger = wandb if not args.experiment.debug else Mock()
+    if args.experiment.debug:
+        _logger = Mock()
+        _logger.run.id = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    else:
+        _logger = wandb
+
     experiment_name = get_experiment_name(args)
     _logger.init(project="finding_willy", name=experiment_name, group=args.experiment.group_name,
                  id=args.experiment.run_id, resume=args.experiment.checkpoint.resume)
@@ -157,9 +188,13 @@ def main(args):
         device = torch.device("cuda")
 
     # Convert filepaths, convenient if you wish to use relative paths
-    working_dirpath = Path(hydra.utils.get_original_cwd())
-    output_dirpath = Path.cwd()
-    os.chdir(working_dirpath)
+    hydra_dirpath = Path(hydra.utils.get_original_cwd())
+    working_dirpath = Path.cwd()
+    assert working_dirpath == hydra_dirpath, "hydra is doing funky stuff with the paths again, check it out"
+    output_dirpath = working_dirpath / f'../checkpoints/{_logger.run.id}'
+    output_dirpath.mkdir(parents=True)
+    OmegaConf.save(args, output_dirpath / 'args.yaml', resolve=False)  # we prefer to save the referenced version,
+    # we can always resolve once we load the conf again
 
     # Define checkpoint
     if args.experiment.checkpoint.path:
@@ -175,7 +210,11 @@ def main(args):
     App.init(args)
 
     # Define criterion
-    criterion = instantiate(args.model.criterion)
+    # criterion = instantiate(args.model.criterion)
+    if args.model.criterion._target_ == 'torch.nn.CrossEntropyLoss':
+        criterion = criterion_dict[args.model.criterion._target_]
+    
+        # criterion = torch.nn.CrossEntropyLoss()
 
     # Seed script
     if args.experiment.manual_seed is None:

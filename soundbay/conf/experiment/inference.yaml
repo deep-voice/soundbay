@@ -5,3 +5,7 @@ experiment:
     load_optimizer_state: False
   save_raven: True
   threshold: 0.999
+hydra:
+  run:
+    dir: .null
+  output_subdir: null

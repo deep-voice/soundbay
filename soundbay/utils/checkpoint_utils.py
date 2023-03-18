@@ -21,9 +21,9 @@ def walk(input_path):
 
 
 def upload_experiment_to_s3(experiment_id: str,
-                            dir_path: Union[Path, str],
+                            dir_path: Path,
                             bucket_name: str,
-                            include_parent: bool = True, logger = None):
+                            include_parent: bool = True, logger=None):
     """
     Uploads the experiment folder to s3 bucket
     Input:
@@ -32,10 +32,8 @@ def upload_experiment_to_s3(experiment_id: str,
         bucket_name: name of the desired bucket path
         include_parent: flag to include the parent of the experiment folder while saving to s3
     """
-    dir_path = Path(dir_path)
     assert dir_path.is_dir(), 'should upload experiments as directories to s3!'
-    object_global = f'{experiment_id}/{dir_path.parent.name}/{dir_path.name}' if include_parent \
-        else f'{experiment_id}/{dir_path.name}'
+    object_global = experiment_id
     current_global = str(dir_path.resolve())
     upload_files = list(walk(dir_path))
     s3_client = boto3.client('s3')
@@ -45,7 +43,6 @@ def upload_experiment_to_s3(experiment_id: str,
 
     if logger is not None:
         print(f'experiment {logger.log_writer.run.id} has been successfully uploaded to {bucket_name} bucket')
-
 
 
 def merge_with_checkpoint(run_args, checkpoint_args):
@@ -62,6 +59,7 @@ def merge_with_checkpoint(run_args, checkpoint_args):
     OmegaConf.set_struct(run_args, False)
     run_args.model = OmegaConf.to_container(checkpoint_args.model, resolve=True)
     run_args.data.test_dataset.preprocessors = OmegaConf.to_container(checkpoint_args.data.train_dataset.preprocessors, resolve=True)
+    run_args.data.test_dataset.seq_length = checkpoint_args.data.train_dataset.seq_length
     run_args.data.sample_rate = checkpoint_args.data.sample_rate
     OmegaConf.set_struct(run_args, True)
     return run_args

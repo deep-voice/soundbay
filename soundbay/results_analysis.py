@@ -37,7 +37,10 @@ def analysis_logging(results_df,num_classes):
                                        results_array)
     print(metrics_dict)
 
-def inference_csv_to_raven(probs_df: pd.DataFrame, num_classes, seq_len: float, selected_class: str,threshold: float = 0.5, class_name: str = "call", channel: int = 1, max_freq: float = 20_000) -> pd.DataFrame:
+
+def inference_csv_to_raven(probs_df: pd.DataFrame, num_classes, seq_len: float, selected_class: str,
+                           threshold: float = 0.5, class_name: str = "call",
+                           channel: int = 1, max_freq: float = 20_000) -> pd.DataFrame:
     """ Converts a csv file containing the inference results to a raven csv file.
         Args: probsdataframe: a pandas dataframe containing the inference results.
                       num_classes: the number of classes in the dataset.

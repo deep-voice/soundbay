@@ -548,7 +548,8 @@ class InferenceDataset(Dataset):
         """
         data, orig_sample_rate = sf.read(self.file_path, start=begin_time,
                           stop=begin_time + int(self.seq_length * self.data_sample_rate))
-        if (self.channel is not None) and (data.shape[1] > 1):
+        num_channels = sf.info(self.file_path).channels
+        if (self.channel is not None) and (num_channels > 1):
             data = data[:, self.channel]
         assert orig_sample_rate == self.data_sample_rate, \
             f'sample rate is {orig_sample_rate}, should be {self.data_sample_rate}'

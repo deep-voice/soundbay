@@ -1,8 +1,8 @@
 # @package _global_
 defaults:
-  - data: Manatees
-  - augmentations: _augmentations
-  - preprocessors: _preprocessors
-  - model: defaults
-  - optim: defaults
-  - experiment: defaults
+  - ../data: Manatees
+  - ../augmentations: _augmentations
+  - ../preprocessors: _preprocessors
+  - ../model: defaults
+  - ../optim: defaults
+  - ../experiment: defaults
