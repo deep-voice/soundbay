@@ -14,6 +14,7 @@ data:
     augmentations_p: 0
     seq_length: 0.2
     augmentations: null
+    preprocessors: ${_preprocessors}
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     slice_flag: true
