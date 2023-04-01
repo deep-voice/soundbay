@@ -1,0 +1,23 @@
+name: CI test
+on:
+  pull_request:
+    types: [labeled]
+jobs:
+
+  ci-test:
+    if: ${{ github.event.label.name == 'ci-test' }}
+    # runs-on: self-hosted
+    steps:
+      # - name: Give permissions to cleanup
+      #   # Volume auto mounted by gh actions pointing to the current working-directory
+      #   run: sudo chown -R $USER:$USER ../../
+
+      - name: Checkout 
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      # - name: CI test
+      #   uses: ./
+      #   id: test
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
