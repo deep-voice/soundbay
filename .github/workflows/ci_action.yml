@@ -6,7 +6,7 @@ jobs:
 
   ci-test:
     if: ${{ github.event.label.name == 'ci-test' }}
-    # runs-on: self-hosted
+    runs-on: ubuntu-latest 
     steps:
       # - name: Give permissions to cleanup
       #   # Volume auto mounted by gh actions pointing to the current working-directory
