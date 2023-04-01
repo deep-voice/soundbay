@@ -8,10 +8,6 @@ jobs:
     if: ${{ github.event.label.name == 'ci-test' }}
     runs-on: ubuntu-latest 
     steps:
-      # - name: Give permissions to cleanup
-      #   # Volume auto mounted by gh actions pointing to the current working-directory
-      #   run: sudo chown -R $USER:$USER ../../
-
       - name: Checkout 
         uses: actions/checkout@v2
         with:
@@ -27,10 +23,5 @@ jobs:
           source venv/bin/activate
           pip install torch torchvision torchaudio
           pip install -e .
-          pytest
-      #    sudo apt-get install -y python3-venv
-      # - name: CI test
-      #   uses: ./
-      #   id: test
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: Run tests
+          run: pytest
