@@ -11,7 +11,7 @@ data:
   hop_length: 256
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../tests/assets/data/'
+    data_path: './tests/assets/data/'
     mode: train
     metadata_path: './tests/assets/annotations/sample_annotations.csv'
     augmentations_p: 0.8
@@ -24,7 +24,7 @@ data:
     slice_flag: false
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../tests/assets/data'
+    data_path: './tests/assets/data'
     mode: val
     metadata_path: './tests/assets/annotations/sample_annotations.csv'
     augmentations_p: 0
