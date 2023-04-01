@@ -24,4 +24,4 @@ jobs:
           pip install torch torchvision torchaudio
           pip install -e .
       - name: Run tests
-          run: pytest
+        run: pytest
