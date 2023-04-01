@@ -18,6 +18,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
       - name: install dependencies
         run: |
+          sudo add-apt-repository ppa:deadsnakes/ppa
           sudo apt-get update
           sudo apt install sox
           sudo apt-get install -y python3.7
