@@ -2,7 +2,7 @@
 data:
   test_dataset:
     _target_: soundbay.data.InferenceDataset
-    file_path: '../tests/assets/data/sample.wav'
+    file_path: './tests/assets/data/sample.wav'
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     seq_length: 2
