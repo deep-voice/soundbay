@@ -40,7 +40,8 @@ class Trainer:
                  checkpoint: str = None,
                  load_optimizer_state: bool = False,
                  label_names: List[str] = None,
-                 debug: bool = False):
+                 debug: bool = False,
+                 train_as_val_interval: int = 20):
 
         # set parameters for stft loss
         self.model = model
@@ -56,6 +57,8 @@ class Trainer:
         self.train_dataloader = train_dataloader
         self.val_dataloader = val_dataloader
         self.train_as_val_dataloader = train_as_val_dataloader
+        # every X epochs we evaluate the train set as if it was a validation set
+        self.train_as_val_interval = train_as_val_interval
         self.output_path = output_path
         self.label_names = list(label_names) if label_names else None
 
@@ -73,7 +76,8 @@ class Trainer:
             self.train_epoch(epoch)
             self.epochs_trained += 1
             self.eval_epoch(epoch, 'val')
-            self.eval_epoch(epoch, 'train_as_val')
+            if epoch % self.train_as_val_interval == 0:
+                self.eval_epoch(epoch, 'train_as_val')
             # save checkpoint
             loss = self.logger.loss_meter_val['loss'].summarize_epoch()
             if loss < best_loss:
