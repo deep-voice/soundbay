@@ -47,15 +47,15 @@ NUM_GPUS: 1
 #NUM_SHARDS: 1
 #OUTPUT_DIR: .
 RESNET:
-  DEPTH: 50
+  DEPTH: 18 # 50
   FREQUENCY_DILATIONS: [[1, 1], [1, 1], [1, 1], [1, 1]]
   FREQUENCY_STRIDES: [[1, 1], [2, 2], [2, 2], [2, 2]]
   INPLACE_RELU: True
-  NUM_BLOCK_TEMP_KERNEL: [[3, 3], [4, 4], [6, 6], [3, 3]]
+  NUM_BLOCK_TEMP_KERNEL: [[2,2], [2,2], [2,2],[2,2]] # [[3, 3], [4, 4], [6, 6], [3, 3]]
   NUM_GROUPS: 1
   STRIDE_1X1: False
   TRANS_FUNC: bottleneck_transform
-  WIDTH_PER_GROUP: 64
+  WIDTH_PER_GROUP: 32 # 64
   ZERO_INIT_FINAL_BN: True
 RNG_SEED: 0
 SHARD_ID: 0
