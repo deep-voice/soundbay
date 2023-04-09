@@ -63,7 +63,7 @@ class Logger:
             log_writer: such as wandb, tensorboard etc.
         """
         self.log_writer = log_writer
-        self.loss_meter_train, self.loss_meter_val = {}, {}
+        self.loss_meter_train, self.loss_meter_val, self.loss_meter_train_as_val = {}, {}, {}
         self.loss_meter_keys = ['loss']
         self.init_losses_meter()
         self.pred_list = []
@@ -82,16 +82,22 @@ class Logger:
             elif flag == 'val':
                 self.log_writer.log({f"Losses/{key}_val":
                                      self.loss_meter_val[key].summarize_epoch()}, step=log_num)
+            elif flag == 'train_as_val':
+                self.log_writer.log({f"Losses/{key}_train_as_val": self.loss_meter_train_as_val[key].summarize_epoch()},
+                                    step=log_num)
 
     def init_losses_meter(self):
         for key in self.loss_meter_keys:
             self.loss_meter_train[key] = LossMeter(key)
             self.loss_meter_val[key] = LossMeter(key)
+            self.loss_meter_train_as_val[key] = LossMeter(key)
 
     def reset_losses(self):
         for key in self.loss_meter_keys:
             self.loss_meter_train[key].reset()
             self.loss_meter_val[key].reset()
+            self.loss_meter_train_as_val[key].reset()
+
 
     def update_losses(self, loss, flag):
         losses = [loss]
@@ -100,6 +106,9 @@ class Logger:
                 self.loss_meter_train[key].add(current_loss.data.cpu().numpy().mean())
             elif flag == 'val':
                 self.loss_meter_val[key].add(current_loss.data.cpu().numpy().mean())
+            elif flag == 'train_as_val':
+                self.loss_meter_train_as_val[key].add(current_loss.data.cpu().numpy().mean())
+
             else:
                 raise ValueError('accept train or flag only!')
 
