@@ -29,6 +29,7 @@ class Trainer:
                  model: torch.nn.Module,
                  train_dataloader: Generator[Tuple[torch.tensor, torch.tensor], None, None],
                  val_dataloader: Generator[Tuple[torch.tensor, torch.tensor], None, None],
+                 train_as_val_dataloader: Generator[Tuple[torch.tensor, torch.tensor], None, None],
                  optimizer: torch.optim,
                  criterion,
                  epochs: int,
@@ -39,7 +40,8 @@ class Trainer:
                  checkpoint: str = None,
                  load_optimizer_state: bool = False,
                  label_names: List[str] = None,
-                 debug: bool = False):
+                 debug: bool = False,
+                 train_as_val_interval: int = 20):
 
         # set parameters for stft loss
         self.model = model
@@ -54,6 +56,9 @@ class Trainer:
         self.verbose = True
         self.train_dataloader = train_dataloader
         self.val_dataloader = val_dataloader
+        self.train_as_val_dataloader = train_as_val_dataloader
+        # every X epochs we evaluate the train set as if it was a validation set
+        self.train_as_val_interval = train_as_val_interval
         self.output_path = output_path
         self.label_names = list(label_names) if label_names else None
 
@@ -70,7 +75,9 @@ class Trainer:
             self.logger.reset_losses()
             self.train_epoch(epoch)
             self.epochs_trained += 1
-            self.eval_epoch(epoch)
+            self.eval_epoch(epoch, 'val')
+            if epoch % self.train_as_val_interval == 0:
+                self.eval_epoch(epoch, 'train_as_val')
             # save checkpoint
             loss = self.logger.loss_meter_val['loss'].summarize_epoch()
             if loss < best_loss:
@@ -130,11 +137,18 @@ class Trainer:
         if self.scheduler is not None:
             self.scheduler.step()
 
-    def eval_epoch(self, epoch: int):
+    def eval_epoch(self, epoch: int, datatset_name: str = None):
 
         with torch.no_grad():
             self.model.eval()
-            for it, batch in tqdm(enumerate(self.val_dataloader), desc='val'):
+
+            # set the desired dataloader for evaluation
+            if datatset_name == 'val':
+                dataloader = self.val_dataloader
+            elif datatset_name == "train_as_val":  # data from the train set, processed as validation set
+                dataloader = self.train_as_val_dataloader
+
+            for it, batch in tqdm(enumerate(dataloader), desc=datatset_name):
                 if it == 3 and self.debug:
                     break
                 audio, label, raw_wav, idx = batch
@@ -148,11 +162,11 @@ class Trainer:
                         for aud in audio:
                             self.logger.upload_artifacts(aud, label, raw_wav, idx,
                                                          sample_rate=self.train_dataloader.dataset.sample_rate,
-                                                         flag='val')
+                                                         flag=datatset_name)
                     else:
                         self.logger.upload_artifacts(audio, label, raw_wav, idx,
                                                      sample_rate=self.train_dataloader.dataset.sample_rate,
-                                                     flag='val')
+                                                     flag=datatset_name)
 
                 # estimate and calc losses
                 estimated_label = self.model(audio)
@@ -163,13 +177,13 @@ class Trainer:
                     loss = self.criterion(estimated_label, label)
 
                 # update losses
-                self.logger.update_losses(loss.detach(), flag='val')
+                self.logger.update_losses(loss.detach(), flag=datatset_name)
                 self.logger.update_predictions((estimated_label, label))
 
             # logging
             if not app.args.experiment.debug:
-                self.logger.calc_metrics(epoch, 'val', self.label_names)
-            self.logger.log(epoch, 'val')
+                self.logger.calc_metrics(epoch, datatset_name, self.label_names)
+            self.logger.log(epoch, datatset_name)
 
 
     def _save_checkpoint(self, checkpoint_path: Union[str, None]):

@@ -80,6 +80,15 @@ def modeling(
     slice_flag=train_dataset_args['slice_flag'], mode=train_dataset_args['mode']
     )
 
+    # train data which is handled as validation data
+    train_as_val_dataset = datasets_dict[train_dataset_args['_target_']](data_path=train_dataset_args['data_path'],
+    metadata_path=train_dataset_args['metadata_path'], augmentations=val_dataset_args['augmentations'],
+    augmentations_p=val_dataset_args['augmentations_p'],
+    preprocessors=val_dataset_args['preprocessors'],
+    seq_length=val_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
+    sample_rate=train_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
+    slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode']
+    )
 
     val_dataset = datasets_dict[val_dataset_args['_target_']](data_path = val_dataset_args['data_path'],
     metadata_path=val_dataset_args['metadata_path'], augmentations=val_dataset_args['augmentations'],
@@ -109,6 +118,8 @@ def modeling(
         assert model_args.MODEL.NUM_CLASSES[0] == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
             "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
 
+    print('*** model has been loaded successfully ***')
+    print(f'number of trainable params: {sum([p.numel() for p in model.parameters() if p.requires_grad]):,}')
     model.to(device)
 
     # Add model watch to WANDB
@@ -135,6 +146,14 @@ def modeling(
             pin_memory=True,
         )
 
+    train_as_val_dataloader = DataLoader(
+            dataset=train_as_val_dataset,
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=num_workers,
+            pin_memory=True,
+        )
+
     optimizer_args = dict(optimizer_args)
     optimizer = optim_dict[optimizer_args.pop('_target_')](model.parameters(), **optimizer_args)
 
@@ -145,6 +164,7 @@ def modeling(
         model=model,
         train_dataloader=train_dataloader,
         val_dataloader=val_dataloader,
+        train_as_val_dataloader=train_as_val_dataloader,
         optimizer=optimizer,
         scheduler=scheduler,
         logger=logger
