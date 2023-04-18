@@ -15,7 +15,9 @@ models_dict = {'models.ResNet1Channel': ResNet1Channel,
 datasets_dict = {'soundbay.data.ClassifierDataset': ClassifierDataset,
                  'soundbay.data.InferenceDataset': InferenceDataset}
 
-optim_dict = {'torch.optim.Adam': torch.optim.Adam, 'torch.optim.SGD': torch.optim.SGD}
+optim_dict = {'torch.optim.Adam': torch.optim.Adam,
+              'torch.optim.SGD': torch.optim.SGD,
+              'torch.optim.AdamW': torch.optim.AdamW}
 
 scheduler_dict = {'torch.optim.lr_scheduler.ExponentialLR': torch.optim.lr_scheduler.ExponentialLR}
 

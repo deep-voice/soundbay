@@ -1,0 +1,11 @@
+# @package _global_
+optim:
+  epochs: 1000
+  optimizer:
+    _target_: torch.optim.AdamW
+    lr: 0.001
+    weight_decay: 1e-4
+  scheduler:
+    _target_: torch.optim.lr_scheduler.ExponentialLR
+    gamma: 0.995
+  freeze_layers_for_finetune: False # Default is False.
