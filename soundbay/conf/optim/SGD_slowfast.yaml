@@ -1,0 +1,13 @@
+# @package _global_
+optim:
+  epochs: 300
+  optimizer:
+    _target_: torch.optim.SGD
+    lr: 0.1
+    weight_decay: 1e-4
+    momentum: 0.9
+    nesterov: True
+  scheduler:
+    _target_: torch.optim.lr_scheduler.ExponentialLR
+    gamma: 0.995
+  freeze_layers_for_finetune: False # Default is False.
