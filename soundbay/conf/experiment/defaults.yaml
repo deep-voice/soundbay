@@ -10,5 +10,5 @@ experiment:
   equalize_data: True
   checkpoint:
     resume: 'allow'
-    path: '../best.pth'
+    path: None
     load_optimizer_state: False
