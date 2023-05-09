@@ -13,7 +13,7 @@ data:
     _target_: soundbay.data.ClassifierDataset
     data_path: '../datasets/Manatees/wav/Acoustic_recordings/'
     mode: train
-    metadata_path: '../datasets/Manatees/manatee_train_val_test_splits.csv'
+    metadata_path: '../datasets/Manatees/manatee_update_sample_0.8_each_day_no_outliers.csv'
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
@@ -27,7 +27,7 @@ data:
     _target_: soundbay.data.ClassifierDataset
     data_path: '../datasets/Manatees/wav/Acoustic_recordings/'
     mode: val
-    metadata_path: '../datasets/Manatees/manatee_train_val_test_splits.csv'
+    metadata_path: '../datasets/Manatees/manatee_update_sample_0.8_each_day_no_outliers.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
