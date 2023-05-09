@@ -8,9 +8,9 @@ data:
   hop_length: 256
   test_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../tests/assets/data'
+    data_path: './tests/assets/data'
     mode: test
-    metadata_path: '../tests/assets/annotations/sample_annotations.csv'
+    metadata_path: './tests/assets/annotations/sample_annotations.csv'
     augmentations_p: 0
     augmentations: null
     data_sample_rate: ${data.data_sample_rate}
