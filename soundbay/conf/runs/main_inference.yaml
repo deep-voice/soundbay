@@ -1,4 +1,0 @@
-# @package _global_
-defaults:
-  - ../data: defaults_inference
-  - ../experiment: inference
