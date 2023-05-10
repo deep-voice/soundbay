@@ -13,6 +13,7 @@ data:
     metadata_path: './tests/assets/annotations/sample_annotations.csv'
     augmentations_p: 0
     augmentations: null
+    len_buffer: 0.1
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     slice_flag: true
