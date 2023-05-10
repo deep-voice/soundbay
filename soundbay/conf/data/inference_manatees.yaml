@@ -10,7 +10,7 @@ data:
     _target_: soundbay.data.ClassifierDataset
     data_path: '../datasets/Manatees/wav/Acoustic_recordings/'
     mode: test
-    metadata_path: '../datasets/Manatees//Manatee_annotations_bg_from_calls-22-06-22.csv'
+    metadata_path: '../datasets/Manatees/manatee_update_sample_0.8_each_day_no_outliers_testonly.csv'
     augmentations_p: 0
     seq_length: 0.2
     augmentations: null
