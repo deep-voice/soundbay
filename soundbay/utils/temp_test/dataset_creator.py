@@ -6,12 +6,15 @@ from soundbay.utils.metadata_processing import load_n_adapt_raven_annotation_tab
 
 
 class DatasetCreator:
-    def __init__(self, annotations_dir, dataset_path, dataset_name, save_dir, cols_to_use=None, label_col_name='label'):
+    def __init__(self, annotations_dir, dataset_path, dataset_name, save_dir, cols_to_use=None, label_col_name='label',
+                 calls_label='w'):
+
         self.annotations_dir = annotations_dir
         self.dataset_path = dataset_path
         self.save_dir = save_dir
         self.dataset_name = dataset_name
         self.label_col_name = label_col_name
+        self.calls_label = calls_label
         self.df_all_annotations = None
         self.df_clean_annotations = None
         self.df_no_overlap = None
@@ -24,7 +27,7 @@ class DatasetCreator:
         else:
             self.cols_to_use = cols_to_use
 
-    def create_annotation_df(self):
+    def create_annotation_df(self, annotation_file_dict=None):
         annotations_dir = self.annotations_dir
         filenames = os.listdir(annotations_dir)
         df_list = []
@@ -33,7 +36,7 @@ class DatasetCreator:
             print(filename)
             try:
                 annotation_file_path = os.path.join(annotations_dir, filename)
-                small_df = load_n_adapt_raven_annotation_table_to_dv_dataset_requirements(annotation_file_path)
+                small_df = load_n_adapt_raven_annotation_table_to_dv_dataset_requirements(annotation_file_path, annotation_file_dict)
                 df_list.append(small_df)
             except UnicodeDecodeError:
                 print(f'\nUnicodeDecodeError: {filename}')
@@ -43,7 +46,7 @@ class DatasetCreator:
         df_all_annotations = pd.concat(df_list)
 
         if self.label_col_name != 'label':
-            self.df_all_annotations.rename(columns={f'{self.label_col_name}': 'label'}, inplace=True)
+            df_all_annotations.rename(columns={f'{self.label_col_name}': 'label'}, inplace=True)
 
         cols2drop = [col for col in df_all_annotations.columns if col not in self.cols_to_use]
         df_all_annotations = df_all_annotations.drop(cols2drop, axis=1)
@@ -65,9 +68,13 @@ class DatasetCreator:
 
         # save the unique labels as a csv for potential analysis
         save_path = os.path.join(self.save_dir, 'unique_labels_info.csv')
+        if not os.path.exists(save_path):
+            # create path if it doesn't exist
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
         df_unique_labels.to_csv(save_path, index=False)
 
-    def standardize_labels(self, labels_to_consolidate=None, target_label='sc', nan_is_call=False):
+    def standardize_labels(self, labels_to_consolidate=None, nan_is_call=False):
+        target_label = self.calls_label
 
         self.df_clean_annotations = self.df_all_annotations.copy()
 
@@ -130,6 +137,7 @@ class DatasetCreator:
         self.df_bg['next_begin_time'] = self.df_bg.groupby('filename').begin_time.shift(-1)
         self.df_bg = self.df_bg.rename({'end_time': 'bg_begin_time', 'next_begin_time': 'bg_end_time'}, axis=1)
         self.df_bg = self.df_bg[~self.df_bg.bg_end_time.isna()]
+        self.df_bg = self.df_bg.drop('begin_time', axis=1)
         self.df_bg['label'] = 'bg'
         self.df_bg['call_length'] = self.df_bg['bg_end_time'] - self.df_bg['bg_begin_time']
         self.df_bg = self.df_bg.rename({'bg_begin_time': 'begin_time', 'bg_end_time': 'end_time'}, axis=1)
@@ -147,7 +155,7 @@ class DatasetCreator:
 
         self.df_concat.to_csv(f'{save_path}', index=False)
 
-    def split_to_sets(self, train_val_test_split=(0.7, 0.2, 0.1)):
+    def split_to_sets(self, train_val_test_split=(70, 20, 10)):
         self.df_meta = self.df_concat[self.df_concat.label == 'w'].groupby('filename').agg(
             count_calls=pd.NamedAgg('begin_time', 'count'),
             sum_call_length=pd.NamedAgg('call_length', 'sum'),
@@ -155,7 +163,7 @@ class DatasetCreator:
         ).sort_values('filename')
         self.df_meta['cum_call_length'] = self.df_meta.sum_call_length.cumsum()
         self.df_meta['cum_perc'] = 100 * self.df_meta['cum_call_length'] / (self.df_meta['sum_call_length'].sum())
-        train_split, val_split, test_split = train_val_test_split*100
+        train_split, val_split, test_split = train_val_test_split
         train_files = self.df_meta.loc[self.df_meta['cum_perc'] < train_split].index.tolist()
         val_files = self.df_meta.loc[((self.df_meta['cum_perc'] > train_split) &
                                       (self.df_meta['cum_perc'] < train_split + val_split))].index.tolist()
@@ -172,8 +180,8 @@ class DatasetCreator:
         df_test = self.df_concat[self.df_concat.filename.isin(test_files)]
 
         save_path_train = os.path.join(self.save_dir, f'{self.dataset_name}_prepped_with_bg_train.csv')
-        save_path_val = os.path.join(self.save_dir, f'{self.dataset_name}_prepped_with_bg_train.csv')
-        save_path_test = os.path.join(self.save_dir, f'{self.dataset_name}_prepped_with_bg_train.csv')
+        save_path_val = os.path.join(self.save_dir, f'{self.dataset_name}_prepped_with_bg_val.csv')
+        save_path_test = os.path.join(self.save_dir, f'{self.dataset_name}_prepped_with_bg_test.csv')
 
         df_train.to_csv(f'{save_path_train}', index=False)
         df_val.to_csv(f'{save_path_val}', index=False)
@@ -181,23 +189,99 @@ class DatasetCreator:
 
 
 if __name__ == "__main__":
-    annotations_dir = '../../../datasets/mozambique_2021/annotation_files/'
-    dataset_path = '../../../tests/assets/mozambique2021/recordings/'
-    dataset_name = 'mozambique2021'
-    save_dir = '../../../datasets/test_folder/'
-    cols_to_use = ['begin_time', 'end_time', 'filename', 'call_length', 'label']
-    label_call_name = 'Annotation'
-    mozambique2021_dataset = DatasetCreator(annotations_dir, dataset_path, dataset_name, save_dir, cols_to_use, label_call_name)
-    print(2)
 
-    mozambique2021_dataset.create_annotation_df
+    # You may need to run the script more than once, if you have multiple random labels that are all intended to be
+    # calls. The script will consolidate all call labels into one label, if provided a list of labels to consolidate.
+    # The extract_unique_labels() method will help with the above potential issue.
 
-    print(3)
+    # # #    These args are a MUST for the script to run     # # #
 
-    print (mozambique2021_dataset.df_all_annotations)
+    annotations_dir = '../../../datasets/mozambique_2021/annotation_files/'         # path to annotations dir
+    dataset_path = '../../../tests/assets/mozambique2021/recordings/'               # path to dataset dir
+    dataset_name = 'mozambique2021'                                                 # name of dataset
+    save_dir = '../../../datasets/test_folder'                                      # path to annotations save dir
+    cols_to_use = ['begin_time', 'end_time', 'filename', 'call_length', 'label']    # columns to use in for annotation
+    label_col_name = 'Annotation'                                                   # original name of label column
+    calls_label = 'w'                                                               # label for calls (default = 'w')
 
+    # # #    These args are optional     # # #
 
+    # These labels will be consolidated into one label, as a "call" label. The labels will be as defined in calls_label.
+    labels_to_consolidate = ['SC', 'sc ?', 'un- weird whale sound probably', 'cs ?', 'baby whale?', 'song (s)', 's', 'sc?']
+
+    # If the annotation files are messy and un-coordinated with the audio files, you can define a custom dictionary
+    # that will map the annotation file name to the audio file name. The dictionary should be in the following format:
+    annotation_file_dict = {'210825-135601_Tr1.Table.1.selections.txt': '210825-135601_Tr1.wav',
+                            '210825-135601_Tr1.Table.1.selections (1).txt': 'duplicate',
+                            '210904-111316_Tr2.txt': '210904-111316_Tr2.wav',
+                            '210904-111316_Tr2restofrecord.txt': 'corrupt',
+                            '210904-111316_Tr2(first 4 minutes)(1).txt': 'duplicate',
+                            '210904-111316_Tr2(first 4 minutes).txt': 'duplicate',
+                            '210827-133618_Tr2.Table.1.selections.txt': '210827-133618_Tr2.wav',
+                            '210904-093942_Tr2.Table.1.selections.txt': '210904-093942_Tr2.wav',
+                            '210828-080644_Tr1.Table.1.selections.txt': '210828-080644_Tr1.wav',
+                            '210827-081513_Tr1.Table.1.selections.txt': '210827-081513_Tr1.wav',
+                            '210825-132034_Tr1.Table.1.selections.txt': '210825-132034_Tr1.wav',
+                            '210824-104507_Tr1.Table.1.selections.txt': '210824-104507_Tr1.wav',
+                            '210824-104507_Tr1.txt': '210824-104507_Tr1.wav',
+                            '210825-112937_Tr1.txt' : '210825-112937_Tr1.wav',
+                            '210904-074321_Tr1.Table.1.selections.txt': '210904-074321_Tr1.wav',
+                            '25-115438_Tr2.Table.1.selections.txt': 'unknown',
+                            '210903-110841_Tr2.Table.1.selections.txt': '210903-110841_Tr2.wav',
+                            '210825-102141_Tr1.txt': '210825-102141_Tr1.wav',
+                            '210903-095104_Tr2.Table.1.selections.txt': '210903-095104_Tr2.wav',
+                            '210903-095104_Tr1.Table.1.selections.txt': '210903-095104_Tr1.wav',
+                            '210825-135601_Tr1.txt': '210825-135601_Tr1.wav',
+                            '210824-125439_Tr1.txt': '210824-125439_Tr1.wav',
+                            '180913_081527 (1).Table.1.selections.txt': 'unknown',
+                            '210824-115331_Tr1.txt': '210824-115331_Tr1.wav',
+                            '210825-112937_Tr2.txt': '210825-112937_Tr2.wav',
+                            '210825-132034_Tr2.Table.1.selections.txt': '210825-132034_Tr2.wav',
+                            '210827-133618_Tr1.Table.1.selections.donetxt.txt': '210827-133618_Tr1.wav',
+                            '210826-083608_Tr1.Table.1.selections.txt': '210826-083608_Tr1.wav',
+                            '210827-081513_Tr2.Table.1.selections.txt': '210827-081513_Tr2.wav',
+                            '210824-100209_Tr1.txt': '210824-100209_Tr1.wav',
+                            '210824-095226_Tr2.txt': '210824-095226_Tr2.wav',
+                            '210827-090209_Tr1.Table.1.selections.txt': '210827-090209_Tr2.wav',
+                            '210903-110841_Tr1.Table.1.selections.txt': '210903-110841_Tr1.wav',
+                            '210824-100209_Tr2.txt': '210824-100209_Tr2.wav',
+                            '210824-095226_Tr1.txt' : '210824-095226_Tr1.wav',
+                            '210904-093942_Tr1.Table.1.selections- Annotated.txt': '210904-093942_Tr1.wav',
+                            '210903-095104_Tr1.Table.1.selections.txt': '210903-095104_Tr1.wav'
+                            }
+
+    # The object will be created using the args provided above
+    mozambique2021_dataset = DatasetCreator(annotations_dir, dataset_path, dataset_name, save_dir, cols_to_use,
+                                            label_col_name, calls_label)
+
+    # Remove the annotation_file_dict argument if you don't need it
+    mozambique2021_dataset.create_annotation_df(annotation_file_dict)
+
+    # This method will extract the unique labels from the annotation file and save them to a csv file
+    # for further exploration and analysis
     mozambique2021_dataset.extract_unique_labels()
+
+    # This method will standardize the labels in the annotation file so that we end up with a single label
+    # for the call type that we are interested in. It will also replace the NaN values with the calls_label if the
+    # nan_is_call argument is set to True
+    mozambique2021_dataset.standardize_labels(labels_to_consolidate=labels_to_consolidate, nan_is_call=True)
+
+    # This method will merge overlapping calls in the annotation file
+    mozambique2021_dataset.merge_overlapping_calls()
+
+    # This method will mark background between the annotated calls
+    mozambique2021_dataset.mark_background()
+
+    # This method will merge the background and the calls into a single dataframe
+    mozambique2021_dataset.concat_bg_and_calls()
+
+    # This method will split the dataset into train, validation and test sets
+    # default split is 70% train, 20% validation and 10% test
+    mozambique2021_dataset.split_to_sets(train_val_test_split=(0.7, 0.2, 0.1))
+
+
+
+
 
     '''
     extract_unique_labels(self)
