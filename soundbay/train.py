@@ -13,7 +13,7 @@ using the command line when running main.py (e.g. "main.py experiment.debug=True
 
 * prior to running this script make sure to define the data paths, annotations and output accordingly
 * make sure to install all the packages stated in the requirements.txt file prior to running this script
-
+    
 """
 
 import torch
