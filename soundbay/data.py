@@ -59,8 +59,10 @@ class BaseDataset(Dataset):
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
         self.items_per_classes = np.unique(self.metadata['label'], return_counts=True)[1]
-        weights = 1 / self.items_per_classes
-        self.samples_weight = np.array([weights[t] for t in self.metadata['label'] ])
+        weights_per_class = 1 / self.items_per_classes  # weight according to the number of samples per class
+        # weight according to the number of samples per class AND the segment length - the longer, the higher
+        self.samples_weight = np.array([weights_per_class[t]*(end-begin) for (t, begin, end) in \
+                                        zip(self.metadata['label'], self.metadata['begin_time'], self.metadata['end_time'])])
         self.mode_dual_pathways=mode_dual_pathways
         self.slowfast_alpha = slowfast_alpha
 
