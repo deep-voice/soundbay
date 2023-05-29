@@ -263,7 +263,7 @@ class ClassifierDataset(BaseDataset):
             start_time = begin_time
         data, _ = sf.read(str(path_to_file), start=start_time,
                           stop=start_time + requested_seq_length)
-        if channel is not None:
+        if channel is not None and channel>1:
             data = data[:, channel - 1]
         if data.shape[0] < 1:
             raise ValueError(f"Audio segment is empty. {path_to_file}: "
