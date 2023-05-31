@@ -278,27 +278,3 @@ if __name__ == "__main__":
     # This method will split the dataset into train, validation and test sets
     # default split is 70% train, 20% validation and 10% test
     mozambique2021_dataset.split_to_sets(train_val_test_split=(0.7, 0.2, 0.1))
-
-
-
-
-
-    '''
-    extract_unique_labels(self)
-
-    standardize_labels(self, labels_to_consolidate=None, target_label='sc', nan_is_call=False)
-
-    merge_overlapping_calls(self):
-
-    merge_overlapping_rows(self, df) -> pd.DataFrame:
-
-    reset_overlap_accessory_columns(self, df) -> pd.DataFrame:
-
-    mark_overlapping_rows(self, df) -> pd.DataFrame:
-
-    mark_background(self):
-
-    concat_bg_and_calls(self):
-
-    split_to_sets(self, train_val_test_split=(0.7, 0.2, 0.1)):
-    '''
