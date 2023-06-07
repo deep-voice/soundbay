@@ -188,7 +188,8 @@ def main(validate_args) -> None:
     experiment_name = get_experiment_name(args)
     _logger.init(project="finding_willy", name=experiment_name, group=args.experiment.group_name,
                  id=args.experiment.run_id, resume=args.experiment.checkpoint.resume)
-
+    if args.model.model['_target_'] == 'models.GoogLeNet_2Classes':
+        print('Using GoogLeNet model - spectrograms will not be uploaded to wandb due to the 3-channel transform.')
     # Set device
     if not torch.cuda.is_available():
         print('CPU!!!!!!!!!!!')

@@ -1,7 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel, validator
-from conf_dict import datasets_dict, criterion_dict, models_dict 
-import pdb
+from conf_dict import datasets_dict, criterion_dict, models_dict
 
 class Dataset(BaseModel):
     batch_size: int
