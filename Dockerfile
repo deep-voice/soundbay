@@ -11,6 +11,6 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-ins
     && rm -rf /var/lib/apt/lists/*
 
 # Note - QT5 is installed earlier hin the previous RUN command (qt5-default) - make sure to remove it from the requirements file when building the image from scratch
-COPY requirements.txt .
+COPY . .
 RUN pip install torch torchvision torchaudio
 RUN pip install --upgrade pip && pip install -e .
