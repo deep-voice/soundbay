@@ -16,7 +16,11 @@ def load_n_adapt_raven_annotation_table_to_dv_dataset_requirements(annotation_fi
     # todo: decide whether to add annotation treatment
     df_annotations = pd.read_csv(annotation_file_path, sep="\t")
     if annotation_filename_dict is not None:
-        df_annotations['filename'] = annotation_filename_dict[os.path.basename(annotation_file_path)].replace('.txt', '')
+        try:
+            df_annotations['filename'] = annotation_filename_dict[os.path.basename(annotation_file_path)].replace('.txt', '')
+        except KeyError:
+            print(f"KeyError: {os.path.basename(annotation_file_path)}. Using default filename.")
+            df_annotations['filename'] = os.path.basename(annotation_file_path).replace(filename_suffix, '')
     else:
         df_annotations['filename'] = os.path.basename(annotation_file_path).replace(filename_suffix, '')
     df_annotations = df_annotations.rename(columns={'Begin Time (s)': 'begin_time', 'End Time (s)': 'end_time'})

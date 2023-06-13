@@ -6,15 +6,14 @@ from soundbay.utils.metadata_processing import load_n_adapt_raven_annotation_tab
 
 
 class DatasetCreator:
-    def __init__(self, annotations_dir, dataset_path, dataset_name, save_dir, cols_to_use=None, label_col_name='label',
-                 calls_label='w'):
+    def __init__(self, annotations_dir, dataset_name, save_dir, cols_to_use=None, label_col_name='label',
+                 desired_calls_label='w'):
 
         self.annotations_dir = annotations_dir
-        self.dataset_path = dataset_path
         self.save_dir = save_dir
         self.dataset_name = dataset_name
         self.label_col_name = label_col_name
-        self.calls_label = calls_label
+        self.desired_calls_label = desired_calls_label
         self.df_all_annotations = None
         self.df_clean_annotations = None
         self.df_no_overlap = None
@@ -28,6 +27,8 @@ class DatasetCreator:
             self.cols_to_use = cols_to_use
 
     def create_annotation_df(self, annotation_file_dict=None):
+        if annotation_file_dict == {}:
+            annotation_file_dict = None
         annotations_dir = self.annotations_dir
         filenames = os.listdir(annotations_dir)
         df_list = []
@@ -51,13 +52,13 @@ class DatasetCreator:
         cols2drop = [col for col in df_all_annotations.columns if col not in self.cols_to_use]
         df_all_annotations = df_all_annotations.drop(cols2drop, axis=1)
 
-        print(f'\n unique filenames: \n {df_all_annotations.filename.unique()}')
+        print(f'\n unique filenames: \n{df_all_annotations.filename.unique()}')
 
         self.df_all_annotations = df_all_annotations
 
     def extract_unique_labels(self):
-        print('\nAnnotations that are used: \n', self.df_all_annotations.label.unique())
-        print('\nAnnotations and their counts: \n', self.df_all_annotations.label.value_counts(dropna=False))
+        print(f'\nAnnotations that are used: \n{self.df_all_annotations.label.unique()}')
+        print(f'\nAnnotations and their counts: \n{self.df_all_annotations.label.value_counts(dropna=False)}')
 
         # find labels that only appear once
         all_unique_labels = self.df_all_annotations.label.value_counts()[
@@ -73,17 +74,17 @@ class DatasetCreator:
             os.makedirs(os.path.dirname(save_path), exist_ok=True)
         df_unique_labels.to_csv(save_path, index=False)
 
-    def standardize_labels(self, labels_to_consolidate=None, nan_is_call=False):
-        target_label = self.calls_label
+    def standardize_labels(self, labels_that_are_calls=None, nan_is_call=False):
+        target_label = self.desired_calls_label
 
         self.df_clean_annotations = self.df_all_annotations.copy()
 
-        # Consolidate labels if required
-        if labels_to_consolidate is None:
-            print("Since no labels to consolidate were provided, we will skip this step.")
+        # Consolidate call labels if required
+        if labels_that_are_calls is None:
+            print("Since no labels to consolidate as calls were provided, we will skip this step.")
             return
         else:
-            self.df_clean_annotations.replace(to_replace=labels_to_consolidate, value=target_label, inplace=True,
+            self.df_clean_annotations.replace(to_replace=labels_that_are_calls, value=target_label, inplace=True,
                                               limit=None, regex=False)
 
         # fill NaNs with 'sc' if nan_is_call is True
@@ -145,18 +146,18 @@ class DatasetCreator:
     def concat_bg_and_calls(self):
         self.df_concat = pd.concat([self.df_bg, self.df_no_overlap[['begin_time', 'end_time', 'filename',
                                                                     'call_length', 'label']]])
-        print("Sanity check \n")
-        print("label counts: \n", self.df_concat.label.value_counts())
-        print("number of unique files: \n", self.df_concat.filename.nunique())
-        print("difference between calls and bg: \n", self.df_concat.label.value_counts()[0] - self.df_concat.label.value_counts()[1])
-        print("if the difference is equal to the unique number of files, it all makes sense :)")
+        print('Sanity check \n')
+        print(f'label counts: \n{self.df_concat.label.value_counts()}')
+        print(f'number of unique files: \n{self.df_concat.filename.nunique()}')
+        print(f'difference between calls and bg: \n{self.df_concat.label.value_counts()[0] - self.df_concat.label.value_counts()[1]}')
+        print('if the difference is equal to the unique number of files, it all makes sense :)')
 
         save_path = os.path.join(self.save_dir, f'{self.dataset_name}_prepped_with_bg.csv')
 
         self.df_concat.to_csv(f'{save_path}', index=False)
 
     def split_to_sets(self, train_val_test_split=(70, 20, 10)):
-        self.df_meta = self.df_concat[self.df_concat.label == 'w'].groupby('filename').agg(
+        self.df_meta = self.df_concat[self.df_concat.label == self.desired_calls_label].groupby('filename').agg(
             count_calls=pd.NamedAgg('begin_time', 'count'),
             sum_call_length=pd.NamedAgg('call_length', 'sum'),
             avg_call_length=pd.NamedAgg('call_length', 'mean'),
@@ -172,7 +173,7 @@ class DatasetCreator:
 
         call_length_total = self.df_meta.sum_call_length.sum()
         print("The percentage of splits between train, val and test is: \n")
-        for files in [train_files, test_files, val_files]:
+        for files in [train_files, val_files, test_files]:
             print(np.round(self.df_meta.loc[files].sum_call_length.sum() / call_length_total * 100))
 
         df_train = self.df_concat[self.df_concat.filename.isin(train_files)]
@@ -189,25 +190,78 @@ class DatasetCreator:
 
 
 if __name__ == "__main__":
-
+    '''This script was used to prepare the brazil dataset. A similar script can be used to prepare other datasets, as
+    can be seen below this one. The script below the brazil script was used to prepare that Mozambique2021 dataset.'''
     # You may need to run the script more than once, if you have multiple random labels that are all intended to be
     # calls. The script will consolidate all call labels into one label, if provided a list of labels to consolidate.
     # The extract_unique_labels() method will help with the above potential issue.
 
     # # #    These args are a MUST for the script to run     # # #
+    '''
+    annotations_dir = '../../../datasets/brazil/annotations_brazil3/annotations'     # path to annotations dir
+    dataset_name = 'brazil_test'                                                     # name of dataset
+    save_dir = '../../../datasets/test_folder'                                       # path to annotations save dir
+    cols_to_use = ['begin_time', 'end_time', 'filename', 'call_length', 'label']     # columns to use for annotation
+    label_col_name = 'Type'                                                          # original name of label column
+    desired_calls_label = 'call'                                                     # how to label calls (default = 'w')
+    train_val_test_split = (70, 20, 10)                                              # train, val, test split
 
+    # These labels will be consolidated into one label, as a "call" label.
+    # The labels will be as defined in desired_calls_label.
+
+    labels_that_are_calls = ['Click', 'Whistle']
+    # labels_that_are_calls = ['Click']
+    # labels_that_are_calls = ['Whistle']
+
+    # # #    These args are optional     # # #
+    # If the annotation files are messy and un-coordinated with the audio files, you can define a custom dictionary
+    # that will map the annotation file name to the audio file name. The dictionary should be in the following format:
+    annotation_file_dict = {}
+
+    # # #    The script starts here     # # #
+
+    # The object will be created using the args provided above
+    brazil_test_dataset = DatasetCreator(annotations_dir, dataset_name, save_dir, cols_to_use,
+                                         label_col_name, desired_calls_label)
+
+    # Remove the annotation_file_dict argument if you don't need it (or leave it as an empty dict)
+    brazil_test_dataset.create_annotation_df(annotation_file_dict)
+
+    # This method will extract the unique labels from the annotation file and save them to a csv file
+    # for further exploration and analysis
+    brazil_test_dataset.extract_unique_labels()
+
+    # This method will standardize the labels in the annotation file so that we end up with a single label
+    # for the call type that we are interested in. It will also replace the NaN values with the calls_label if the
+    # nan_is_call argument is set to True
+    brazil_test_dataset.standardize_labels(labels_that_are_calls=labels_that_are_calls, nan_is_call=False)
+
+    # This method will merge overlapping calls in the annotation file
+    brazil_test_dataset.merge_overlapping_calls()
+
+    # This method will mark background between the annotated calls
+    brazil_test_dataset.mark_background()
+
+    # This method will merge the background and the calls into a single dataframe
+    brazil_test_dataset.concat_bg_and_calls()
+
+    # This method will split the dataset into train, validation and test sets
+    # default split is 70% train, 20% validation and 10% test
+    brazil_test_dataset.split_to_sets(train_val_test_split=train_val_test_split)
+
+    '''
     annotations_dir = '../../../datasets/mozambique_2021/annotation_files/'         # path to annotations dir
-    dataset_path = '../../../tests/assets/mozambique2021/recordings/'               # path to dataset dir
     dataset_name = 'mozambique2021'                                                 # name of dataset
     save_dir = '../../../datasets/test_folder'                                      # path to annotations save dir
     cols_to_use = ['begin_time', 'end_time', 'filename', 'call_length', 'label']    # columns to use in for annotation
     label_col_name = 'Annotation'                                                   # original name of label column
-    calls_label = 'w'                                                               # label for calls (default = 'w')
+    desired_calls_label = 'call'                                                     # how to label calls (default = 'w')
+    train_val_test_split = (70, 20, 10)                                              # train, val, test split
 
     # # #    These args are optional     # # #
 
     # These labels will be consolidated into one label, as a "call" label. The labels will be as defined in calls_label.
-    labels_to_consolidate = ['SC', 'sc ?', 'un- weird whale sound probably', 'cs ?', 'baby whale?', 'song (s)', 's', 'sc?']
+    labels_that_are_calls = ['SC', 'sc ?', 'un- weird whale sound probably', 'cs ?', 'baby whale?', 'song (s)', 's', 'sc?']
 
     # If the annotation files are messy and un-coordinated with the audio files, you can define a custom dictionary
     # that will map the annotation file name to the audio file name. The dictionary should be in the following format:
@@ -251,8 +305,8 @@ if __name__ == "__main__":
                             }
 
     # The object will be created using the args provided above
-    mozambique2021_dataset = DatasetCreator(annotations_dir, dataset_path, dataset_name, save_dir, cols_to_use,
-                                            label_col_name, calls_label)
+    mozambique2021_dataset = DatasetCreator(annotations_dir, dataset_name, save_dir, cols_to_use,
+                                            label_col_name, desired_calls_label)
 
     # Remove the annotation_file_dict argument if you don't need it
     mozambique2021_dataset.create_annotation_df(annotation_file_dict)
@@ -264,7 +318,7 @@ if __name__ == "__main__":
     # This method will standardize the labels in the annotation file so that we end up with a single label
     # for the call type that we are interested in. It will also replace the NaN values with the calls_label if the
     # nan_is_call argument is set to True
-    mozambique2021_dataset.standardize_labels(labels_to_consolidate=labels_to_consolidate, nan_is_call=True)
+    mozambique2021_dataset.standardize_labels(labels_that_are_calls=labels_that_are_calls, nan_is_call=True)
 
     # This method will merge overlapping calls in the annotation file
     mozambique2021_dataset.merge_overlapping_calls()
@@ -277,4 +331,4 @@ if __name__ == "__main__":
 
     # This method will split the dataset into train, validation and test sets
     # default split is 70% train, 20% validation and 10% test
-    mozambique2021_dataset.split_to_sets(train_val_test_split=(0.7, 0.2, 0.1))
+    mozambique2021_dataset.split_to_sets(train_val_test_split=train_val_test_split)
