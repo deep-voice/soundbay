@@ -45,11 +45,12 @@ def upload_to_aws(local_file, bucket, s3_file, overwrite):
     )
     print(f"Uploading to path {s3_file}")
     files_exists = False
-    results = s3.list_objects(Bucket=bucket, Prefix=s3_file)["Contents"]
-    if len(results) > 0:
-        for file in results:
-            if file["Key"] == s3_file:
-                files_exists = True
+    results = s3.list_objects(Bucket=bucket, Prefix=s3_file)
+    if "Contents" in results:
+        if len(results["Contents"]) > 0:
+            for file in results["Contents"]:
+                if file["Key"] == s3_file:
+                    files_exists = True
 
     if files_exists and not overwrite:
         print(f"File {s3_file} already exists, use --overwrite to upload anyway")
