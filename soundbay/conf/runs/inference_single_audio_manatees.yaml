@@ -1,5 +1,0 @@
-# @package _global_
-defaults:
-  - ../data: inference_file_manatees
-  - ../experiment: inference
-  - ../experiment: null_hydra

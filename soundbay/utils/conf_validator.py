@@ -1,7 +1,6 @@
 from typing import Optional
 from pydantic import BaseModel, validator
-from conf_dict import datasets_dict, criterion_dict, models_dict 
-
+from conf_dict import datasets_dict, criterion_dict, models_dict
 
 class Dataset(BaseModel):
     batch_size: int
@@ -125,7 +124,7 @@ class Preprocessors(BaseModel):
     @validator("resize")
     def validate_resize(cls, resize:dict):
         return resize   
-    
+ 
 class Config(BaseModel):
     data: Dataset
     model: Model
@@ -137,4 +136,4 @@ class Config(BaseModel):
                     'preprocessors': '_preprocessors'} # pydantic ignores private varibles - need to add alias
 
 
-
+    

@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - data: defaults
+  - augmentations: _augmentations
+  - model: defaults
+  - optim: defaults
+  - preprocessors: _preprocessors
+  - experiment: defaults

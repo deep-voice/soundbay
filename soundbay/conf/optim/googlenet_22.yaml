@@ -1,0 +1,10 @@
+# @package _global_
+optim: #based on JASA African manatee paper
+  epochs: 30
+  optimizer:
+    _target_: torch.optim.SGD
+    lr: 0.0001
+  scheduler:
+    _target_: torch.optim.lr_scheduler.ExponentialLR
+    gamma: 0.95
+  freeze_layers_for_finetune: False  # Default is False.
