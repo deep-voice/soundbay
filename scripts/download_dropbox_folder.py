@@ -7,14 +7,6 @@ import click
 import dropbox
 from tqdm import tqdm
 
-# Dropbox API access token
-
-# Amit Token
-# DROPBOX_ACCESS_TOKEN = "sl.BhKilbsZja2ByaKaXTsvzGDarMb1NmELXzfoPb55qRk8qK9f2gnvkNWdE7ZYOfaGFwjdw64Li_WWasRIpfVb-wfMuh7sHpVbDK0MfZuDjz4wZrl10wxye2dQH9tkCHllwRRlb9kPlWg"
-# Dropbox folder path to upload in amit's example
-# DROPBOX_FOLDER_PATH = '/2021-ManateeAcousticsDeepVoice/Placencia/wav'
-
-
 ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY_ID")
 SECRET_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 BUCKET_NAME = "deepvoice-user-uploads"
