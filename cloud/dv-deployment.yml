@@ -1,0 +1,18 @@
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
+name: deepvoice-deploy-prod
+endpoint_name: deepvoice-endpoint-prod
+model:
+  path: ../model/
+code_configuration:
+  code: ../
+  scoring_script: ./inference_cloud.py
+environment: 
+  conda_file: conda.yaml
+  image: mcr.microsoft.com/azureml/openmpi3.1.2-ubuntu18.04:latest
+instance_type: Standard_NC6s_v3 
+instance_count: 1
+environment_variables:
+  AWS_ACCESS_KEY_ID: "xxx" 
+  AWS_SECRET_ACCESS_KEY: "xxx"
+request_settings:
+  request_timeout_ms: 90000
