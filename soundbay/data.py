@@ -3,6 +3,7 @@ from itertools import starmap, repeat
 from pathlib import Path
 from copy import deepcopy
 from typing import Union
+from decimal import Decimal
 
 import librosa
 import numpy as np
@@ -477,7 +478,9 @@ class InferenceDataset(Dataset):
             audio_dict contains references to audio paths given name from metadata
         """
         audio_len = sf.info(self.file_path).duration
-        self._start_times = np.arange(0, audio_len//self.seq_length * self.seq_length, self.seq_length)
+        decimal_place = abs(Decimal(str(self.seq_length)).as_tuple().exponent)
+        self._start_times = np.arange(0, round(audio_len//self.seq_length * self.seq_length, decimal_place),
+                                      self.seq_length)
 
     def _get_audio(self, begin_time):
         """
@@ -492,8 +495,10 @@ class InferenceDataset(Dataset):
         output:
         audio - pytorch tensor (1-D array)
         """
-        data, orig_sample_rate = sf.read(self.file_path, start=begin_time,
-                          stop=begin_time + int(self.seq_length * self.data_sample_rate))
+        duration = sf.info(self.file_path).duration
+        stop_time = begin_time + int(self.seq_length * self.data_sample_rate)
+        assert duration >= stop_time, f"trying to load audio from {begin_time} to {stop_time} but audio is only {duration} long"
+        data, orig_sample_rate = sf.read(self.file_path, start=begin_time, stop=stop_time)
         num_channels = sf.info(self.file_path).channels
         if (self.channel is not None) and (num_channels > 1):
             data = data[:, self.channel]
