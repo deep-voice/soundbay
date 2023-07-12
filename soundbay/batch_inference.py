@@ -25,7 +25,7 @@ with open(file_list_path, "r") as file:
 # s3_files = []
 # paginator = s3_client.get_paginator("list_objects_v2")
 # page_iterator = paginator.paginate(Bucket=s3_bucket, Prefix=s3_prefix)
-s3_files = [os.path.join(s3_prefix, file_name) for file_name in files_without_inference]
+s3_files = [os.path.join(s3_bucket, file_name) for file_name in files_without_inference]
 
 # for page in page_iterator:
 #     if "Contents" in page:
