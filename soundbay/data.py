@@ -492,7 +492,7 @@ class InferenceDataset(Dataset):
         output:
         audio - pytorch tensor (1-D array)
         """
-        duration = sf.info(self.file_path).duration
+        duration = sf.info(self.file_path).duration*self.data_sample_rate
         stop_time = begin_time + int(self.seq_length * self.data_sample_rate)
         assert duration >= stop_time, f"trying to load audio from {begin_time} to {stop_time} but audio is only {duration} long"
         data, orig_sample_rate = sf.read(self.file_path, start=begin_time, stop=stop_time)
