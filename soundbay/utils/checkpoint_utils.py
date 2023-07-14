@@ -45,7 +45,7 @@ def upload_experiment_to_s3(experiment_id: str,
         print(f'experiment {logger.log_writer.run.id} has been successfully uploaded to {bucket_name} bucket')
 
 
-def merge_with_checkpoint(run_args, checkpoint_args=None):
+def merge_with_checkpoint(run_args, checkpoint_args):
     """
     Merge into current args the needed arguments from checkpoint
     Right now we select the specific modules needed, can make it more generic if we'll see the need for it
