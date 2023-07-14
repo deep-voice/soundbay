@@ -1,0 +1,24 @@
+# schema: https://azuremlschemas.azureedge.net/latest/batchDeployment.schema.json
+name: deepvoice-deployment-prod1
+description: A deployment for deepvoice inference.
+endpoint_name: deepvoice-endpoint-batch
+type: model
+model:
+  path: ../model/
+code_configuration:
+  code: ../
+  scoring_script: inference_cloud_batch.py
+environment: 
+  conda_file: conda_batch.yaml
+  image: mcr.microsoft.com/azureml/openmpi3.1.2-ubuntu18.04:latest
+compute: azureml:batch-cluster
+resources:
+  instance_count: 1
+settings:
+  max_concurrency_per_instance: 2
+  mini_batch_size: 1
+  output_action: append_row
+  output_file_name: predictions.csv
+  logging_level: debug
+  retry_settings:
+    timeout: 2400
