@@ -92,6 +92,16 @@ def update_db(path, user_email, upload_source, s3_file_name):
     if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
         print(f"Error in updating DB, response: {response}")
 
+    response = user_uploads_table.update_item(
+    Key={"file_key": file_key},
+    UpdateExpression="set upload_status=:s",
+    ExpressionAttributeValues={":s": "Completed"},
+    ReturnValues="UPDATED_NEW",
+    )
+
+    if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
+        print(f"Error in updating DB, response: {response}")
+
 
 @click.command()
 @click.option("--path", type=str, default="", help="Path to results file")
