@@ -263,14 +263,12 @@ class ClassifierDataset(BaseDataset):
             start_time = begin_time
         data, _ = sf.read(str(path_to_file), start=start_time,
                           stop=start_time + requested_seq_length)
-        if channel is not None and channel>1 and data.ndim > 1:
+        if channel is not None and data.ndim > 1:
+            assert channel > 0, f"channel as to be a positive integer, got {channel}"
             data = data[:, channel - 1]
-        elif channel is not None and channel == 1 and data.ndim > 1:
-            data = data[:, 0] # take only the first channel
         elif channel is None and data.ndim > 1:
             data = data[:, 0] # when channel is not specified, take the first channel
-
-        elif data.shape[0] < 1:
+        if data.shape[0] < 1:
             raise ValueError(f"Audio segment is empty. {path_to_file}: "
                              f"{start_time}, {start_time + requested_seq_length}")
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
