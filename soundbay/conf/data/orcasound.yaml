@@ -23,7 +23,7 @@ data:
     sample_rate: ${data.sample_rate}
     slice_flag: false
     split_metadata_by_label: yes
-    margin_ratio: 0
+    margin_ratio: 0.5
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
     data_path: '../datasets/orcasound/train_data/wav'
