@@ -6,6 +6,7 @@ import click
 from tqdm import tqdm
 import sys
 import json
+import ipdb
 
 # Please configure your own keys on aws cli
 ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY_ID")
@@ -13,6 +14,8 @@ SECRET_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 bucket_name = "deepvoice-user-uploads"
 region_name = "us-east-1"
 table_name = "user_uploads"
+
+
 
 try:
     sts = boto3.client(
@@ -39,6 +42,20 @@ def verify_file_exists(name, user_email, upload_source):
         return False
     return True
 
+def change_status(file_key, new_status):
+    update_status_params = {"file_key":file_key, "new_status": new_status}
+
+    lambda_client = boto3.client('lambda', region_name=region_name) 
+
+    r = lambda_client.invoke(
+            FunctionName = 'arn:aws:lambda:us-east-1:890799267054:function:UpdateStatus',
+            InvocationType = 'RequestResponse', 
+            Payload = json.dumps(update_status_params)
+    )
+
+    if r["ResponseMetadata"]["HTTPStatusCode"] != 200:
+        payload = r["Payload"].read()
+        print(f"Error changing status of {file_key} to {new_status}, response: {r}, {payload}")
 
 def upload_to_aws(local_file, bucket, s3_file, overwrite):
     s3 = boto3.client(
@@ -80,10 +97,8 @@ def upload_to_aws(local_file, bucket, s3_file, overwrite):
         return
 
 
-def update_db(path, user_email, upload_source, s3_file_name):
-    file_key = f"{user_email}/{upload_source}/{path}"
-    lambda_client = boto3.client('lambda') 
-
+def update_db(file_key, s3_file_name):
+    
     response = user_uploads_table.update_item(
         Key={"file_key": file_key},
         UpdateExpression="set response_file_key=:s",
@@ -95,13 +110,9 @@ def update_db(path, user_email, upload_source, s3_file_name):
         print(f"Error in updating DB, response: {response}")
 
 
-    update_status_params = {"file_key":file_key, "new_status": "Completed"}
-
-    lambda_client.invoke(
-            FunctionName = 'arn:aws:lambda:us-east-1:890799267054:function:UpdateStatus',
-            InvocationType = 'Event', 
-            Payload = json.dumps(update_status_params)
-        ) 
+    change_status(file_key, "Completed")
+    #ipdb.set_trace()
+    
 
     if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
         print(f"Error in updating DB, response: {response}")
@@ -127,7 +138,19 @@ def update_db(path, user_email, upload_source, s3_file_name):
     default=False,
     help="Results file already exists on S3, use this flag to overwrite existing file",
 )
-def main(path, user_email, upload_source, force, overwrite):
+@click.option(
+    "--inprogress",
+    is_flag=True,
+    default=False,
+    help="Use is the flag to change file status to InProgress and sent mail to the user, without uploading result",
+)
+@click.option(
+    "--issueencountered",
+    is_flag=True,
+    default=False,
+    help="Use is the flag to change file status to IssueEncountered and sent mail to the user, without uploading result",
+)
+def main(path, user_email, upload_source, force, overwrite, inprogress, issueencountered):
     """
     This scripts uploads results file to S3.
     It firsts check that the original file (from the specified user and upload source) exists in the DB.
@@ -143,8 +166,18 @@ def main(path, user_email, upload_source, force, overwrite):
             return
 
     s3_file_name = os.path.join(user_email, "results_" + os.path.basename(path))
+    file_key = f"{user_email}/{upload_source}/{os.path.basename(path)}"
 
-    update_db(os.path.basename(path), user_email, upload_source, s3_file_name)
+    if inprogress:
+        change_status(file_key, "InProgress")
+        print(f"Changing status of {file_key} to InProgress")
+        sys.exit()
+    if issueencountered:
+        change_status(file_key, "IssueIncountered")
+        print(f"Changing status of {file_key} to IssueIncountered")
+        sys.exit()
+
+    update_db(file_key, s3_file_name)
 
     upload_to_aws(path, bucket_name, s3_file_name, overwrite)
 
