@@ -81,6 +81,7 @@ def upload_to_aws(local_file, bucket, s3_file, overwrite):
 
 def update_db(path, user_email, upload_source, s3_file_name):
     file_key = f"{user_email}/{upload_source}/{path}"
+    lambda_client = boto3.client('lambda') 
 
     response = user_uploads_table.update_item(
         Key={"file_key": file_key},
@@ -92,12 +93,14 @@ def update_db(path, user_email, upload_source, s3_file_name):
     if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
         print(f"Error in updating DB, response: {response}")
 
-    response = user_uploads_table.update_item(
-    Key={"file_key": file_key},
-    UpdateExpression="set upload_status=:s",
-    ExpressionAttributeValues={":s": "Completed"},
-    ReturnValues="UPDATED_NEW",
-    )
+
+    update_status_params = {"file_key":file_key, "new_status": "Completed"}
+
+    lambda_client.invoke(
+            FunctionName = 'arn:aws:lambda:us-east-1:890799267054:function:UpdateStatus',
+            InvocationType = 'Event', 
+            Payload = json.dumps(update_status_params)
+        ) 
 
     if response["ResponseMetadata"]["HTTPStatusCode"] != 200:
         print(f"Error in updating DB, response: {response}")
