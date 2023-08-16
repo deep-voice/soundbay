@@ -142,13 +142,13 @@ def update_db(file_key, s3_file_name):
     "--inprogress",
     is_flag=True,
     default=False,
-    help="Use is the flag to change file status to InProgress and sent mail to the user, without uploading result",
+    help="Use this flag to change file status to InProgress and send mail to the user, without uploading result",
 )
 @click.option(
     "--issueencountered",
     is_flag=True,
     default=False,
-    help="Use is the flag to change file status to IssueEncountered and sent mail to the user, without uploading result",
+    help="Use this flag to change file status to IssueEncountered and send mail to the user, without uploading result",
 )
 def main(path, user_email, upload_source, force, overwrite, inprogress, issueencountered):
     """
