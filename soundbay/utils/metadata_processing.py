@@ -9,12 +9,20 @@ from typing import List
 
 # TODO add tests to the utils in this file
 
-def load_n_adapt_raven_annotation_table_to_dv_dataset_requirements(annotation_path: str,
+def load_n_adapt_raven_annotation_table_to_dv_dataset_requirements(annotation_file_path: str,
+                                                                   annotation_filename_dict: dict = None,
                                                                    filename_suffix: str = ".Table.1.selections.txt"
                                                                    ) -> pd.DataFrame:
     # todo: decide whether to add annotation treatment
-    df_annotations = pd.read_csv(annotation_path, sep="\t")
-    df_annotations['filename'] = os.path.basename(annotation_path).replace(filename_suffix, '')
+    df_annotations = pd.read_csv(annotation_file_path, sep="\t")
+    if annotation_filename_dict is not None:
+        try:
+            df_annotations['filename'] = annotation_filename_dict[os.path.basename(annotation_file_path)].replace('.txt', '')
+        except KeyError:
+            print(f"KeyError: {os.path.basename(annotation_file_path)}. Using default filename.")
+            df_annotations['filename'] = os.path.basename(annotation_file_path).replace(filename_suffix, '')
+    else:
+        df_annotations['filename'] = os.path.basename(annotation_file_path).replace(filename_suffix, '')
     df_annotations = df_annotations.rename(columns={'Begin Time (s)': 'begin_time', 'End Time (s)': 'end_time'})
     df_annotations['call_length'] = df_annotations['end_time'] - df_annotations['begin_time']
     return df_annotations
