@@ -5,6 +5,7 @@ import os
 import click
 from tqdm import tqdm
 import sys
+import json
 
 # Please configure your own keys on aws cli
 ACCESS_KEY = os.environ.get("AWS_ACCESS_KEY_ID")
