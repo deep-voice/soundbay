@@ -197,37 +197,32 @@ class Logger:
         pred_list = np.array(pred_list)
         pred_proba_array = np.array(pred_proba_array)
 
+        metrics_dict = {
+            'global': {'accuracy': metrics.accuracy_score(label_list, pred_list),
+                       'call_average_precision_macro': np.nanmean([metrics.average_precision_score(
+                           label_list == i, pred_proba_array[:, i]) for i in range(1, pred_proba_array.shape[1])]),
+                       'bg_average_precision': metrics.average_precision_score(label_list == 0, pred_proba_array[:, 0]),
+                       'call_f1_macro': metrics.f1_score(label_list, pred_list, average='macro',
+                                                         labels=list(range(1, pred_proba_array.shape[1]))),
+                       'bg_f1': metrics.f1_score(label_list == 0, pred_list == 0),
+                       'bg_precision': metrics.precision_score(label_list == 0, pred_list == 0),
+                       'bg_recall': metrics.recall_score(label_list == 0, pred_list == 0),
+                       },
+            'calls': {}
+        }
+
         def nan_auc(y_true, y_pred):
             try:
                 return metrics.roc_auc_score(y_true, y_pred)
             except ValueError:
                 return np.nan
 
-        metrics_dict = {
-            'global': {'accuracy': metrics.accuracy_score(label_list, pred_list),
-                       'f1': metrics.f1_score(label_list, pred_list),
-                       'precision': metrics.precision_score(label_list, pred_list),
-                       'recall': metrics.recall_score(label_list, pred_list),
-                       'auc': nan_auc(label_list, pred_list),
-                       },
-            'bg': {'bg_average_precision': metrics.average_precision_score(label_list == 0, pred_proba_array[:, 0]),
-                   'bg_f1': metrics.f1_score(label_list == 0, pred_list == 0),
-                   'bg_precision': metrics.precision_score(label_list == 0, pred_list == 0),
-                   'bg_recall': metrics.recall_score(label_list == 0, pred_list == 0),
-                   },
-            'calls': {'call_average_precision_macro': np.nanmean([metrics.average_precision_score(
-                           label_list == i, pred_proba_array[:, i]) for i in range(1, pred_proba_array.shape[1])]),
-                      'call_f1_macro': metrics.f1_score(label_list, pred_list, average='macro',
-                                                         labels=list(range(1, pred_proba_array.shape[1]))),
-                     }
-        }
-
-        metrics_dict['global']['bg']['bg_auc'] = nan_auc(label_list == 0, pred_proba_array[:, 0])
+        metrics_dict['global']['bg_auc'] = nan_auc(label_list == 0, pred_proba_array[:, 0])
 
         # Equivalent of 'macro' 'ovr' auc for only the positive classes.
         # nan auc are not counted towards the mean.
         pos_auc_list = [nan_auc(label_list == i, pred_proba_array[:, i]) for i in range(1, pred_proba_array.shape[1])]
-        metrics_dict['global']['calls']['call_auc_macro'] = np.nanmean(pos_auc_list)
+        metrics_dict['global']['call_auc_macro'] = np.nanmean(pos_auc_list)
 
         for class_id in range(1, pred_proba_array.shape[1]):
             metrics_dict['calls'][class_id] = {
