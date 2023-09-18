@@ -222,12 +222,12 @@ class Logger:
                      }
         }
 
-        metrics_dict['bg']['bg_auc'] = nan_auc(label_list == 0, pred_proba_array[:, 0])
+        metrics_dict['global']['bg']['bg_auc'] = nan_auc(label_list == 0, pred_proba_array[:, 0])
 
         # Equivalent of 'macro' 'ovr' auc for only the positive classes.
         # nan auc are not counted towards the mean.
         pos_auc_list = [nan_auc(label_list == i, pred_proba_array[:, i]) for i in range(1, pred_proba_array.shape[1])]
-        metrics_dict['calls']['call_auc_macro'] = np.nanmean(pos_auc_list)
+        metrics_dict['global']['calls']['call_auc_macro'] = np.nanmean(pos_auc_list)
 
         for class_id in range(1, pred_proba_array.shape[1]):
             metrics_dict['calls'][class_id] = {
