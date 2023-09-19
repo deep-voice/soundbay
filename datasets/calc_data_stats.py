@@ -17,7 +17,8 @@ def main(dataset_path: Path, split_type: Optional[str]):
     for label, group in df.groupby(['label']):
         group_len = len(group)
         total_audio = group['call_length'].sum()
-        out_dict[label] = {'Number of calls': group_len, 'Total Audio length (sec)': total_audio}
+        out_dict[label] = {'Number of calls': group_len, 'Total Audio length (sec)': f'{total_audio:.3f}',
+                           'Total Audio length (hr)': f'{total_audio / 3600:.3f}'}
     print(out_dict)
 
 
