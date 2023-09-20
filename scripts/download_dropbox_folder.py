@@ -34,14 +34,17 @@ def upload_to_s3(url, s3_client, user_name, folder_name):
 
 
 @click.command()
-@click.option('--dropbox-token', '-d', required=True, type=str)
-@click.option('--dropbox-path', '-p', required=True, type=str)
-@click.option('--user-name', '-u', required=True, type=str)
-@click.option('--folder-name', '-f', required=True, type=str)
+@click.option('--dropbox-token', '-d', required=True, type=str,
+              help='refer https://app.clickup.com/1861158/v/dc/1rth6-33/1rth6-1282 for details about token generation')
+@click.option('--dropbox-path', '-p', required=True, type=str, help='Dropbox folder path')
+@click.option('--user-name', '-u', required=True, type=str,
+              help='The user name from the dynamodb table, usually the email.')
+@click.option('--folder-name', '-f', required=True, type=str,
+              help='The folder name in the user uploads bucket')
 def download_dropbox_folder_to_s3(dropbox_token: str, dropbox_path: str, user_name: str, folder_name: str):
     # Initialize Dropbox and AWS S3 clients
     dbx = dropbox.Dropbox(dropbox_token)
-    s3 = boto3.client('s3', aws_access_key_id=ACCESS_KEY, aws_secret_access_key=SECRET_KEY)
+    s3 = boto3.resource('s3', aws_access_key_id=ACCESS_KEY, aws_secret_access_key=SECRET_KEY)
 
     # Get file metadata from Dropbox folder
     entries = dbx.files_list_folder(dropbox_path).entries
