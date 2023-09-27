@@ -35,16 +35,64 @@ def init():
     """
     global model
     global model_name
+    global AWS_ACCESS_KEY_ID
+    global AWS_SECRET_ACCESS_KEY
     # AZUREML_MODEL_DIR is an environment variable created during deployment.
     # It is the path to the model folder (./azureml-models/$MODEL_NAME/$VERSION)
     # Please provide your model's folder name if there is one
+    # global AWS_ACCESS_KEY_ID
+    # global AWS_SECRET_ACCESS_KEY
+
+    # os.environ['AWS_ACCESS_KEY_ID'] = AWS_ACCESS_KEY_ID
+    # os.environ['AWS_SECRET_ACCESS_KEY'] = AWS_SECRET_ACCESS_KEY
+    # os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+    AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+    print(f'aki: {AWS_ACCESS_KEY_ID}')
+    print(f'sak: {AWS_SECRET_ACCESS_KEY}')
+    # for name, value in os.environ.items():
+    #     print(f'{name}')
     model_dir = os.getenv("AZUREML_MODEL_DIR")
-    if model_dir is None:
+
+    if AWS_ACCESS_KEY_ID is not None and AWS_SECRET_ACCESS_KEY is not None:
+        print('setting aws credentials!')
+        model_path = os.path.join(model_dir ,'s3_model.pth')
+        # model_path = os.path.join(
+        #     model_dir, "model/s3_model.pth"
+        # )
+
+
+        s3_model_path = os.getenv("S3_INPUT_MODEL_PATH")
+        s3_model_path_split = s3_model_path.split('/')
+        bucket_name = s3_model_path_split[2]
+        obj_name = '/'.join(s3_model_path_split[3:])
+        print(f'downloading s3 model to infer from bucket: {bucket_name} and obj_name: {obj_name} to model_path: {model_path}')
+        s3 = boto3.client('s3')
+        s3.download_file(bucket_name, obj_name, model_path)
+
+
+
+    elif model_dir is None:
         model_path = './model/best.pth'
     else:
         model_path = os.path.join(
-            model_dir, "model/best.pth"
+            model_dir, "best.pth"
         )
+
+    # s3_model_path = os.getenv("S3_INPUT_MODEL_PATH")
+    # s3_model_path_split = s3_model_path.split('/')
+    # bucket_name = s3_model_path_split[2]
+    # obj_name = '/'.join(s3_model_path_split[3:])
+    # print(f'downloading s3 model from bucket: {bucket_name} and obj_name: {obj_name} to model_path: {model_path}')
+    # s3 = boto3.client('s3')
+    # s3.download_file(bucket_name, obj_name, model_path)
+    if not torch.cuda.is_available():
+        ckpt_dict = torch.load(model_path, map_location=torch.device('cpu'))
+        print('cuda is not available for ckpt!')
+    else:
+        ckpt_dict = torch.load(model_path, map_location=torch.device('cuda')) 
+        print('cuda is available for ckpt!')
+
     model_name = Path(model_path).stem
     
     global args
@@ -53,12 +101,7 @@ def init():
 
 
 
-    if not torch.cuda.is_available():
-        ckpt_dict = torch.load(model_path, map_location=torch.device('cpu'))
-        print('cuda is not available for ckpt!')
-    else:
-        ckpt_dict = torch.load(model_path, map_location=torch.device('cuda')) 
-        print('cuda is available for ckpt!')
+
     ckpt_args = ckpt_dict['args']
     args = merge_with_checkpoint(args, ckpt_args)
     ckpt = ckpt_dict['model']
@@ -229,9 +272,14 @@ def infer_single_file(
     # model = load_model(model_args, checkpoint_state_dict).to(device)
     # Check how many channels
     # Temporary load the s3 wav file from dataset_args.file_path
-
+    s3 = boto3.client('s3')
 
     # s3 = boto3.client('s3')
+    # print('downloading s3 file!')
+    s3_filename = 's3://deepvoice-datasets/misc/stam_text.txt'
+    # get file to local temp file
+
+
 
     # bucket = dataset_args.file_path.split('/')[2]
     # key = '/'.join(dataset_args.file_path.split('/')[3:])
@@ -348,13 +396,42 @@ def run(mini_batch: List[str]) -> pd.DataFrame:
  
 
 
-    logging.info("model 1: request received")
-    inference_filename = mini_batch[0]
+     
+
+    for name, value in os.environ.items():
+        print(f'{name}')
+    os.getenv('AWS_ACCESS_KEY_ID')
+    os.getenv('AWS_SECRET_ACCESS_KEY')
+    data_sample_rate = os.getenv("DATA_SAMPLE_RATE")
+    print(f'data_sample_rate: {data_sample_rate}')
+    args.data.data_sample_rate = int(data_sample_rate)
+    # inference_filename = os.getenv("INFERENCE_FILENAME")
+    # print("downloading from s3: ", inference_filename)
+    # infer_split = inference_filename.split('/')
+    # bucket = infer_split[2]
+    # # key path
+    # key = '/'.join(infer_split[3:])
+    # s3.download_file(bucket, key, 'infer_file.wav')
+    # # args.data.test_dataset.file_path = 'infer_file.wav'
+
+    # inference_filename = 'infer_file.wav'
+    inference_filename = '/mnt/batch_file.wav'
 
 
+    s3_data_path = os.getenv("S3_INPUT_DATA_PATH")
+    s3_data_path_split = s3_data_path.split('/')
+    bucket_name = s3_data_path_split[2]
+    obj_name = '/'.join(s3_data_path_split[3:])
+    print(f'downloading s3 file to infer from bucket: {bucket_name} and obj_name: {obj_name} to file_path: {inference_filename}')
+    s3 = boto3.client('s3')
+    s3.download_file(bucket_name, obj_name, inference_filename)
 
-    print("inference_filename: ", inference_filename)
+    print("inference_filename to infer: ", inference_filename)
     args.data.test_dataset.file_path = str(inference_filename)
+
+
+
+
     if not torch.cuda.is_available():
         device = torch.device("cpu")
     else:
@@ -369,13 +446,20 @@ def run(mini_batch: List[str]) -> pd.DataFrame:
         save_raven=args.experiment.save_raven,
         threshold=args.experiment.threshold
     )
-    print("Finished inference")
+    # upload out_df to s3
+    s3_output_data_path = os.getenv("S3_OUTPUT_DATA_PATH")
+    s3_output_data_path_split = s3_output_data_path.split('/')
+    bucket_name = s3_output_data_path_split[2]
+    obj_name = '/'.join(s3_output_data_path_split[3:])
+    # save csv to temp file
+    preds_filename_local = '/mnt/preds.csv'
+    # with tempfile.TemporaryFile(mode='w+b') as f:
+    print('saving csv to temp file and uploading to s3')
+    out_df.to_csv(preds_filename_local)
+    s3.upload_file(preds_filename_local, bucket_name, obj_name)    
+    print("Finished inference upload")
     logging.info("Request processed")
     return out_df
     
 
 
-if __name__ == "__main__":
-    init()
-    raw_data = json.dumps({"data": "s3://deepvoice-experiments/output_folder/input_file/grunt_2308_teaser.wav"})
-    run(raw_data)
