@@ -1,10 +1,11 @@
-# schema: https://azuremlschemas.azureedge.net/latest/batchDeployment.schema.json
-name: deepvoice-deployment-prod1
+$schema: https://azuremlschemas.azureedge.net/latest/batchDeployment.schema.json
+name: deepvoice-deployment-local22
 description: A deployment for deepvoice inference.
-endpoint_name: deepvoice-endpoint-batch
+endpoint_name: dv-endpoint-batch
 type: model
-model:
-  path: ../model/
+model: azureml:amit-eric-manatees:1
+# model:
+  # path: ../model
 code_configuration:
   code: ../
   scoring_script: inference_cloud_batch.py
@@ -22,3 +23,10 @@ settings:
   logging_level: debug
   retry_settings:
     timeout: 2400
+  environment_variables: 
+    AWS_ACCESS_KEY_ID: xxx
+    AWS_SECRET_ACCESS_KEY: xxx
+    S3_INPUT_DATA_PATH: s3://xxx.wav
+    S3_OUTPUT_DATA_PATH: s3://xxx.csv
+    S3_INPUT_MODEL_PATH: s3://xxx/best.pth
+    DATA_SAMPLE_RATE: 96000
