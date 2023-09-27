@@ -1,5 +1,5 @@
 $schema: https://azuremlschemas.azureedge.net/latest/batchEndpoint.schema.json
-name: deepvoice-endpoint-batch
+name: dv-endpoint-batch
 # auth_mode: key
 tags:
   use: prod
