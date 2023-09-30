@@ -1,5 +1,5 @@
 $schema: https://azuremlschemas.azureedge.net/latest/batchDeployment.schema.json
-name: deepvoice-deployment-local22
+name: deepvoice-deployment-local24
 description: A deployment for deepvoice inference.
 endpoint_name: dv-endpoint-batch
 type: model
@@ -24,9 +24,9 @@ settings:
   retry_settings:
     timeout: 2400
   environment_variables: 
-    AWS_ACCESS_KEY_ID: xxx
-    AWS_SECRET_ACCESS_KEY: xxx
-    S3_INPUT_DATA_PATH: s3://xxx.wav
-    S3_OUTPUT_DATA_PATH: s3://xxx.csv
-    S3_INPUT_MODEL_PATH: s3://xxx/best.pth
+    AWS_ACCESS_KEY_ID: AKIA46Z6GDTXAYDG3L6N
+    AWS_SECRET_ACCESS_KEY: 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
+    S3_INPUT_DATA_PATH: s3://deepvoice-user-uploads/eric-manatees-testing/220301_0053.wav
+    S3_OUTPUT_DATA_PATH: s3://deepvoice-user-uploads/eric-manatees-testing/pred.csv
+    S3_INPUT_MODEL_PATH: s3://deepvoice-experiments/2fmq4w9j/2023-01-01/18-27-26/best.pth
     DATA_SAMPLE_RATE: 96000

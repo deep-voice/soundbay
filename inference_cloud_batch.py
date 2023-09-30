@@ -48,8 +48,8 @@ def init():
     # os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
     AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
-    print(f'aki: {AWS_ACCESS_KEY_ID}')
-    print(f'sak: {AWS_SECRET_ACCESS_KEY}')
+    # print(f'aki: {AWS_ACCESS_KEY_ID}')
+    # print(f'sak: {AWS_SECRET_ACCESS_KEY}')
     # for name, value in os.environ.items():
     #     print(f'{name}')
     model_dir = os.getenv("AZUREML_MODEL_DIR")
