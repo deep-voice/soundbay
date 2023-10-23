@@ -49,7 +49,8 @@ class AtmosphericFilter(BaseWaveformTransform):
         n_fft = self.n_fft
         # Compute the short-time Fourier transform
         y_pad = librosa.util.fix_length(audio_data, size=len(audio_data) + n_fft // 2)
-        Sxx = librosa.stft(y_pad, n_fft=n_fft)
+        window = np.hanning(n_fft + 1)[:n_fft]
+        Sxx = librosa.stft(y_pad, n_fft=n_fft, hop_length=n_fft // 2, window=window)
 
         # Get the frequencies from the STFT
         frequencies = librosa.fft_frequencies(sr=sample_rate, n_fft=n_fft)
@@ -71,7 +72,8 @@ class AtmosphericFilter(BaseWaveformTransform):
         Sxx = Sxx * filter_interp
 
         # Convert back to time domain
-        time_domain_audio = librosa.istft(Sxx, length=len(audio_data))
+        time_domain_audio = librosa.istft(Sxx, length=len(audio_data), hop_length=n_fft // 2, n_fft=n_fft,
+                                          window=window)
 
         return time_domain_audio
 
