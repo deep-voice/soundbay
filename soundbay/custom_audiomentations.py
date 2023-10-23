@@ -78,7 +78,8 @@ class AtmosphericFilter(BaseWaveformTransform):
         return time_domain_audio
 
     def apply(self, samples: np.array, sample_rate: int):
-        return self.time_domain_augmentation(samples, sample_rate)
+        return np.concatenate([self.time_domain_augmentation(samples[c, :], sample_rate).reshape((1, -1)) for c in
+                               range(samples.shape[0])])
 
 
 class AddMultichannelBackgroundNoise(AddBackgroundNoise):

@@ -16,7 +16,10 @@ def test_atmospheric_augmentations():
         audio_data = np.frombuffer(frames, dtype=np.int16)
         fs = wav_file.getframerate()
 
+    audio_data = np.tile(audio_data, (2, 1))
     augmented_sig = AtmosphericFilter(n_fft=128, p=1.0)(audio_data, fs)
+    augmented_sig = augmented_sig[0]
+    audio_data = audio_data[0]
 
     # original spectrogram
     frequencies, times, Sxx = scipy.signal.spectrogram(audio_data, fs)
