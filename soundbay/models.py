@@ -5,7 +5,7 @@ from torch import Tensor
 from torchvision.models.resnet import ResNet, BasicBlock, conv3x3, Bottleneck
 from torchvision.models.vgg import VGG
 from torchvision.models import squeezenet
-import torch.nn.init as init
+import torchvision.models as models
 
 
 class ResNet1Channel(ResNet):
@@ -320,3 +320,47 @@ class PCENTransform(nn.Module):
             x = PCENTransform.pcen(x, self.eps, self.s, self.alpha, self.delta, self.r, self.training and self.trainable)
         x = x.unsqueeze(dim=1).permute((0, 1, 3, 2))
         return x
+
+
+class Squeezenet2D(nn.Module):
+    def __init__(self, num_classes=2, pretrained=True):
+        super(Squeezenet2D, self).__init__()
+
+        self.squeezenet = torch.hub.load('pytorch/vision:v0.10.0', 'squeezenet1_0',
+                                         pretrained=pretrained)
+        # number of features from existing squeezenet
+        num_features = 1000
+        # extra classifier layer
+        self.custom_classifier = nn.Sequential(
+            nn.Linear(num_features, 256),  # Add a fully connected layer with 256 output units
+            nn.ReLU(),  # Add a ReLU activation
+            nn.Dropout(0.5),  # Add a dropout layer for regularization
+            nn.Linear(256, num_classes)
+        )
+
+    def forward(self, x):
+        x = x.repeat(1, 3, 1, 1)
+        rep = self.squeezenet(x)
+        out = self.custom_classifier(rep)
+        return out
+
+
+class Resnet182D(nn.Module):
+    def __init__(self, num_classes=2, pretrained=True):
+        super(Resnet182D, self).__init__()
+
+        # Load a pre-trained ResNet-18
+        resnet = models.resnet18(pretrained=pretrained)
+
+        num_features = resnet.fc.in_features
+        resnet.fc = nn.Sequential(
+            nn.Linear(num_features, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(256, num_classes)
+        )
+        self.resnet = resnet
+
+    def forward(self, x):
+        x = x.repeat(1, 3, 1, 1)
+        return self.resnet(x)
