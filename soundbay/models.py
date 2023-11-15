@@ -345,9 +345,9 @@ class Squeezenet2D(nn.Module):
         return out
 
 
-class Resnet182D(nn.Module):
+class ResNet182D(nn.Module):
     def __init__(self, num_classes=2, pretrained=True):
-        super(Resnet182D, self).__init__()
+        super(ResNet182D, self).__init__()
 
         # Load a pre-trained ResNet-18
         resnet = models.resnet18(pretrained=pretrained)
