@@ -2,7 +2,7 @@
 data:
   label_names: ['Noise', 'Call']
   batch_size: 64
-  num_workers: 10
+  num_workers: 6
   sample_rate: 16000
   data_sample_rate: 20000
   max_freq: 1000
