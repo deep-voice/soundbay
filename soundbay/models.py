@@ -329,7 +329,7 @@ class Squeezenet2D(nn.Module):
         self.squeezenet = torch.hub.load('pytorch/vision:v0.10.0', 'squeezenet1_0',
                                          pretrained=pretrained)
         # number of features from existing squeezenet
-        num_features = 1000
+        num_features = self.squeezenet.classifier[1].out_channels  # ==1000
         # extra classifier layer
         self.custom_classifier = nn.Sequential(
             nn.Linear(num_features, 256),  # Add a fully connected layer with 256 output units
