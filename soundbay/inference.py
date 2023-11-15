@@ -122,7 +122,7 @@ def infer_multi_file(
     preprocessors=dataset_args['preprocessors'],
     seq_length=dataset_args['seq_length'], data_sample_rate=dataset_args['data_sample_rate'],
     sample_rate=dataset_args['sample_rate'], 
-    mode=dataset_args['mode']
+    mode=dataset_args['mode'], slice_flag=dataset_args['slice_flag'],
     )
 
     # load model
