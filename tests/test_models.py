@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision.datasets import ImageFolder
 from soundbay.models import ResNet1Channel, GoogleResNet50, OrcaLabResNet18, ChristophCNN, ChristophCNNwithPCEN, \
-    GoogleResNet50withPCEN, SqueezeNet1D
+    GoogleResNet50withPCEN, SqueezeNet1D, ResNet182D, Squeezenet2D
 
 
 @pytest.fixture(scope="module", params=[ResNet1Channel('torchvision.models.resnet.Bottleneck', [3, 4, 6, 3]),
@@ -15,6 +15,8 @@ from soundbay.models import ResNet1Channel, GoogleResNet50, OrcaLabResNet18, Chr
                                         # ChristophCNN(),
                                         # ChristophCNNwithPCEN(),
                                         GoogleResNet50withPCEN(),
+                                        ResNet182D(),
+                                        Squeezenet2D(),
                                         SqueezeNet1D()])
 def own_model(request):
     return request.param
