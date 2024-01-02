@@ -196,6 +196,7 @@ class Logger:
         label_list = np.array(label_list)
         pred_list = np.array(pred_list)
         pred_proba_array = np.array(pred_proba_array)
+        pred_proba_array = np.nan_to_num(pred_proba_array)
 
         metrics_dict = {
             'global': {'accuracy': metrics.accuracy_score(label_list, pred_list),
