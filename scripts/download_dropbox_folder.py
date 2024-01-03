@@ -28,9 +28,17 @@ def upload_to_s3(url, s3_client, user_name, folder_name):
     r = requests.get(url, stream=True)
 
     bucket = s3_client.Bucket(BUCKET_NAME)
-    response_s3 = bucket.upload_fileobj(r.raw, f"{user_name}/dropbox/{folder_name}/{file_name}")
+    full_path = f"{user_name}/dropbox/{folder_name}/{file_name}"
+    objs = list(bucket.objects.filter(Prefix=full_path))
 
-    print("Upload to S3 completed")
+    # file does not exist
+    file_exists = (len(objs) == 1) and (objs[0].key == full_path) and (objs[0].size == int(r.headers['Content-Length']))
+    if not file_exists:
+        print("Uploading to S3")
+        response_s3 = bucket.upload_fileobj(r.raw, full_path)
+        print("Upload to S3 completed")
+    else:
+        print("File already exists in S3, skipping")
 
 
 def recursive_dowload_dropbox_folder_to_s3(dropbox_path, dropbox_handler, s3_handler, user_name, folder_name,
