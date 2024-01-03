@@ -32,13 +32,38 @@ def upload_to_s3(url, s3_client, user_name, folder_name):
     objs = list(bucket.objects.filter(Prefix=full_path))
 
     # file does not exist
-    file_exists = (len(objs) == 1) and (objs[0].key == full_path) and (objs[0].size == int(r.headers['Content-Length']))
+    try:
+        file_exists = (len(objs) == 1) and (objs[0].key == full_path) and (objs[0].size == int(r.headers['Content-Length']))
+    except Exception as e:
+        print(f"Error {e}")
+        file_exists = False
     if not file_exists:
         print("Uploading to S3")
         response_s3 = bucket.upload_fileobj(r.raw, full_path)
         print("Upload to S3 completed")
     else:
         print("File already exists in S3, skipping")
+
+
+def get_dropbox_folder_size(dropbox_handler, dropbox_path):
+    total_size = 0
+    entries = dropbox_handler.files_list_folder(dropbox_path).entries
+    for entry in entries:
+        if isinstance(entry, dropbox.files.FileMetadata):
+            total_size += entry.size
+        elif isinstance(entry, dropbox.files.FolderMetadata):
+            total_size += get_dropbox_folder_size(dropbox_handler, entry.path_display)
+    return total_size
+
+
+def get_s3_folder_size(s3_handler, user_name, folder_name):
+    bucket = s3_handler.Bucket(BUCKET_NAME)
+    full_path = f"{user_name}/dropbox/{folder_name}/"
+    objs = list(bucket.objects.filter(Prefix=full_path))
+    total_size = 0
+    for obj in objs:
+        total_size += obj.size
+    return total_size
 
 
 def recursive_dowload_dropbox_folder_to_s3(dropbox_path, dropbox_handler, s3_handler, user_name, folder_name,
@@ -66,8 +91,19 @@ def recursive_dowload_dropbox_folder_to_s3(dropbox_path, dropbox_handler, s3_han
         elif isinstance(entry, dropbox.files.FolderMetadata):
             path_parts = entry.path_display.split("/")[1:]  # remove the first empty string
             path_parts_to_use = '/'.join(path_parts[path_heirarchy:])
-            recursive_dowload_dropbox_folder_to_s3(entry.path_display, dropbox_handler, s3_handler, user_name,
-                                                   f'{folder_name}/{path_parts_to_use}', path_heirarchy)
+            s3_folder = f'{folder_name}/{path_parts_to_use}'
+            try:
+                dropbox_folder_size = get_dropbox_folder_size(dropbox_handler, entry.path_display)
+                s3_folder_size = get_s3_folder_size(s3_handler, user_name, s3_folder)
+            except Exception as e:
+                print(f"Error {e}")
+                dropbox_folder_size = 1
+                s3_folder_size = 0
+            if dropbox_folder_size != s3_folder_size:
+                recursive_dowload_dropbox_folder_to_s3(entry.path_display, dropbox_handler, s3_handler, user_name,
+                                                       s3_folder, path_heirarchy)
+            else:
+                print(f"Folder {entry.path_display} already exists in S3, skipping")
     if i > 0:
         print(f"Total of {i} files")
 
