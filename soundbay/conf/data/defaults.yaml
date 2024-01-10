@@ -3,8 +3,8 @@ data:
   label_names: ['BG', 'p', 'd']
   batch_size: 64
   num_workers: 10
-  sample_rate: 350000
-  data_sample_rate: 96000
+  sample_rate: 96000
+  data_sample_rate: 350000
   max_freq: 48000
   min_freq_filtering: 0
   n_fft: 1024
