@@ -1,4 +1,4 @@
-Selection,View,Channel,Begin Time (s),End Time (s),Low Freq (Hz),High Freq (Hz),Annotation,label,File,Delta Freq (Hz),Dur 50% (s),Dur 90% (s),call_length,Set
+Selection,View,Channel,begin_time,end_time,Low Freq (Hz),High Freq (Hz),Annotation,label,filename,Delta Freq (Hz),Dur 50% (s),Dur 90% (s),call_length,split_type
 1,Spectrogram 1,2,34.228464,34.77808021,5421.8,9408.3,d,2,LPS1382019_HF_20200411_085000_000.Table.1.selections.txt,,,,0.549616218,train
 2,Spectrogram 1,2,228.8594491,229.1268299,3830.7,6848.9,d,2,LPS1382019_HF_20200411_085000_000.Table.1.selections.txt,,,,0.267380863,train
 3,Spectrogram 1,2,315.1974718,315.5168434,6616.7,8590.1,d,2,LPS1382019_HF_20200411_085000_000.Table.1.selections.txt,,,,0.319371586,train
