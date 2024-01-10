@@ -1,7 +1,7 @@
 # @package _global_
 data:
   label_names: ['BG', 'p', 'd']
-  batch_size: 64
+  batch_size: 16
   num_workers: 10
   sample_rate: 96000
   data_sample_rate: 350000
