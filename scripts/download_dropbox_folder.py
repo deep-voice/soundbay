@@ -47,13 +47,29 @@ def upload_to_s3(url, s3_client, user_name, folder_name):
 
 def get_dropbox_folder_size(dropbox_handler, dropbox_path):
     total_size = 0
-    entries = dropbox_handler.files_list_folder(dropbox_path).entries
+    entries = get_all_entries_from_folder_dropbox(dropbox_handler, dropbox_path)
     for entry in entries:
         if isinstance(entry, dropbox.files.FileMetadata):
             total_size += entry.size
         elif isinstance(entry, dropbox.files.FolderMetadata):
             total_size += get_dropbox_folder_size(dropbox_handler, entry.path_display)
     return total_size
+
+
+def get_all_entries_from_folder_dropbox(dbx, dropbox_path):
+    all_files = []  # collects all files here
+    has_more_files = True  # because we haven't queried yet
+    cursor = None  # because we haven't queried yet
+
+    while has_more_files:
+        if cursor is None:  # if it is our first time querying
+            result = dbx.files_list_folder(dropbox_path)
+        else:
+            result = dbx.files_list_folder_continue(cursor)
+        all_files.extend(result.entries)
+        cursor = result.cursor
+        has_more_files = result.has_more
+    return all_files
 
 
 def get_s3_folder_size(s3_handler, user_name, folder_name):
@@ -72,7 +88,7 @@ def recursive_dowload_dropbox_folder_to_s3(dropbox_path, dropbox_handler, s3_han
     Download a file from Dropbox and upload it to S3
     """
     # Iterate through files in the Dropbox folder
-    entries = dropbox_handler.files_list_folder(dropbox_path).entries
+    entries = get_all_entries_from_folder_dropbox(dropbox_handler, dropbox_path)
     i = 0
     for i, entry in tqdm(enumerate(entries)):
         if isinstance(entry, dropbox.files.FileMetadata):
