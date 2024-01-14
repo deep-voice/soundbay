@@ -1,6 +1,5 @@
 import os
 import requests
-import re
 
 import boto3
 import click
