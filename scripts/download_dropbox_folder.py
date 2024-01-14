@@ -81,7 +81,7 @@ def recursive_dowload_dropbox_folder_to_s3(dropbox_path, dropbox_handler, s3_han
     # Iterate through files in the Dropbox folder
     entries = get_all_entries_from_folder_dropbox(dropbox_handler, dropbox_path)
     i = 0
-    for i, entry in tqdm(enumerate(entries)):
+    for i, entry in tqdm(enumerate(entries), desc=f"Downloading {dropbox_path}"):
         if isinstance(entry, dropbox.files.FileMetadata):
             # Generate temporary link for the file
             tqdm.write(str(entry) + "\n")
