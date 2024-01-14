@@ -84,11 +84,11 @@ def recursive_dowload_dropbox_folder_to_s3(dropbox_path, dropbox_handler, s3_han
     for i, entry in tqdm(enumerate(entries)):
         if isinstance(entry, dropbox.files.FileMetadata):
             # Generate temporary link for the file
-            print(str(entry) + "\n")
+            tqdm.write(str(entry) + "\n")
             link = ""
             # wrap with try catch to avoid error when there is a download issue
             if file_exists_in_s3(s3_handler, user_name, folder_name, entry.name, entry.size):
-                print(f"File {entry.name} already exists in S3, skipping")
+                tqdm.write(f"File {entry.name} already exists in S3, skipping")
                 continue
             else:
                 try:
