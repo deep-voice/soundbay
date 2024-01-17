@@ -1,6 +1,5 @@
 import os
 import requests
-import re
 
 import boto3
 import click
@@ -14,35 +13,27 @@ region_name = "us-east-1"
 table_name = "user_uploads"
 
 
-def upload_to_s3(url, s3_client, user_name, folder_name):
+def upload_to_s3(url, s3_client, user_name, folder_name, file_name):
     """
     Upload a file to S3 directly from a URL
     """
-    print(f"Downloading url: {url}")
-
-    # Get File name
-    head_response = requests.head(url)
-    file_name = re.findall("filename=\"(.+)\"", head_response.headers.get('content-disposition'))[0]
-
     print(f"Downloading file: {file_name}")
     r = requests.get(url, stream=True)
 
     bucket = s3_client.Bucket(BUCKET_NAME)
     full_path = f"{user_name}/dropbox/{folder_name}/{file_name}"
-    objs = list(bucket.objects.filter(Prefix=full_path))
 
     # file does not exist
-    try:
-        file_exists = (len(objs) == 1) and (objs[0].key == full_path) and (objs[0].size == int(r.headers['Content-Length']))
-    except Exception as e:
-        print(f"Error {e}")
-        file_exists = False
-    if not file_exists:
-        print("Uploading to S3")
-        response_s3 = bucket.upload_fileobj(r.raw, full_path)
-        print("Upload to S3 completed")
-    else:
-        print("File already exists in S3, skipping")
+    print("Uploading to S3")
+    response_s3 = bucket.upload_fileobj(r.raw, full_path)
+    print("Upload to S3 completed")
+
+
+def file_exists_in_s3(s3_handler, user_name, folder_name, file_name, file_size):
+    bucket = s3_handler.Bucket(BUCKET_NAME)
+    full_path = f"{user_name}/dropbox/{folder_name}/{file_name}"
+    objs = list(bucket.objects.filter(Prefix=full_path))
+    return (len(objs) == 1) and (objs[0].key == full_path) and (objs[0].size == file_size)
 
 
 def get_dropbox_folder_size(dropbox_handler, dropbox_path):
@@ -90,19 +81,23 @@ def recursive_dowload_dropbox_folder_to_s3(dropbox_path, dropbox_handler, s3_han
     # Iterate through files in the Dropbox folder
     entries = get_all_entries_from_folder_dropbox(dropbox_handler, dropbox_path)
     i = 0
-    for i, entry in tqdm(enumerate(entries)):
+    for i, entry in tqdm(enumerate(entries), desc=f"Downloading {dropbox_path}"):
         if isinstance(entry, dropbox.files.FileMetadata):
             # Generate temporary link for the file
-            print(str(entry) + "\n")
+            tqdm.write(str(entry) + "\n")
             link = ""
             # wrap with try catch to avoid error when there is a download issue
-            try:
-                link = dropbox_handler.files_get_temporary_link(entry.path_display).link
-            except Exception as e:
-                print(f"Error {e}")
-            if link != "":
-                # Upload the file to S3 directly from the link
-                upload_to_s3(link, s3_handler, user_name, folder_name)
+            if file_exists_in_s3(s3_handler, user_name, folder_name, entry.name, entry.size):
+                tqdm.write(f"File {entry.name} already exists in S3, skipping")
+                continue
+            else:
+                try:
+                    link = dropbox_handler.files_get_temporary_link(entry.path_display).link
+                except Exception as e:
+                    print(f"Error {e}")
+                if link != "":
+                    # Upload the file to S3 directly from the link
+                    upload_to_s3(link, s3_handler, user_name, folder_name, entry.name)
         # In case the entry is a folder, recursively call the function
         elif isinstance(entry, dropbox.files.FolderMetadata):
             path_parts = entry.path_display.split("/")[1:]  # remove the first empty string
