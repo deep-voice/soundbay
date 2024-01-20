@@ -8,7 +8,7 @@ _preprocessors:
     win_length: ${data.n_fft}
     pad_mode: 'constant'
     n_mels: 64
-    f_min: ${data.min_freq_filtering}
+    f_min: ${data.min_freq}
     f_max: ${data.max_freq}
   amplitude_2_db:
     _target_: torchaudio.transforms.AmplitudeToDB

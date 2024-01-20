@@ -5,9 +5,8 @@ data:
   num_workers: 10
   sample_rate: 16000
   data_sample_rate: 44100
-  min_aug_freq: 500
-  max_aug_freq: 8000
-  min_freq_filtering: 0
+  min_freq: 500
+  max_freq: 8000
   n_fft: 1024
   hop_length: 256
   train_dataset:

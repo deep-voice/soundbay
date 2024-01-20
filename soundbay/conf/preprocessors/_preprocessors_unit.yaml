@@ -6,7 +6,7 @@ _preprocessors:
     hop_length: ${data.hop_length}
   min_freq_filtering:
     _target_: soundbay.data.MinFreqFiltering
-    min_freq_filtering: ${data.min_freq_filtering}
+    min_freq_filtering: ${data.min_freq}
     sample_rate: ${data.sample_rate}
   amplitude_2_db:
     _target_: torchaudio.transforms.AmplitudeToDB
