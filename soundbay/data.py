@@ -129,8 +129,9 @@ class BaseDataset(Dataset):
         self.metadata sliced according to buffers
         """
         self.metadata = self.metadata.reset_index(drop=True)
+        count_values_before = self.metadata.value_counts('label', sort=False) # for validating that the following code doesn't lose samples
         sliced_times = list(starmap(np.arange, zip(self.metadata['begin_time'], self.metadata['end_time'], repeat(self.seq_length))))
-
+        sliced_times = [np.append(s, self.metadata.loc[i, 'end_time']) for i,s in enumerate(sliced_times)]# add the end_times at the end of this list
         new_begin_time = list(x[:-1] for x in sliced_times)
         duplicate_size_vector = [len(list_elem) for list_elem in new_begin_time] # vector to duplicate original dataframe
         new_begin_time = np.concatenate(new_begin_time) # vectorize to array
@@ -139,6 +140,7 @@ class BaseDataset(Dataset):
         self.metadata['begin_time'] = new_begin_time
         self.metadata['end_time'] = new_end_time
         self.metadata['call_length'] = np.shape(self.metadata)[0] * [self.seq_length]
+        assert all(self.metadata.value_counts('label', sort=False) >= count_values_before), 'seems like _slice_sequence erases data'
         return
 
     def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
