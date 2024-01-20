@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - ../data: porpoise
+  - ../augmentations: _augmentations
+  - ../preprocessors: _mel_preprocessors
+  - ../model: resnet_18_2ds
+  - ../optim: defaults
+  - ../experiment: defaults

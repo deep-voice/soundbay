@@ -1,0 +1,39 @@
+# @package _global_
+data:
+  label_names: ['Noise', 'Call']
+  batch_size: 64
+  num_workers: 6
+  sample_rate: 300000
+  data_sample_rate: 576000
+  max_freq: 150000
+  min_freq_filtering: 100000
+  n_fft: 2048
+  hop_length: 128
+  train_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: '../datasets/porpoise_demo/splitted_data'
+    mode: train
+    metadata_path: '../datasets/porpoise_demo/train_high_prob_only.csv'
+    augmentations_p: 0.8
+    augmentations: ${_augmentations}
+    preprocessors: ${_preprocessors}
+    seq_length: 0.25
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: false
+    split_metadata_by_label: no
+    margin_ratio: 0.5
+  val_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: '../datasets/porpoise_demo/splitted_data'
+    mode: val
+    metadata_path: '../datasets/porpoise_demo/val_high_prob_only.csv'
+    augmentations_p: 0
+    augmentations: null
+    preprocessors: ${_preprocessors}
+    seq_length: 0.25
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: true
+    split_metadata_by_label: no
+    margin_ratio: 0
