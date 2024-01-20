@@ -93,6 +93,13 @@ class BaseDataset(Dataset):
             (self.metadata['label'] > 0)
             ]
 
+        # sometimes the bbox's end time exceeds the file's length
+        for name, sub_df in self.metadata.groupby('filename'):
+            duration = sf.info(str(self.audio_dict[name])).duration
+            if not all(sub_df['end_time'] <= duration):
+                print(f'seems like some tags in file {name} have bigger end_time than its duration')
+                print(f"file {name} --- int(duration): {int(duration)} --- biggest end time: {sub_df['end_time'].max()}")
+
         if slice_flag:
             self._slice_sequence()
 
@@ -131,7 +138,9 @@ class BaseDataset(Dataset):
         self.metadata = self.metadata.reset_index(drop=True)
         count_values_before = self.metadata.value_counts('label', sort=False) # for validating that the following code doesn't lose samples
         sliced_times = list(starmap(np.arange, zip(self.metadata['begin_time'], self.metadata['end_time'], repeat(self.seq_length))))
-        sliced_times = [np.append(s, self.metadata.loc[i, 'end_time']) for i,s in enumerate(sliced_times)]# add the end_times at the end of this list
+        # add the last sequence at the end of this list for calls only (only if it does not exceed the file)
+        sliced_times = list([np.append(s, self.metadata.loc[i, 'end_time']) if self.metadata.loc[i, 'label'] != 0
+                             else s for i, s in enumerate(sliced_times)])
         new_begin_time = list(x[:-1] for x in sliced_times)
         duplicate_size_vector = [len(list_elem) for list_elem in new_begin_time] # vector to duplicate original dataframe
         new_begin_time = np.concatenate(new_begin_time) # vectorize to array
@@ -263,7 +272,11 @@ class ClassifierDataset(BaseDataset):
                 start_time = random.randint(max(begin_time - short_call_margin, 0),
                                             min(begin_time, last_start_time))
         else:
-            start_time = begin_time
+            if begin_time < last_start_time:
+                start_time = begin_time
+            else:
+                print(f'in {path_to_file}, one of the val\'s begin times is too big and exceeding the file so it was set to be smaller\nbegin time:{begin_time}, last_start_time:{last_start_time}')
+                start_time = last_start_time
         data, _ = sf.read(str(path_to_file), start=start_time,
                           stop=start_time + requested_seq_length)
         if channel is not None and data.ndim > 1:
