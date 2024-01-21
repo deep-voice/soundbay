@@ -313,7 +313,7 @@ def inference_main(args) -> None:
         model_args=args.model.model,
         checkpoint_state_dict=ckpt,
         output_path=output_dirpath,
-        model_name=Path(args.experiment.checkpoint.path).stem,
+        model_name=Path(args.experiment.checkpoint.path).parent.stem,
         save_raven=args.experiment.save_raven,
         threshold=args.experiment.threshold
     )
