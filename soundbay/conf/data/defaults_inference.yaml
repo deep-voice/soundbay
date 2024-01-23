@@ -1,16 +1,16 @@
 # @package _global_
 data:
-  batch_size: 64
+  batch_size: 16
   num_workers: 10
-  data_sample_rate: 44100
-  max_freq: 8000
+  data_sample_rate: 350000
+  max_freq: 48000
   n_fft: 1024
   hop_length: 256
   test_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: './tests/assets/data'
+    data_path: '../datasets/Ocean_whispers/wavs'
     mode: test
-    metadata_path: './tests/assets/annotations/sample_annotations.csv'
+    metadata_path: '../datasets/Ocean_whispers/ocean_whispers_2020_train_val_test.csv'
     augmentations_p: 0
     augmentations: null
     len_buffer: 0.1
