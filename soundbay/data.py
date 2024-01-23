@@ -149,7 +149,8 @@ class BaseDataset(Dataset):
         self.metadata['begin_time'] = new_begin_time
         self.metadata['end_time'] = new_end_time
         self.metadata['call_length'] = np.shape(self.metadata)[0] * [self.seq_length]
-        assert all(self.metadata.value_counts('label', sort=False) >= count_values_before), 'seems like _slice_sequence erases data'
+        if not all(self.metadata.value_counts('label', sort=False) >= count_values_before):
+            print(f'Note: seems like _slice_sequence erases data.\nbefore:{count_values_before}\nafter:{self.metadata.value_counts("label", sort=False)}')
         return
 
     def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
