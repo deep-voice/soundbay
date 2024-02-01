@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - ../data: orcasound
+  - ../augmentations: _augmentations
+  - ../preprocessors: _preprocessors_sliding_window
+  - ../model: Christoph_CNN
+  - ../optim: christoph
+  - ../experiment: defaults
