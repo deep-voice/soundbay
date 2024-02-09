@@ -1,0 +1,32 @@
+$schema: https://azuremlschemas.azureedge.net/latest/batchDeployment.schema.json
+name: deepvoice-deployment-local24
+description: A deployment for deepvoice inference.
+endpoint_name: dv-endpoint-batch
+type: model
+model: azureml:amit-eric-manatees:1
+# model:
+  # path: ../model
+code_configuration:
+  code: ../
+  scoring_script: inference_cloud_batch.py
+environment: 
+  conda_file: conda_batch.yaml
+  image: mcr.microsoft.com/azureml/openmpi3.1.2-ubuntu18.04:latest
+compute: azureml:batch-cluster
+resources:
+  instance_count: 1
+settings:
+  max_concurrency_per_instance: 2
+  mini_batch_size: 1
+  output_action: append_row
+  output_file_name: predictions.csv
+  logging_level: debug
+  retry_settings:
+    timeout: 2400
+  environment_variables: 
+    AWS_ACCESS_KEY_ID: xx
+    AWS_SECRET_ACCESS_KEY: xx
+    S3_INPUT_DATA_PATH: s3://deepvoice-user-uploads/eric-manatees-testing/220301_0053.wav
+    S3_OUTPUT_DATA_PATH: s3://deepvoice-user-uploads/eric-manatees-testing/pred.csv
+    S3_INPUT_MODEL_PATH: s3://deepvoice-experiments/2fmq4w9j/2023-01-01/18-27-26/best.pth
+    DATA_SAMPLE_RATE: 96000
