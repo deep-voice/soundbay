@@ -13,7 +13,7 @@ s3_client = boto3.client("s3")
 # Function to perform inference on a batch of WAV files
 def perform_inference(file_paths):
     for wav_file_path in file_paths:
-        command = f"python inference.py --config-name runs/inference_single_audio_manatees experiment.checkpoint.path=\"../datasets/Ocean_whispers/best.pth\" data.test_dataset.file_path=\"{wav_file_path}\""
+        command = f"python inference.py --config-name runs/inference_single_audio experiment.checkpoint.path=\"../datasets/Ocean_whispers/best.pth\" data.test_dataset.file_path=\"{wav_file_path}\""
         os.system(command)
         # os.remove(wav_file_path)  # Delete the processed file
 
