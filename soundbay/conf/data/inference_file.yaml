@@ -6,6 +6,6 @@ data:
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
   seq_length: 1
-  batch_size: 64
-  num_workers: 2
-  data_sample_rate: 44100
+  batch_size: 16
+  num_workers: 10
+  data_sample_rate: 350000
