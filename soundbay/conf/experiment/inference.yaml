@@ -3,7 +3,7 @@ experiment:
   checkpoint:
     path: ???
     load_optimizer_state: False
-  save_raven: False
+  save_raven: True
   threshold: 0.5
 hydra:
   run:
