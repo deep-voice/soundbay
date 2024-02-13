@@ -5,7 +5,7 @@ import pandas
 import datetime
 from soundbay.utils.logging import Logger
 import argparse
-from typing import List
+from typing import List, Optional
 
 
 def make_parser():
@@ -39,8 +39,8 @@ def analysis_logging(results_df,num_classes):
     print(metrics_dict)
 
 
-def inference_csv_to_raven(probs_df: pd.DataFrame, num_classes, seq_len: float, selected_classes: list[str],
-                           threshold: float = 0.5, class_names: list[str] = None,
+def inference_csv_to_raven(probs_df: pd.DataFrame, num_classes, seq_len: float, selected_classes: List[str],
+                           threshold: float = 0.5, class_names: Optional[List[str]] = None,
                            channel: int = 1, max_freq: float = 20_000) -> pd.DataFrame:
     """ Converts a csv file containing the inference results to a raven csv file.
         Args: probsdataframe: a pandas dataframe containing the inference results.
