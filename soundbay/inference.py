@@ -213,7 +213,7 @@ def infer_single_file(
         if save_raven:
             all_channel_raven_list.append(
                 inference_csv_to_raven(results_df, predict_prob.shape[1], dataset_args['seq_length'],
-                                       selected_classes=[1,2], threshold=threshold, class_names='call',
+                                       selected_classes=[1,2], threshold=threshold, class_names=['p','d'],
                                        channel=channel, max_freq=dataset_args['data_sample_rate'] // 2)
             )
 
