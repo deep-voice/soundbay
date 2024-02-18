@@ -232,6 +232,7 @@ def main(validate_args) -> None:
     random.seed(args.experiment.manual_seed)
     torch.manual_seed(args.experiment.manual_seed)
 
+
     # extra asserts
     assert args.data.max_freq == args.data.sample_rate // 2, "max_freq must be equal to sample_rate // 2"
 

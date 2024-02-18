@@ -9,6 +9,7 @@ class Dataset(BaseModel):
     sample_rate: int
     data_sample_rate: int
     max_freq: int
+
     min_freq: int
     n_fft: int
     hop_length: int

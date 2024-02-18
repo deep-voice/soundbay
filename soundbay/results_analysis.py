@@ -114,7 +114,6 @@ def analysis_main() -> None:
 
     # create raven results
     if save_raven:
-        print(type(threshold))
         thresholdtext = int(threshold*10)
         raven_filename = f"raven_annotations-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{inference_csv_name[37:]}-thresh0{thresholdtext}.csv"
         raven_output_file = output_dirpath / raven_filename

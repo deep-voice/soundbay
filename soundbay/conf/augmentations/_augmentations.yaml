@@ -24,6 +24,7 @@ _augmentations:
     p: 0.5
   frequency_masking:
     _target_: audiomentations.BandStopFilter
+
     min_center_freq: ${data.min_freq}
     max_center_freq: ${data.max_freq}
     min_bandwidth_fraction: 0.05
