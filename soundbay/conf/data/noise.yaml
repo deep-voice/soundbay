@@ -3,7 +3,7 @@ data:
   label_names: ['Noise', 'Call']
   batch_size: 64
   num_workers: 6
-  sample_rate: 48828
+  sample_rate: 48000
   data_sample_rate: 48828
   max_freq: 24000
   min_freq: 0
@@ -23,6 +23,7 @@ data:
     slice_flag: false
     split_metadata_by_label: no
     margin_ratio: 0
+    path_hierarchy: 1
   val_dataset:
     _target_: soundbay.data.NoBackGroundDataset
     data_path: '../datasets/noise/Noise_wav/'
@@ -37,3 +38,4 @@ data:
     slice_flag: true
     split_metadata_by_label: no
     margin_ratio: 0
+    path_hierarchy: 1
