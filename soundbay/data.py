@@ -336,7 +336,7 @@ class PeakNormalize:
 
     def __call__(self, sample):
 
-        return (sample - sample.min()) / (sample.max() - sample.min())
+        return (sample - sample.min()) / (sample.max() - sample.min() + 1e-8)
 
 
 class MinFreqFiltering:
