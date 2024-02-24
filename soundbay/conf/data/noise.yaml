@@ -1,6 +1,6 @@
 # @package _global_
 data:
-  label_names: ['Noise', 'Call']
+  label_names: ['Honk', 'Traffic', 'Minihonk', 'Creak', 'Motorcycle']
   batch_size: 64
   num_workers: 6
   sample_rate: 48000
