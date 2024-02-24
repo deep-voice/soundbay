@@ -192,6 +192,8 @@ def bg_from_non_overlap_calls(df: pd.DataFrame):
     Returns: a dataframe with bg calls taken from the gaps of the positive calls in a given file
     """
     bg_calls = []
+    # Sort by begin time to avoid negative call lengths and erroneously reverse times
+    df = df.sort_values(by='begin_time', ascending=True)
     for _, df_per_file in df.groupby(by='filename'):
         # df_per_file is already sorted by begin_time!
         df_per_file_copy = df_per_file.iloc[1:].copy()
