@@ -17,7 +17,7 @@ def download_files_from_s3(df, s3_path, local_dir):
 
 if __name__ == '__main__':
     csv_path = '/home/azureuser/soundbay/datasets/shaye_dataset/shaye_annotations_train_val.csv'
-    s3_path = 's3://deepvoice-user-uploads/shayetudor@gmail.com/dropbox/cods/'
+    s3_path = 's3://deepvoice-user-uploads/##/dropbox/cods/'
     output_dir = '/home/azureuser/soundbay/datasets/shaye_dataset/data/'
     df = pd.read_csv(csv_path)
     download_files_from_s3(df, s3_path, output_dir)
