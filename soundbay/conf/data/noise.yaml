@@ -3,35 +3,35 @@ data:
   label_names: ['Noise', 'Call']
   batch_size: 64
   num_workers: 6
-  sample_rate: 300000
-  data_sample_rate: 576000
-  max_freq: 150000
-  min_freq: 100000
-  n_fft: 2048
-  hop_length: 128
+  sample_rate: 48828
+  data_sample_rate: 48828
+  max_freq: 24000
+  min_freq: 0
+  n_fft: 1024
+  hop_length: 256
   train_dataset:
-    _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/porpoise_demo/splitted_data'
+    _target_: soundbay.data.NoBackGroundDataset
+    data_path: '../datasets/noise/Noise_wav/'
     mode: train
-    metadata_path: '../datasets/porpoise_demo/train_high_prob_only.csv'
+    metadata_path: '../datasets/noise/train_no_sirene.csv'
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
-    seq_length: 0.25
+    seq_length: 0.8
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     slice_flag: false
     split_metadata_by_label: no
-    margin_ratio: 0.5
+    margin_ratio: 0
   val_dataset:
-    _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/porpoise_demo/splitted_data'
+    _target_: soundbay.data.NoBackGroundDataset
+    data_path: '../datasets/noise/Noise_wav/'
     mode: val
-    metadata_path: '../datasets/porpoise_demo/val_high_prob_only.csv'
+    metadata_path: '../datasets/noise/val_no_sirene.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
-    seq_length: 0.25
+    seq_length: 0.8
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     slice_flag: true
