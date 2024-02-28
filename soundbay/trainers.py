@@ -173,7 +173,7 @@ class Trainer:
         torch.save(state_dict, self.output_path / checkpoint_path)
 
     def _load_checkpoint(self, checkpoint_path: Union[str, None], load_optimizer_state: bool):
-        """Load checkpoint.
+        """Load checkpoint, excluding the final layer if it does not match in size.
         Args:
             checkpoint_path (str): Checkpoint path to be loaded.
         """
@@ -181,9 +181,24 @@ class Trainer:
             return
         print('Loading checkpoint')
         state_dict = torch.load(checkpoint_path, map_location='cpu')
-        self.model.load_state_dict(state_dict["model"])
+
+        # Prepare model's state_dict for loading
+        model_state_dict = self.model.state_dict()
+
+        # Filter out the final classification layer from the pretrained weights
+        # assuming it's named 'fc' for ResNet models, adjust the name as necessary
+        pretrained_dict = {k: v for k, v in state_dict["model"].items() if
+                           k in model_state_dict and model_state_dict[k].size() == v.size()}
+
+        # Update current model state with the pretrained weights
+        model_state_dict.update(pretrained_dict)
+
+        # Load the updated state dict
+        self.model.load_state_dict(model_state_dict)
+
         if load_optimizer_state:
             self.epochs_trained = state_dict["epochs"]
             self.optimizer.load_state_dict(state_dict["optimizer"])
             if self.scheduler is not None:
                 self.scheduler.load_state_dict(state_dict["scheduler"])
+
