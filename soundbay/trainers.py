@@ -180,25 +180,27 @@ class Trainer:
         if checkpoint_path is None:
             return
         print('Loading checkpoint')
-        state_dict = torch.load(checkpoint_path, map_location='cpu')
+        checkpoint = torch.load(checkpoint_path, map_location='cpu')
+        state_dict = checkpoint["model"]
 
-        # Prepare model's state_dict for loading
+        # Get current model's state dict
         model_state_dict = self.model.state_dict()
 
-        # Filter out the final classification layer from the pretrained weights
-        # assuming it's named 'fc' for ResNet models, adjust the name as necessary
-        pretrained_dict = {k: v for k, v in state_dict["model"].items() if
-                           k in model_state_dict and model_state_dict[k].size() == v.size()}
+        # Remove weights for the final layer from the pretrained dict if they don't match
+        # This assumes the final layer's weights and bias are named 'fc.weight' and 'fc.bias'
+        for name in list(state_dict.keys()):
+            if name.startswith('fc.'):
+                if state_dict[name].shape != model_state_dict[name].shape:
+                    print(f"Skipping loading parameter: {name} due to size mismatch.")
+                    del state_dict[name]
 
-        # Update current model state with the pretrained weights
-        model_state_dict.update(pretrained_dict)
-
-        # Load the updated state dict
-        self.model.load_state_dict(model_state_dict)
+        # Load the state dict into the model, now excluding the final layer if needed
+        self.model.load_state_dict(state_dict, strict=False)
 
         if load_optimizer_state:
-            self.epochs_trained = state_dict["epochs"]
-            self.optimizer.load_state_dict(state_dict["optimizer"])
+            self.epochs_trained = checkpoint["epochs"]
+            self.optimizer.load_state_dict(checkpoint["optimizer"])
             if self.scheduler is not None:
-                self.scheduler.load_state_dict(state_dict["scheduler"])
+                self.scheduler.load_state_dict(checkpoint["scheduler"])
+
 
