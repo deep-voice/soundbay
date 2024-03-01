@@ -6,14 +6,15 @@ s3_prefix = "daiane.anzolin@oceanwhispers.org/dropbox/DV_OW/"
 folder_path = "../datasets/Ocean_whispers/wavs"
 batch_size = 5  # Number of files to process in each batch
 file_list_path = "../datasets/Ocean_whispers/file_list.txt"
+checkpoint_path = "../checkpoints/hpgcnr6f/best.pth"
 
 # Initialize the S3 client
 s3_client = boto3.client("s3")
 
 # Function to perform inference on a batch of WAV files
-def perform_inference(file_paths):
+def perform_inference(file_paths, checkpoint_path):
     for wav_file_path in file_paths:
-        command = f"python inference.py --config-name runs/inference_single_audio experiment.checkpoint.path=\"../datasets/Ocean_whispers/best.pth\" data.test_dataset.file_path=\"{wav_file_path}\""
+        command = f"python inference.py --config-name runs/inference_single_audio experiment.checkpoint.path={checkpoint_path} data.test_dataset.file_path=\"{wav_file_path}\""
         os.system(command)
         # os.remove(wav_file_path)  # Delete the processed file
 
@@ -44,4 +45,4 @@ for i in range(0, len(s3_files), batch_size):
 
     # Perform inference on the downloaded batch
     batch_file_paths = [os.path.join(folder_path, os.path.basename(file_path)) for file_path in batch_files]
-    perform_inference(batch_file_paths)
+    perform_inference(batch_file_paths, checkpoint_path)
