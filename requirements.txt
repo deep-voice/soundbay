@@ -20,3 +20,4 @@ matplotlib>=2.0.0
 audiomentations==0.26.0
 click==8.*
 botocore==1.*
+anyio==4.*
