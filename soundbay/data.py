@@ -80,7 +80,7 @@ class BaseDataset(Dataset):
         def get_parent_path(path, path_hierarchy):
             parent_path_parts = path.parts[:-1]
             assert len(parent_path_parts) > path_hierarchy, \
-                f"Make sure path_hierarchy={path_hierarchy} is smaller than actual files hierarchy {len(parent_path_parts)=}"
+                f"Make sure path_hierarchy={path_hierarchy} is smaller than actual files hierarchy len(parent_path_parts)={len(parent_path_parts)}"
             return '/'.join(parent_path_parts[len(parent_path_parts) - path_hierarchy:])
 
         audio_paths = list(data_path.rglob('*.wav'))
