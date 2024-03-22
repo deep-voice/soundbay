@@ -76,8 +76,8 @@ class Trainer:
             self.train_epoch(epoch)
             self.epochs_trained += 1
             self.eval_epoch(epoch, 'val')
-            if epoch % self.train_as_val_interval == 0:
-                self.eval_epoch(epoch, 'train_as_val')
+            # if epoch % self.train_as_val_interval == 0:
+            #     self.eval_epoch(epoch, 'train_as_val')
             # save checkpoint
             loss = self.logger.loss_meter_val['loss'].summarize_epoch()
             if loss < best_loss:
