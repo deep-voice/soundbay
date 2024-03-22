@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - ../data: fb_vt
+  - ../augmentations: _augmentations
+  - ../preprocessors: _mel_preprocessors
+  - ../model: resnet_18_2d
+  - ../optim: defaults
+  - ../experiment: defaults

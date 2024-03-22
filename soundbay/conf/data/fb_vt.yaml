@@ -1,0 +1,44 @@
+# @package _global_
+data:
+  label_names: ['Balaenoptera physalus', 'Delphinus delphis', 'Globicephala melas',
+       'Grampus griseus', 'Orcinus orca', 'Physeter macrocephalus',
+       'Stenella coeruleoalba', 'Tursiops truncatus',
+       'probable Sciaena umbra and Snapping shrimps']
+  batch_size: 64
+  num_workers: 6
+  sample_rate: 48000
+  data_sample_rate: 48000
+  max_freq: 24000
+  min_freq: 0
+  n_fft: 1024
+  hop_length: 256
+  train_dataset:
+    _target_: soundbay.data.NoBackGroundDataset
+    data_path: '../datasets/fb_vt/data_48kHz/'
+    mode: train
+    metadata_path: '../datasets/fb_vt/train.csv'
+    augmentations_p: 0.8
+    augmentations: ${_augmentations}
+    preprocessors: ${_preprocessors}
+    seq_length: 0.8
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: false
+    split_metadata_by_label: no
+    margin_ratio: 0
+    path_hierarchy: 1
+  val_dataset:
+    _target_: soundbay.data.NoBackGroundDataset
+    data_path: '../datasets/fb_vt/data_48kHz/'
+    mode: val
+    metadata_path: '../datasets/fb_vt/val.csv'
+    augmentations_p: 0
+    augmentations: null
+    preprocessors: ${_preprocessors}
+    seq_length: 1.0
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: true
+    split_metadata_by_label: no
+    margin_ratio: 0
+    path_hierarchy: 1
