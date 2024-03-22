@@ -11,7 +11,7 @@ data:
   max_freq: 24000
   min_freq: 0
   n_fft: 1024
-  hop_length: 256
+  hop_length: 128
   train_dataset:
     _target_: soundbay.data.NoBackGroundDataset
     data_path: '../datasets/fb_vt/data_48kHz/'
