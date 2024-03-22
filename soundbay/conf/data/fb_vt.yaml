@@ -41,4 +41,4 @@ data:
     slice_flag: true
     split_metadata_by_label: no
     margin_ratio: 0
-    path_hierarchy: 1
+    path_hierarchy: 0
