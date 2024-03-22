@@ -2,20 +2,20 @@ begin_time,end_time,filename,call_length,label,bit depth,Category,Species,sample
 0.0,14.976,15_tre,14.976,0,16,Cetacei,Balaenoptera physalus,2000
 0.0,14.976,15_uno,14.976,0,16,Cetaceans,Balaenoptera physalus,2000
 0.0,14.976,15_quattordici,14.976,0,16,Cetacei,Balaenoptera physalus,2000
-0.0,6.0,cetaceans_Delphinus delphis_sicily channel_48000_16_10_3,6.0,1,16,Cetaceans,Delphinus delphis,48000
-0.0,14.994285714285715,15_quarantotto,14.994285714285715,1,16,Cetacei,Delphinus delphis,44100
-0.0,6.0,cetaceans_Delphinus delphis_sicily channel_300000_16_10_6,6.0,1,16,Cetaceans,Delphinus delphis,300000
+0.0,6.0,cetaceans_Delphinus-delphis_sicily-channel_48000_16_10_3,6.0,1,16,Cetaceans,Delphinus delphis,48000
+0.0,14.994285714285716,15_quarantotto,14.994285714285716,1,16,Cetacei,Delphinus delphis,44100
+0.0,6.0,cetaceans_Delphinus-delphis_sicily-channel_300000_16_10_6,6.0,1,16,Cetaceans,Delphinus delphis,300000
 0.0,14.999893333333333,15_ventuno,14.999893333333333,1,16,Cetacei,Delphinus delphis,300000
-0.0,6.0,cetaceans_Delphinus delphis_sicily channel_48000_16_10_16,6.0,1,16,Cetaceans,Delphinus delphis,48000
-0.0,6.0,cetacean_Globicephala melas_ligurian sea_44100_16_10_9,6.0,2,16,Cetaceans,Globicephala melas,44100
-0.0,6.0,cetacean_Globicephala melas_ligurian sea_44100_16_10_11,6.0,2,16,Cetaceans,Globicephala melas,44100
-0.0,6.0,cetacean_Globicephala melas_ligurian sea_44100_16_10_6,6.0,2,16,Cetaceans,Globicephala melas,44100
+0.0,6.0,cetaceans_Delphinus-delphis_sicily-channel_48000_16_10_16,6.0,1,16,Cetaceans,Delphinus delphis,48000
+0.0,6.0,cetacean_Globicephala-melas_ligurian-sea_44100_16_10_9,6.0,2,16,Cetaceans,Globicephala melas,44100
+0.0,6.0,cetacean_Globicephala-melas_ligurian-sea_44100_16_10_11,6.0,2,16,Cetaceans,Globicephala melas,44100
+0.0,6.0,cetacean_Globicephala-melas_ligurian-sea_44100_16_10_6,6.0,2,16,Cetaceans,Globicephala melas,44100
 0.0,14.989125550462838,15_quaranta,14.989125550462838,3,16,Cetacei,Grampus griseus,22250
-0.0,6.0,cetaceans_Orcinus orca_norway_44100_16_10_8,6.0,4,16,Cetaceans,Orcinus orca,44100
-0.0,6.0,cetaceans_Orcinus orca_norway_44100_16_10_5,6.0,4,16,Cetaceans,Orcinus orca,44100
-0.0,6.0,cetaceans_Orcinus orca_norway_44100_16_10_10,6.0,4,16,Cetaceans,Orcinus orca,44100
+0.0,6.0,cetaceans_Orcinus-orca_norway_44100_16_10_8,6.0,4,16,Cetaceans,Orcinus orca,44100
+0.0,6.0,cetaceans_Orcinus-orca_norway_44100_16_10_5,6.0,4,16,Cetaceans,Orcinus orca,44100
+0.0,6.0,cetaceans_Orcinus-orca_norway_44100_16_10_10,6.0,4,16,Cetaceans,Orcinus orca,44100
 0.0,6.0,10_tre,6.0,5,16,Cetaceans,Physeter macrocephalus,48000
-0.0,14.994285714285715,15_quindici,14.994285714285715,5,16,Cetacei,Physeter macrocephalus,44100
+0.0,14.994285714285716,15_quindici,14.994285714285716,5,16,Cetacei,Physeter macrocephalus,44100
 0.0,6.0,10_diciannove,6.0,6,16,Cetaceans,Stenella coeruleoalba,22254
 0.0,6.0,10_undici,6.0,6,16,Cetaceans,Stenella coeruleoalba,22254
 0.0,6.0,10_quarantasei,6.0,6,16,Cetaceans,Stenella coeruleoalba,22254
@@ -23,9 +23,9 @@ begin_time,end_time,filename,call_length,label,bit depth,Category,Species,sample
 0.0,6.0,10_otto,6.0,6,16,Cetaceans,Stenella coeruleoalba,22254
 0.0,6.0,10_dodici,6.0,6,16,Cetaceans,Stenella coeruleoalba,22254
 0.0,6.0,10_ventitre,6.0,6,16,Cetaceans,Stenella coeruleoalba,22254
-0.0,6.0,Cetaceans_Tursiops truncatus_Tyrrhenian Sea_81920_16_10_4,6.0,7,16,Cetaceans,Tursiops truncatus,81920
-0.0,6.0,Cetaceans_Tursiops truncatus_Tyrrhenian Sea_81920_16_10_13,6.0,7,16,Cetaceans,Tursiops truncatus,81920
-0.0,14.994285714285715,15_quarantasette,14.994285714285715,7,16,Cetacei,Tursiops truncatus,44100
-0.0,6.0,Cetaceans_Tursiops truncatus_Tyrrhenian Sea_81600_16_10_1,6.0,7,16,Cetaceans,Tursiops truncatus,81600
-0.0,14.994285714285715,15_venticinque,14.994285714285715,8,16,Pesci,probable Sciaena umbra and Snapping shrimps,44100
-0.0,14.994285714285715,15_trentatre,14.994285714285715,8,16,Pesci,probable Sciaena umbra and Snapping shrimps,44100
+0.0,6.0,Cetaceans_Tursiops-truncatus_Tyrrhenian-Sea_81920_16_10_4,6.0,7,16,Cetaceans,Tursiops truncatus,81920
+0.0,6.0,Cetaceans_Tursiops-truncatus_Tyrrhenian-Sea_81920_16_10_13,6.0,7,16,Cetaceans,Tursiops truncatus,81920
+0.0,14.994285714285716,15_quarantasette,14.994285714285716,7,16,Cetacei,Tursiops truncatus,44100
+0.0,6.0,Cetaceans_Tursiops-truncatus_Tyrrhenian-Sea_81600_16_10_1,6.0,7,16,Cetaceans,Tursiops truncatus,81600
+0.0,14.994285714285716,15_venticinque,14.994285714285716,8,16,Pesci,probable Sciaena umbra and Snapping shrimps,44100
+0.0,14.994285714285716,15_trentatre,14.994285714285716,8,16,Pesci,probable Sciaena umbra and Snapping shrimps,44100
