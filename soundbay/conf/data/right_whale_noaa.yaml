@@ -26,9 +26,9 @@ data:
     path_hierarchy: 0
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/right_whale_noaa/val_high_prob.csv'
+    data_path: '../datasets/right_whale_noaa/nefsc_sbnms_200903_nopp6_ch10/source-audio/'
     mode: val
-    metadata_path: '../datasets/right_whale_noaa/nefsc_sbnms_200903_nopp6_ch10/source-audio/'
+    metadata_path: '../datasets/right_whale_noaa/val_high_prob.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
