@@ -40,7 +40,23 @@ class BaseDataset(Dataset):
         which means all the audio files are flattened in the same folder. If the value is 1, the audio files are
         organized in one folder per class, and so on. The annotations in the metadata has to be aligned with the path
         hierarchy, and to include the parent folder names in the filename column.
-
+        Example:
+            path_hierarchy = 0:
+            - main_folder
+                - file1.wav
+                - file2.wav
+                - file3.wav
+            path_hierarchy = 1:
+            - main_folder
+                - sub_folder1
+                    - file1.wav
+                    - file5.wav
+                - sub_folder2
+                    - file2.wav
+                    - file4.wav
+                - sub_folder3
+                    - file3.wav
+                    - file8.wav
         Output:
         ClassifierDataset Object - inherits from Dataset object in PyTorch package
         """
