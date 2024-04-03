@@ -1,11 +1,9 @@
 import random
 from itertools import starmap, repeat
 from pathlib import Path
-from copy import deepcopy
 from typing import Union
 from decimal import Decimal
 
-import librosa
 import numpy as np
 import pandas as pd
 import soundfile as sf
@@ -17,8 +15,6 @@ from omegaconf import DictConfig
 from torch.utils.data import Dataset
 from torchvision import transforms
 from audiomentations import Compose
-
-import matplotlib.pyplot as plt
 
 
 class BaseDataset(Dataset):
