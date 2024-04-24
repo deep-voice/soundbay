@@ -3,7 +3,7 @@ model:
   criterion:
     _target_: torch.nn.CrossEntropyLoss
   model:
-    _target_: models.ResNet1Channel
+    _target_: models.ResNetNChannel
     layers: [3, 4, 6, 3]
     block: torchvision.models.resnet.Bottleneck
     num_classes: 2

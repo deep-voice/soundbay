@@ -8,9 +8,9 @@ from torchvision.models import squeezenet
 import torchvision.models as models
 
 
-class ResNet1Channel(ResNet):
+class ResNetNChannel(ResNet):
     """ resnet model for 1 channel ("grayscale") """
-    def __init__(self, block, *args, **kwargs):
+    def __init__(self, block, in_channels=1, *args, **kwargs):
         """
         initializes the block as a class instance
         Input:
@@ -20,9 +20,14 @@ class ResNet1Channel(ResNet):
         _IN_PLANES = 64  # use 64 instead of self.inplanes, there is a nasty assignment in the original code to 64
         block = self._choose_block_class(block)
         super().__init__(block, *args, **kwargs)
-        self.conv1 = nn.Conv2d(1, _IN_PLANES, kernel_size=7, stride=2, padding=3,
-                               bias=False)
-
+        if in_channels == 1:
+            self.conv1 = nn.Conv2d(1, _IN_PLANES, kernel_size=7, stride=2, padding=3, bias=False)
+        else:
+            # most likely we'de like to use one or 2 layers of group conv before we fuse their information
+            self.conv1 = nn.Sequential(
+                nn.Conv2d(in_channels, _IN_PLANES, groups=in_channels, kernel_size=3, padding=1),
+                nn.Conv2d(_IN_PLANES, _IN_PLANES, kernel_size=3, padding=1, bias=False),
+            )
     @staticmethod
     def _choose_block_class(block):
         class_name = block.split('.')[-1]
@@ -126,12 +131,12 @@ class VGG19Jasco(VGG1Channel):
             num_classes=num_classes, init_weights=init_weights)
 
 
-class GoogleResNet50(ResNet1Channel):
+class GoogleResNet50(ResNetNChannel):
     def __init__(self, *args, **kwargs):
         super().__init__('torchvision.models.resnet.Bottleneck', *args, layers=[3, 4, 6, 3], **kwargs)
 
 
-class OrcaLabResNet18(ResNet1Channel):
+class OrcaLabResNet18(ResNetNChannel):
     '''
     Resnet18 except without max-pool after the first residual layer (first module)
     '''
