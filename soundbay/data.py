@@ -327,10 +327,14 @@ class NoBackGroundDataset(BaseDataset):
         return audio
 
 
+def normalizer(a):
+    return (a - a.min()) / (a.max() - a.min())
+
+
 class PeakNormalize:
     """Convert array to lay between 0 to 1"""
     def __init__(self):
-        self.norm = lambda a: (a - a.min()) / (a.max() - a.min())
+        self.norm = normalizer
 
     def __call__(self, sample):
         if isinstance(sample, list):

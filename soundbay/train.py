@@ -177,7 +177,7 @@ def main(validate_args) -> None:
     
     args = deepcopy(validate_args)
     OmegaConf.resolve(validate_args)
-    Config(**validate_args)
+    Config(**OmegaConf.to_object(validate_args))
     # Set logger
     if args.experiment.debug:
         _logger = Mock()
