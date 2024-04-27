@@ -9,7 +9,8 @@ from soundbay.models import ResNetNChannel, GoogleResNet50, OrcaLabResNet18, Chr
     GoogleResNet50withPCEN, SqueezeNet1D, ResNet182D, Squeezenet2D
 
 
-@pytest.fixture(scope="module", params=[ResNetNChannel('torchvision.models.resnet.Bottleneck', [3, 4, 6, 3]),
+@pytest.fixture(scope="module", params=[ResNetNChannel('torchvision.models.resnet.Bottleneck',
+                                                       in_channels=1, layers=[3, 4, 6, 3]),
                                         GoogleResNet50(),
                                         OrcaLabResNet18(),
                                         # ChristophCNN(),
