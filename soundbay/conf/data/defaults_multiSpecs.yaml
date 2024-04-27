@@ -8,7 +8,7 @@ data:
   min_freq: 0
   max_freq: 8000
   n_fft: [512, 1024]
-  hop_length: [128, 128]
+  hop_length: [128, 256]
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
     data_path: './tests/assets/data/'

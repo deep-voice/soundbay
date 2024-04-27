@@ -389,14 +389,14 @@ class MultiSpecFusion:
     """
     Given a list of spectograms, this class resize them all into the biggest spec's spatial dims, and them concat them all together
     """
-    def __init__(self, dim=0):
+    def __init__(self, dim=1):
         self.dim = dim
 
     def __call__(self, specs_list):
         # resize all spectrograms to the biggest spec's spatial dims, then concat them all on dim=self.dim
         final_h, final_w = max([spec.shape[-2:] for spec in specs_list])
         spectograms = torch.concat([torch.nn.functional.interpolate(s.unsqueeze(0), size=(final_h, final_w)) for s in specs_list], dim=self.dim)
-        return spectograms
+        return spectograms.squeeze()
 
 
 class MinFreqFiltering:
