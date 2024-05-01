@@ -55,31 +55,6 @@ def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
         return softmax_activation
 
 
-def predict(model: torch.nn.Module, data_loader: Generator[torch.tensor, None, None],
-            device: torch.device = torch.device('cpu'),
-            threshold: Union[float, None] = None, selected_class_idx: int = 1
-            ) -> np.ndarray:
-    """
-   calculates the predicted probability to belong to a class for all the samples in the dataset given a specific model
-    Input:
-        model: the wanted trained model for the inference
-        data_loader: dataloader class, containing the dataset location, metadata, batch size etc.
-        device: cpu or gpu - torch.device()
-        threshold: a number between 0 and 1 to decide if the classification is positive
-        selected_class_idx: the wanted class for prediction. must be bound by the number of classes in the model
-
-    Output:
-        prediction: binary prediction given the threshold, the model and the wanted class
-    """
-    if threshold is None:
-        predicted_probability = predict_proba(model, data_loader, device)
-        return predicted_probability
-    else:
-        predicted_probability = predict_proba(model, data_loader, device,
-                                              selected_class_idx=selected_class_idx).reshape((-1, 1))
-        return (predicted_probability > threshold).reshape((-1, 1))
-
-
 def load_model(model_params, checkpoint_state_dict):
     """
     load_model receives model params and state dict, instantiating a model and loading trained parameters.
@@ -94,6 +69,7 @@ def load_model(model_params, checkpoint_state_dict):
     model = models_dict[model_params.pop('_target_')](**model_params)
     model.load_state_dict(checkpoint_state_dict)
     return model
+
 
 def infer_multi_file(
         device,
