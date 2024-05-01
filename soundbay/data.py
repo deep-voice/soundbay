@@ -73,8 +73,8 @@ class BaseDataset(Dataset):
             Output:
             audio_dict contains references to audio paths given name from metadata
         """
-        audio_paths = data_path.rglob('*.wav')
-        return {x.name.replace('.wav', ''): x for x in audio_paths}
+        audio_paths = data_path.rglob('*.[wW][aA][vV]')
+        return {x.name.replace('.wav', '').replace('.WAV', ''): x for x in audio_paths}
 
     def _preprocess_metadata(self, slice_flag=False):
         """
