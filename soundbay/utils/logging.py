@@ -174,6 +174,8 @@ class Logger:
 
         # Spectrograms batch
         artifact_spec = torch.squeeze(audio).detach().cpu().numpy()
+        if artifact_spec.shape[1] > 1 and len(artifact_spec.shape)==4:  # multiSpec mode
+            artifact_spec = artifact_spec[:, 0, ...]  # save only the first
         specs = []
         for artifact_id in range(artifact_spec.shape[0]):
             ax = plt.subplots(nrows=1, ncols=1)

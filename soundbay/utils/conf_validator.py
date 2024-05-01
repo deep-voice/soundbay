@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Union
 from pydantic import BaseModel, validator
 from conf_dict import datasets_dict, criterion_dict, models_dict 
 
@@ -11,8 +11,8 @@ class Dataset(BaseModel):
     max_freq: int
 
     min_freq: int
-    n_fft: int
-    hop_length: int
+    n_fft: Union[int, list]
+    hop_length: Union[int, list]
     train_dataset: dict
     val_dataset: dict
     class Config:

@@ -73,8 +73,8 @@ class BaseDataset(Dataset):
             Output:
             audio_dict contains references to audio paths given name from metadata
         """
-        audio_paths = data_path.rglob('*.wav')
-        return {x.name.replace('.wav', ''): x for x in audio_paths}
+        audio_paths = data_path.rglob('*.[wW][aA][vV]')
+        return {x.name.replace('.wav', '').replace('.WAV', ''): x for x in audio_paths}
 
     def _preprocess_metadata(self, slice_flag=False):
         """
@@ -284,7 +284,7 @@ class ClassifierDataset(BaseDataset):
             assert channel > 0, f"channel as to be a positive integer, got {channel}"
             data = data[:, channel - 1]
         elif channel is None and data.ndim > 1:
-            data = data[:, 0] # when channel is not specified, take the first channel
+            data = data[:, 0]  # when channel is not specified, take the first channel
         if data.shape[0] < 1:
             raise ValueError(f"Audio segment is empty. {path_to_file}: "
                              f"{start_time}, {start_time + requested_seq_length}")
@@ -327,12 +327,76 @@ class NoBackGroundDataset(BaseDataset):
         return audio
 
 
+def normalizer(a):
+    return (a - a.min()) / (a.max() - a.min())
+
+
 class PeakNormalize:
     """Convert array to lay between 0 to 1"""
+    def __init__(self):
+        self.norm = normalizer
 
     def __call__(self, sample):
+        if isinstance(sample, list):
+            return [self.norm(s) for s in sample]
+        return self.norm(sample)
 
-        return (sample - sample.min()) / (sample.max() - sample.min())
+
+class MultiSpectrogram:
+    """
+    Given an audio signal, this class creates multiple spectrograms that differ from one another by their specs
+    """
+
+    def __init__(self, n_ffts, hop_lengths):
+        self.n_ffts = n_ffts
+        self.hop_lengths = hop_lengths
+
+    def __call__(self, audio):
+        spectograms = []
+        for (n_fft, hop_length) in zip(self.n_ffts, self.hop_lengths):
+            transform = torchaudio.transforms.Spectrogram(n_fft=n_fft, hop_length=hop_length)
+            spectograms.append(transform(audio))
+        return spectograms
+
+
+class MultiMelSpectrogram:
+    """
+    Given an audio signal, this class creates multiple MELspectrograms that differ from one another by their specs
+    """
+
+    def __init__(self, n_ffts, hop_lengths, sample_rate, win_length, n_mels, pad_mode, f_min, f_max):
+        self.n_ffts = n_ffts
+        self.hop_lengths = hop_lengths
+        self.sample_rate = sample_rate
+        self.win_lengths = win_length
+        self.pad_mode = pad_mode
+        self.n_mels = n_mels
+        self.f_min = f_min
+        self.f_max = f_max
+
+    def __call__(self, audio):
+        spectograms = []
+        for (n_fft, hop_length, win_length) in zip(self.n_ffts, self.hop_lengths, self.win_lengths):
+            transform = torchaudio.transforms.MelSpectrogram(n_fft=n_fft, hop_length=hop_length,
+                                                             sample_rate=self.sample_rate, win_length=win_length,
+                                                             pad_mode=self.pad_mode, n_mels=self.n_mels,
+                                                             f_min=self.f_min, f_max=self.f_max)
+            spectograms.append(transform(audio))
+        return spectograms
+
+
+class MultiSpecFusion:
+    """
+    Given a list of spectograms, this class resize them all into the biggest spec's spatial dims, and them concat them all together
+    """
+    def __init__(self, dim=1):
+        self.dim = dim
+
+    def __call__(self, specs_list):
+        # resize all spectrograms to the biggest spec's spatial dims, then concat them all on dim=self.dim
+        final_h, final_w = max([spec.shape[-2:] for spec in specs_list])
+        spectograms = torch.concat([torch.nn.functional.interpolate(s.unsqueeze(0), size=(final_h, final_w)) for s in specs_list], dim=self.dim)
+        return spectograms.squeeze()
 
 
 class MinFreqFiltering:
@@ -344,7 +408,7 @@ class MinFreqFiltering:
         sample_rate - int
 
     output:
-        spectrogram - pytorch tensor (3-D array)
+        spectrogram - pytorch tensor (3-D array) or list of tensors (if we are working with multiple spectrograms)
     """
 
     def __init__(self, min_freq_filtering, sample_rate):
@@ -361,10 +425,22 @@ class MinFreqFiltering:
 
         return sample
 
-    def __call__(self, sample):
+    def edit_multi_spectrogram_axis(self, samples):
+        # added support for list of spectrograms, if we are working with multi-spectrogram
+        return [self.edit_spectrogram_axis(sample) for sample in samples]
 
+    def __call__(self, sample):
+        if isinstance(sample, list):
+            return self.edit_multi_spectrogram_axis(sample)
         return self.edit_spectrogram_axis(sample)
 
+
+class MultiSpecAmplitudeToDB:
+    def __init__(self):
+        pass
+
+    def __call__(self, samples):
+        return [torchaudio.transforms.AmplitudeToDB()(sample) for sample in samples]
 
 class UnitNormalize:
     """Remove mean and divide by std to normalize samples"""

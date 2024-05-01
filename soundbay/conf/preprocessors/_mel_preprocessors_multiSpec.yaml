@@ -1,0 +1,22 @@
+# @package _global_
+_preprocessors:
+  spectrogram:
+    _target_: soundbay.data.MultiMelSpectrogram
+    n_ffts: ${data.n_fft}
+    hop_lengths: ${data.hop_length}
+    sample_rate: ${data.sample_rate}
+    win_length: ${data.n_fft}
+    pad_mode: 'constant'
+    n_mels: 64
+    f_min: ${data.min_freq}
+    f_max: ${data.max_freq}
+  min_freq_filtering:
+    _target_: soundbay.data.MinFreqFiltering
+    min_freq_filtering: ${data.min_freq}
+    sample_rate: ${data.sample_rate}
+  amplitude_2_db:
+    _target_: soundbay.data.MultiSpecAmplitudeToDB
+  peak_norm:
+    _target_: soundbay.data.PeakNormalize
+  stack:
+    _target_: soundbay.data.MultiSpecFusion
