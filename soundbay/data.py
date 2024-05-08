@@ -502,7 +502,8 @@ class InferenceDataset(Dataset):
             for channel_num in range(sf.info(file).channels):
                 metadata = pd.DataFrame({'filename': [file.name] * len(file_start_time),
                                          'channel': [channel_num] * len(file_start_time),
-                                         'begin_time': file_start_time})
+                                         'begin_time': file_start_time,
+                                         'end_time': file_start_time + self.seq_length})
                 all_data_frames.append(metadata)
         metadata = pd.concat(all_data_frames, ignore_index=True)
         return metadata

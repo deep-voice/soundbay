@@ -71,7 +71,7 @@ def load_model(model_params, checkpoint_state_dict):
     return model
 
 
-def infer_multi_file(
+def infer_with_metadata(
         device,
         batch_size,
         dataset_args,
@@ -79,8 +79,6 @@ def infer_multi_file(
         checkpoint_state_dict,
         output_path,
         model_name,
-        save_raven,
-        threshold
 ):
     """
         This functions takes the ClassifierDataset dataset and produces the model prediction to a file
@@ -110,7 +108,7 @@ def infer_multi_file(
     # predict
     predict_prob = predict_proba(model, test_dataloader, device, None)
 
-    results_df = pandas.DataFrame(predict_prob)
+    results_df = pandas.DataFrame(predict_prob)  # add class names
     if hasattr(test_dataset, 'metadata'):
         concat_dataset = pandas.concat([test_dataset.metadata, results_df],
                                        axis=1)  # TODO: make sure metadata column order matches the prediction df order
@@ -133,7 +131,7 @@ def infer_multi_file(
     return
 
 
-def infer_single_file(
+def infer_without_metadata(
         device,
         batch_size,
         dataset_args,
@@ -157,44 +155,29 @@ def infer_single_file(
     # load model
     model = load_model(model_args, checkpoint_state_dict).to(device)
     # Check how many channels
-    num_channels = sf.info(dataset_args.file_path).channels
     all_channel_list = []
     all_channel_raven_list = []
     dataset_args = dict(dataset_args)
     dataset_type = dataset_args.pop('_target_')
-    for channel in range(num_channels):
-        # set paths and create dataset
-        # TODO it's pretty weird to iterate and create dataset for a single file,
-        #  the better solution imo should be an inference dataset that can handle multiple channels
-        #  and create num samples equal to num channels
-        test_dataset = datasets_dict[dataset_type](channel=channel, **dataset_args)
-        test_dataloader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size, num_workers=0,
-                                     pin_memory=False)
+    test_dataset = datasets_dict[dataset_type](**dataset_args)
+    test_dataloader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size, num_workers=0,
+                                 pin_memory=False)
 
-        # predict
-        predict_prob = predict_proba(model, test_dataloader, device, None)
+    # predict
+    predict_prob = predict_proba(model, test_dataloader, device, None)
+    results_df = pandas.DataFrame(predict_prob)
 
-        results_df = pandas.DataFrame(predict_prob)
-        if hasattr(test_dataset, 'metadata'):
-            concat_dataset = pandas.concat([test_dataset.metadata, results_df], axis=1) #TODO: make sure metadata column order matches the prediction df order
-            metrics_dict = Logger.get_metrics_dict(concat_dataset["label"].values.tolist(),
-                                                   np.argmax(predict_prob, axis=1).tolist(),
-                                                   results_df.values)
-            print(metrics_dict)
-        else:
-            concat_dataset = results_df
-            print("Notice: The dataset has no ground truth labels")
+    concat_dataset = pandas.concat([test_dataset.metadata, results_df], axis=1)
+    # create raven file
+    if save_raven:
+        all_channel_raven_list.append(
+            inference_csv_to_raven(results_df, predict_prob.shape[1], dataset_args['seq_length'], 1, threshold, 'call',
+                                   channel, dataset_args['data_sample_rate'] // 2)
+        )
 
-        # create raven file
-        if save_raven:
-            all_channel_raven_list.append(
-                inference_csv_to_raven(results_df, predict_prob.shape[1], dataset_args['seq_length'], 1, threshold, 'call',
-                                       channel, dataset_args['data_sample_rate'] // 2)
-            )
-
-        # add to general inference result
-        concat_dataset.insert(0, 'channel', [channel + 1] * len(concat_dataset))
-        all_channel_list.append(concat_dataset)
+    # add to general inference result
+    concat_dataset.insert(0, 'channel', [channel + 1] * len(concat_dataset))
+    all_channel_list.append(concat_dataset)
 
     #save file
     dataset_name = Path(test_dataset.metadata_path).stem
@@ -235,17 +218,15 @@ def inference_to_file(
         output_path: directory to save the prediction file
     """
     if dataset_args._target_.endswith('ClassifierDataset'):
-        infer_multi_file(device,
+        infer_with_metadata(device,
                          batch_size,
                          dataset_args,
                          model_args,
                          checkpoint_state_dict,
                          output_path,
-                         model_name,
-                         save_raven,
-                         threshold)
+                         model_name)
     elif dataset_args._target_.endswith('InferenceDataset'):
-        infer_single_file(device,
+        infer_without_metadata(device,
                           batch_size,
                           dataset_args,
                           model_args,
