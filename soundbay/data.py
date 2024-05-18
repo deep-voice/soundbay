@@ -1,11 +1,9 @@
 import random
 from itertools import starmap, repeat
 from pathlib import Path
-from copy import deepcopy
 from typing import Union
 from decimal import Decimal
 
-import librosa
 import numpy as np
 import pandas as pd
 import soundfile as sf
@@ -18,8 +16,6 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 from audiomentations import Compose
 
-import matplotlib.pyplot as plt
-
 
 class BaseDataset(Dataset):
     """
@@ -27,7 +23,7 @@ class BaseDataset(Dataset):
     """
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, data_sample_rate=44100, sample_rate=44100, mode="train",
-                 slice_flag=False, margin_ratio=0, split_metadata_by_label=False):
+                 slice_flag=False, margin_ratio=0, split_metadata_by_label=False, path_hierarchy: int = 0):
         """
         __init__ method initiates ClassifierDataset instance:
         Input:
@@ -36,11 +32,31 @@ class BaseDataset(Dataset):
         augmentations - list of classes audiogemtations
         augmentations_p - array of probabilities (float64)
         preprocessors - list of classes from preprocessors (TBD function)
-
+        path_hierarchy - enables working with data that is organized in a hierarchy of folders. The default value is 0,
+        which means all the audio files are flattened in the same folder. If the value is 1, the audio files are
+        organized in one folder per class, and so on. The annotations in the metadata has to be aligned with the path
+        hierarchy, and to include the parent folder names in the filename column.
+        Example:
+            path_hierarchy = 0:
+            - main_folder
+                - file1.wav
+                - file2.wav
+                - file3.wav
+            path_hierarchy = 1:
+            - main_folder
+                - sub_folder1
+                    - file1.wav
+                    - file5.wav
+                - sub_folder2
+                    - file2.wav
+                    - file4.wav
+                - sub_folder3
+                    - file3.wav
+                    - file8.wav
         Output:
         ClassifierDataset Object - inherits from Dataset object in PyTorch package
         """
-        self.audio_dict = self._create_audio_dict(Path(data_path))
+        self.audio_dict = self._create_audio_dict(Path(data_path), path_hierarchy=path_hierarchy)
         self.metadata_path = metadata_path
         self.dtype_dict = {'filename': 'str'}
         metadata = pd.read_csv(self.metadata_path, dtype=self.dtype_dict)
@@ -65,7 +81,7 @@ class BaseDataset(Dataset):
             metadata = metadata[metadata['split_type'] == mode]
         return metadata
 
-    def _create_audio_dict(self, data_path: Path) -> dict:
+    def _create_audio_dict(self, data_path: Path, path_hierarchy=0) -> dict:
         """
             create reference dict to extract audio files from metadata annotation
             Input:
@@ -73,8 +89,15 @@ class BaseDataset(Dataset):
             Output:
             audio_dict contains references to audio paths given name from metadata
         """
-        audio_paths = data_path.rglob('*.wav')
-        return {x.name.replace('.wav', ''): x for x in audio_paths}
+        def get_parent_path(path, path_hierarchy):
+            parent_path_parts = path.parts[:-1]
+            assert len(parent_path_parts) > path_hierarchy, \
+                (f"Make sure path_hierarchy:{path_hierarchy} is smaller than actual files hierarchy "
+                 f"{len(parent_path_parts)}")
+            return '/'.join(parent_path_parts[len(parent_path_parts) - path_hierarchy:])
+
+        audio_paths = list(data_path.rglob('*.wav'))
+        return {f'{get_parent_path(x, path_hierarchy)}/{x.name[:-4]}'.strip('/'): x for x in audio_paths}
 
     def _preprocess_metadata(self, slice_flag=False):
         """
@@ -332,7 +355,7 @@ class PeakNormalize:
 
     def __call__(self, sample):
 
-        return (sample - sample.min()) / (sample.max() - sample.min())
+        return (sample - sample.min()) / (sample.max() - sample.min() + 1e-8)
 
 
 class MinFreqFiltering:
