@@ -1,0 +1,37 @@
+# @package _global_
+data:
+  label_names: ['bg', 'call']
+  batch_size: 100
+  num_workers: 10
+  sample_rate: 16000
+  data_sample_rate: 44100
+  min_freq: 0
+  max_freq: 8000
+  n_fft: 1024
+  hop_length: 256
+  train_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: '/home/azureuser/soundbay/datasets/shaye_dataset/shaye_cods_data/'
+    mode: train
+    metadata_path: '/home/azureuser/soundbay/datasets/shaye_dataset/shaye_annotations_train_val_noleak.csv'
+    augmentations_p: 0.8
+    augmentations: ${_augmentations}
+    preprocessors: ${_preprocessors}
+    seq_length: 1 
+    margin_ratio: 0.5
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: false
+  val_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: '/home/azureuser/soundbay/datasets/shaye_dataset/shaye_cods_data/'
+    mode: val
+    metadata_path: '/home/azureuser/soundbay/datasets/shaye_dataset/shaye_annotations_train_val_noleak.csv'
+    augmentations_p: 0
+    augmentations: null
+    preprocessors: ${_preprocessors}
+    seq_length: 1
+    margin_ratio: 0
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: true
