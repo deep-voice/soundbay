@@ -197,7 +197,7 @@ def infer_without_metadata(
 
 
 def save_raven_file(filename, raven_out_df, output_path, model_name):
-    raven_filename = f"Raven-inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{filename.stem}.txt"
+    raven_filename = f"{filename.stem}-Raven-inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}.txt"
     raven_output_file = output_path / raven_filename
     raven_out_df.to_csv(index=False, path_or_buf=raven_output_file, sep='\t')
 
