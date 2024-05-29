@@ -39,11 +39,11 @@ def analysis_logging(results_df,num_classes):
     print(metrics_dict)
 
 
-def inference_csv_to_raven(probs_df: pd.DataFrame, num_classes, seq_len: float, selected_class: str,
+def inference_csv_to_raven(results_df: pd.DataFrame, num_classes, seq_len: float, selected_class: str,
                            threshold: float = 0.5, class_name: str = "call",
-                           channel: int = 1, max_freq: float = 20_000) -> pd.DataFrame:
+                           max_freq: float = 20_000) -> pd.DataFrame:
     """ Converts a csv file containing the inference results to a raven csv file.
-        Args: probsdataframe: a pandas dataframe containing the inference results.
+        Args: probsdataframe: a pandas dataframe cosntaining the inference results.
                       num_classes: the number of classes in the dataset.
                       seq_length: the length of the sequence.
                       selected_class: the class to be selected.
@@ -52,36 +52,43 @@ def inference_csv_to_raven(probs_df: pd.DataFrame, num_classes, seq_len: float, 
 
         Returns: a pandas dataframe containing the raven csv file.
     """
+    results_list = []
+    for channel, df in results_df.groupby("channel"):
+        relevant_columns = df.columns[-int(num_classes):]
+        relevant_columns_df = df[relevant_columns]
+        len_dataset = relevant_columns_df.shape[0]  # number of segments in wav
+        if_positive = df[selected_class] > threshold  # check if the probability is above the threshold
+        if "begin_time" in df.columns: #if the dataframe has metadata
+            all_begin_times = df["begin_time"].values
+        else: #if the dataframe came from a file with no ground truth
+            all_begin_times = np.arange(0, len_dataset * seq_len, seq_len)
 
-    relevant_columns = probs_df.columns[-int(num_classes):]
-    relevant_columns_df = probs_df[relevant_columns]
-    len_dataset = relevant_columns_df.shape[0]  # number of segments in wav
-    if_positive = probs_df[selected_class] > threshold  # check if the probability is above the threshold
-    if "begin_time" in probs_df.columns: #if the dataframe has metadata
-        all_begin_times = probs_df["begin_time"].values
-    else: #if the dataframe came from a file with no ground truth
-        all_begin_times = np.arange(0, len_dataset * seq_len, seq_len)
+        begin_times = all_begin_times[if_positive]  # get the begin times of the positive segments
+        class_probabilities = df[selected_class][if_positive].values  # get the probabilities of the positive segments
+        end_times = np.round(begin_times+seq_len, decimals=3)
+        if len(end_times >= 1):
+            if end_times[-1] > round(len_dataset*seq_len,1):
+                end_times[-1] = round(len_dataset*seq_len,1)  # cut off last bbox if exceeding eof
 
-    begin_times = all_begin_times[if_positive]  # get the begin times of the positive segments
-    end_times = np.round(begin_times+seq_len, decimals=3)
-    if len(end_times >= 1):
-        if end_times[-1] > round(len_dataset*seq_len,1):
-            end_times[-1] = round(len_dataset*seq_len,1)  # cut off last bbox if exceeding eof
+        # create columns for raven format
+        low_freq = np.zeros_like(begin_times)
+        high_freq = np.ones_like(begin_times)*max_freq
+        view = ['Spectrogram 1']*len(begin_times)
+        selection = np.arange(1,len(begin_times)+1)
+        annotation = [class_name]*len(begin_times)
+        channel = np.ones_like(begin_times).astype(int) * channel
+        bboxes = {'Selection': selection, 'View': view, 'Channel': channel,
+                  'Begin Time (s)': begin_times, 'End Time (s)': end_times,
+                  'Low Freq (Hz)': low_freq, 'High Freq (Hz)': high_freq, 'Annotation': annotation,
+                  'Probability': class_probabilities}
+        annotations_df = pandas.DataFrame(data=bboxes)  # create dataframe
+        results_list.append(annotations_df)
 
-    # create columns for raven format
-    low_freq = np.zeros_like(begin_times)
-    high_freq = np.ones_like(begin_times)*max_freq
-    view = ['Spectrogram 1']*len(begin_times)
-    selection = np.arange(1,len(begin_times)+1)
-    annotation = [class_name]*len(begin_times)
-    channel = np.ones_like(begin_times).astype(int) * channel
-    bboxes = {'Selection': selection, 'View': view, 'Channel': channel,
-              'Begin Time (s)': begin_times, 'End Time (s)': end_times,
-              'Low Freq (Hz)': low_freq, 'High Freq (Hz)': high_freq, 'Annotation': annotation}
-
-    annotations_df = pandas.DataFrame(data = bboxes)  # create dataframe
+    annotations_df = pd.concat(results_list, axis=0).sort_values('Begin Time (s)')
+    annotations_df['Selection'] = np.arange(1, len(annotations_df) + 1)
 
     return annotations_df
+
 
 def analysis_main() -> None:
     """

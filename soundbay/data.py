@@ -1,11 +1,9 @@
 import random
 from itertools import starmap, repeat
 from pathlib import Path
-from copy import deepcopy
 from typing import Union
 from decimal import Decimal
 
-import librosa
 import numpy as np
 import pandas as pd
 import soundfile as sf
@@ -17,8 +15,6 @@ from omegaconf import DictConfig
 from torch.utils.data import Dataset
 from torchvision import transforms
 from audiomentations import Compose
-
-import matplotlib.pyplot as plt
 
 
 class BaseDataset(Dataset):
@@ -492,7 +488,7 @@ class InferenceDataset(Dataset):
         """
         all_data_frames = []
         if self.file_path.is_dir():
-            all_files = [x for x in self.file_path.iterdir()]
+            all_files = [self.file_path / x for x in self.file_path.iterdir()]
         else:
             all_files = [self.file_path]
         for file in all_files:
@@ -500,7 +496,7 @@ class InferenceDataset(Dataset):
                 raise ValueError(f'InferenceDataset only supports .wav files, got {file.suffix}')
             file_start_time = self._create_start_times(file)
             for channel_num in range(sf.info(file).channels):
-                metadata = pd.DataFrame({'filename': [file.name] * len(file_start_time),
+                metadata = pd.DataFrame({'filename': [file] * len(file_start_time),
                                          'channel': [channel_num] * len(file_start_time),
                                          'begin_time': file_start_time,
                                          'end_time': file_start_time + self.seq_length})
@@ -534,6 +530,7 @@ class InferenceDataset(Dataset):
         audio - pytorch tensor (1-D array)
         """
         duration = sf.info(filepath).duration
+        begin_time = int(begin_time * self.data_sample_rate)
         stop_time = begin_time + int(self.seq_length * self.data_sample_rate)
         assert duration * self.data_sample_rate >= stop_time, f"trying to load audio from {begin_time} to {stop_time} but audio is only {duration} long"
         data, orig_sample_rate = sf.read(filepath, start=begin_time, stop=stop_time, always_2d=True)

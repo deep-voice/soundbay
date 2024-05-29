@@ -154,9 +154,7 @@ def infer_without_metadata(
     """
     # load model
     model = load_model(model_args, checkpoint_state_dict).to(device)
-    # Check how many channels
-    all_channel_list = []
-    all_channel_raven_list = []
+    all_raven_list = []
     dataset_args = dict(dataset_args)
     dataset_type = dataset_args.pop('_target_')
     test_dataset = datasets_dict[dataset_type](**dataset_args)
@@ -165,36 +163,43 @@ def infer_without_metadata(
 
     # predict
     predict_prob = predict_proba(model, test_dataloader, device, None)
-    results_df = pandas.DataFrame(predict_prob)
+    results_df = pandas.DataFrame(predict_prob, columns=[f'Call_{i}' for i in range(predict_prob.shape[1])])
 
     concat_dataset = pandas.concat([test_dataset.metadata, results_df], axis=1)
     # create raven file
     if save_raven:
-        all_channel_raven_list.append(
-            inference_csv_to_raven(results_df, predict_prob.shape[1], dataset_args['seq_length'], 1, threshold, 'call',
-                                   channel, dataset_args['data_sample_rate'] // 2)
-        )
-
-    # add to general inference result
-    concat_dataset.insert(0, 'channel', [channel + 1] * len(concat_dataset))
-    all_channel_list.append(concat_dataset)
+        for file, df in concat_dataset.groupby('filename'):
+            all_raven_list.append((file,
+                                   inference_csv_to_raven(results_df=df,
+                                                          num_classes=predict_prob.shape[1],
+                                                          seq_len=dataset_args['seq_length'],
+                                                          selected_class='Call_1',  # TODO support multiclass
+                                                          threshold=threshold,
+                                                          class_name='call',
+                                                          max_freq=dataset_args['data_sample_rate'] // 2)
+                               ))
 
     #save file
     dataset_name = Path(test_dataset.metadata_path).stem
     filename = f"Inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.csv"
     output_file = output_path / filename
-    pd.concat(all_channel_list, axis=0).to_csv(index=False, path_or_buf=output_file)
+    concat_dataset.to_csv(index=False, path_or_buf=output_file)
 
     # Save raven file
     if save_raven:
-        raven_filename = f"Raven inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.raven"
-        raven_output_file = output_path / raven_filename
-        raven_out_df = pd.concat(all_channel_raven_list, axis=0
-                  ).sort_values('Begin Time (s)')
-        raven_out_df['Selection'] = np.arange(1, len(raven_out_df)+1)
-        raven_out_df.to_csv(index=False, path_or_buf=raven_output_file, sep='\t')
+        if Path(test_dataset.metadata_path).is_dir():
+            output_path = output_path / dataset_name
+            output_path.mkdir(exist_ok=True)
+        for filename, raven_out_df in all_raven_list:
+            save_raven_file(filename, raven_out_df, output_path, model_name)
 
     return
+
+
+def save_raven_file(filename, raven_out_df, output_path, model_name):
+    raven_filename = f"Raven-inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{filename.stem}.txt"
+    raven_output_file = output_path / raven_filename
+    raven_out_df.to_csv(index=False, path_or_buf=raven_output_file, sep='\t')
 
 
 def inference_to_file(
