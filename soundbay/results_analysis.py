@@ -75,12 +75,11 @@ def inference_csv_to_raven(results_df: pd.DataFrame, num_classes, seq_len: float
         high_freq = np.ones_like(begin_times)*max_freq
         view = ['Spectrogram 1']*len(begin_times)
         selection = np.arange(1,len(begin_times)+1)
-        annotation = [class_name]*len(begin_times)
+        annotation = [f'{class_name}, {probability:.3f}' for probability in class_probabilities]
         channel = np.ones_like(begin_times).astype(int) * channel
         bboxes = {'Selection': selection, 'View': view, 'Channel': channel,
                   'Begin Time (s)': begin_times, 'End Time (s)': end_times,
-                  'Low Freq (Hz)': low_freq, 'High Freq (Hz)': high_freq, 'Annotation': annotation,
-                  'Probability': class_probabilities}
+                  'Low Freq (Hz)': low_freq, 'High Freq (Hz)': high_freq, 'Annotation': annotation}
         annotations_df = pandas.DataFrame(data=bboxes)  # create dataframe
         results_list.append(annotations_df)
 
