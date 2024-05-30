@@ -176,7 +176,7 @@ def infer_without_metadata(
                                                           selected_class='Call_1',  # TODO support multiclass
                                                           threshold=threshold,
                                                           class_name='call',
-                                                          max_freq=dataset_args['data_sample_rate'] // 2)
+                                                          max_freq=dataset_args['sample_rate'] // 2)
                                ))
 
     #save file
