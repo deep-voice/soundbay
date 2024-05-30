@@ -213,7 +213,7 @@ def infer_single_file(
         if save_raven:
             all_channel_raven_list.append(
                 inference_csv_to_raven(results_df, predict_prob.shape[1], dataset_args['seq_length'], 1, threshold, 'call',
-                                       channel, dataset_args['data_sample_rate'] // 2)
+                                       channel, dataset_args['sample_rate'] // 2)
             )
 
         # add to general inference result
