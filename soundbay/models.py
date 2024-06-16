@@ -350,10 +350,7 @@ class ResNet182D(nn.Module):
         super(ResNet182D, self).__init__()
 
         # Load a pre-trained ResNet-18
-        if pretrained:
-            resnet = models.resnet18(weights=ResNet18_Weights.DEFAULT)
-        else:
-            resnet = models.resnet18(weights=None)
+        resnet = models.resnet18(weights=ResNet18_Weights.DEFAULT) if pretrained else models.resnet18(weights=None)
 
         num_features = resnet.fc.in_features
         resnet.fc = nn.Sequential(
