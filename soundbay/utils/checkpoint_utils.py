@@ -64,7 +64,10 @@ def merge_with_checkpoint(run_args, checkpoint_args):
     run_args.data.sample_rate = checkpoint_args.data.sample_rate
     run_args.data.n_fft = checkpoint_args.data.n_fft
     run_args.data.hop_length = checkpoint_args.data.hop_length
-    run_args.data.min_freq = checkpoint_args.data.min_freq
+    min_freq = checkpoint_args.data.get('min_freq', None)
+    if min_freq is None:
+        min_freq = checkpoint_args.data.min_freq_filtering
+    run_args.data.min_freq = min_freq
     run_args.data.max_freq = checkpoint_args.data.max_freq
     run_args.data.label_names = checkpoint_args.data.label_names
     OmegaConf.set_struct(run_args, True)

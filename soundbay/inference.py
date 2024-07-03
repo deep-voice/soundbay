@@ -171,8 +171,9 @@ def infer_without_metadata(
     # create raven file
     if save_raven:
         for file, df in concat_dataset.groupby('filename'):
+            file_raven_lists = []
             for i in range(1, predict_prob.shape[1]):
-                all_raven_list.append((file,
+                file_raven_lists.append(
                                        inference_csv_to_raven(results_df=df,
                                                               num_classes=predict_prob.shape[1],
                                                               seq_len=dataset_args['seq_length'],
@@ -180,7 +181,10 @@ def infer_without_metadata(
                                                               threshold=threshold,
                                                               class_name=label_names[i],
                                                               max_freq=dataset_args['sample_rate'] // 2)
-                                   ))
+                                   )
+            whole_file_df = pd.concat(file_raven_lists, axis=0).sort_values('Begin Time (s)')
+            whole_file_df['Selection'] = np.arange(1, len(whole_file_df) + 1)
+            all_raven_list.append((file, whole_file_df))
 
     #save file
     dataset_name = Path(test_dataset.metadata_path).stem
