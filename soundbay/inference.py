@@ -138,7 +138,8 @@ def infer_without_metadata(
         output_path,
         model_name,
         save_raven,
-        threshold
+        threshold,
+        label_names
 ):
     """
         This functions takes the InferenceDataset dataset and produces the model prediction to a file, by iterating
@@ -161,21 +162,25 @@ def infer_without_metadata(
 
     # predict
     predict_prob = predict_proba(model, test_dataloader, device, None)
-    results_df = pandas.DataFrame(predict_prob, columns=[f'Call_{i}' for i in range(predict_prob.shape[1])])
+    label_names = ['Noise'] + [f'Call_{i}' for i in
+                               range(1, predict_prob.shape[1] + 1)] if label_names is None else label_names
+
+    results_df = pandas.DataFrame(predict_prob, columns=label_names)
 
     concat_dataset = pandas.concat([test_dataset.metadata, results_df], axis=1)
     # create raven file
     if save_raven:
         for file, df in concat_dataset.groupby('filename'):
-            all_raven_list.append((file,
-                                   inference_csv_to_raven(results_df=df,
-                                                          num_classes=predict_prob.shape[1],
-                                                          seq_len=dataset_args['seq_length'],
-                                                          selected_class='Call_1',  # TODO support multiclass
-                                                          threshold=threshold,
-                                                          class_name='call',
-                                                          max_freq=dataset_args['sample_rate'] // 2)
-                               ))
+            for i in range(1, predict_prob.shape[1]):
+                all_raven_list.append((file,
+                                       inference_csv_to_raven(results_df=df,
+                                                              num_classes=predict_prob.shape[1],
+                                                              seq_len=dataset_args['seq_length'],
+                                                              selected_class=label_names[i],
+                                                              threshold=threshold,
+                                                              class_name=label_names[i],
+                                                              max_freq=dataset_args['sample_rate'] // 2)
+                                   ))
 
     #save file
     dataset_name = Path(test_dataset.metadata_path).stem
@@ -209,7 +214,8 @@ def inference_to_file(
     output_path,
     model_name,
     save_raven,
-    threshold
+    threshold,
+    label_names,
 ):
     """
     This functions takes the dataset and produces the model prediction to a file
@@ -237,7 +243,8 @@ def inference_to_file(
                           output_path,
                           model_name,
                           save_raven,
-                          threshold)
+                          threshold,
+                          label_names)
     else:
         raise ValueError('Only ClassifierDataset or InferenceDataset allowed in inference')
 
@@ -275,7 +282,8 @@ def inference_main(args) -> None:
         output_path=output_dirpath,
         model_name=Path(args.experiment.checkpoint.path).parent.stem,
         save_raven=args.experiment.save_raven,
-        threshold=args.experiment.threshold
+        threshold=args.experiment.threshold,
+        label_names=args.data.label_names
     )
     print("Finished inference")
 
