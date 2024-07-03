@@ -3,7 +3,7 @@ import boto3
 
 s3_bucket = "deepvoice-user-uploads"
 s3_prefix = "eric.angel.ramos@gmail.com/dropbox/Placencia1/"
-folder_path = "../datasets/Manatees/sian_kaan/wav/"
+folder_path = "../datasets/Manatees/placencia/wav/"
 batch_size = 5  # Number of files to process in each batch
 file_list_path = "../datasets/Manatees/files_without_inference.txt"
 
@@ -39,8 +39,10 @@ for i in range(0, len(s3_files), batch_size):
     # Download the batch of files from S3
     for s3_file in batch_files:
         file_name = os.path.basename(s3_file)
+        print(s3_file)
+        print(file_name)
         local_file_path = os.path.join(folder_path, file_name)
-        s3_client.download_file(s3_bucket, s3_file, local_file_path)
+        s3_client.download_file(s3_bucket, os.path.join(s3_prefix, file_name), local_file_path)
 
     # Perform inference on the downloaded batch
     batch_file_paths = [os.path.join(folder_path, os.path.basename(file_path)) for file_path in batch_files]
