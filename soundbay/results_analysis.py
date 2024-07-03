@@ -96,7 +96,8 @@ def analysis_main() -> None:
     inference_csv_name = args.filename
     inference_results_path = output_dirpath / Path(inference_csv_name + ".csv")
     num_classes = int(args.num_classes)
-    threshold = 1/num_classes  # threshold for the classifier in the raven results
+    # threshold = 1/num_classes  # threshold for the classifier in the raven results
+    threshold = 0.01 # TODO: change back after placencia evaluation
     results_df = pd.read_csv(inference_results_path)
     name_col = args.selected_class  # selected class for raven results
 
