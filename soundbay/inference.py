@@ -94,7 +94,7 @@ def infer_with_metadata(
     preprocessors=dataset_args['preprocessors'],
     seq_length=dataset_args['seq_length'], data_sample_rate=dataset_args['data_sample_rate'],
     sample_rate=dataset_args['sample_rate'], 
-    mode=dataset_args['mode'], slice_flag=dataset_args['slice_flag'],
+    mode=dataset_args['mode'], slice_flag=dataset_args['slice_flag'], path_hierarchy=dataset_args['path_hierarchy'],
     )
 
     # load model
@@ -237,7 +237,16 @@ def inference_to_file(
                          model_args,
                          checkpoint_state_dict,
                          output_path,
-                         model_name)
+                         model_name,
+                         )
+    elif dataset_args._target_.endswith('NoBackGroundDataset'):
+        infer_with_metadata(device,
+                         batch_size,
+                         dataset_args,
+                         model_args,
+                         checkpoint_state_dict,
+                         output_path,
+                         model_name,)
     elif dataset_args._target_.endswith('InferenceDataset'):
         infer_without_metadata(device,
                           batch_size,
