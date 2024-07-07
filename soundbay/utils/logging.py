@@ -158,6 +158,7 @@ class Logger:
         volume = 50
         matplotlib.use('Agg')
         idx = meta['idx'].detach().cpu().numpy()
+        meta['begin_time'] = meta['begin_time'].detach().cpu().numpy()
         label = label.detach().cpu().numpy()
 
         if audio.shape[0] > self.upload_artifacts_limit:
@@ -170,7 +171,7 @@ class Logger:
 
         artifact_wav = torch.squeeze(raw_wav).detach().cpu().numpy()
         artifact_wav = artifact_wav / np.expand_dims(np.abs(artifact_wav).max(axis=1) + 1e-8, 1) * 0.5  # gain -6dB
-        list_of_wavs_objects = [wandb.Audio(data_or_path=wav, caption=f'label_{lab}_{ind}_{b_t/sample_rate}_{f_n}_train', sample_rate=sample_rate) for wav, ind, lab, b_t, f_n in zip(artifact_wav,idx, label, meta['begin_time'], meta['org_file'])]
+        list_of_wavs_objects = [wandb.Audio(data_or_path=wav, caption=f'label_{lab}_{ind}_{round(b_t/sample_rate,3)}sec_{f_n}_train', sample_rate=sample_rate) for wav, ind, lab, b_t, f_n in zip(artifact_wav,idx, label, meta['begin_time'], meta['org_file'])]
 
         # Spectrograms batch
         artifact_spec = torch.squeeze(audio).detach().cpu().numpy()
@@ -180,7 +181,7 @@ class Logger:
             specs.append(librosa.display.specshow(artifact_spec[artifact_id,...], ax=ax[1]))
             plt.close('all')
             del ax
-        list_of_specs_objects = [wandb.Image(data_or_path=spec, caption=f'label_{lab}_{ind}_{b_t/sample_rate}_{f_n}train') for spec, ind, lab, b_t, f_n in zip(specs,idx, label, meta['begin_time'], meta['org_file'])]
+        list_of_specs_objects = [wandb.Image(data_or_path=spec, caption=f'label_{lab}_{ind}_{round(b_t/sample_rate,2)}sec_{f_n}train') for spec, ind, lab, b_t, f_n in zip(specs,idx, label, meta['begin_time'], meta['org_file'])]
         log_wavs = {f'First batch {flag} original wavs': list_of_wavs_objects}
         log_specs = {f'First batch {flag} augmented spectrogram\'s': list_of_specs_objects}
 
