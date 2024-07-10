@@ -239,7 +239,7 @@ class BaseDataset(Dataset):
 
         if self.mode == "train" or self.mode == "val":
             label = self.metadata["label"][idx]
-            return audio_processed, label, audio_raw, idx
+            return audio_processed, label, audio_raw, {"idx": idx, "begin_time": begin_time, "org_file": Path(path_to_file).stem}
 
         elif self.mode == "test":
             return audio_processed
