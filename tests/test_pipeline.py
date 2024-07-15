@@ -3,7 +3,7 @@ import os
 import torch
 import wandb
 from soundbay.utils.logging import Logger
-from soundbay.inference import predict
+from soundbay.inference import predict_proba
 from soundbay.trainers import Trainer
 from pathlib import Path
 from soundbay.utils.app import App
@@ -85,6 +85,6 @@ def test_trainer(model, optimizer, scheduler, train_data_loader, criterion):
 
 
 def test_inference(model, inference_data_loader):
-    y = predict(model, inference_data_loader)
+    y = predict_proba(model, inference_data_loader)
     assert y.sum() != 0
-    predict(model, inference_data_loader, threshold=0.7, selected_class_idx=1)
+    predict_proba(model, inference_data_loader, selected_class_idx=1)

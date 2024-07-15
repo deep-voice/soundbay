@@ -489,8 +489,7 @@ class InferenceDataset(Dataset):
                  preprocessors: DictConfig,
                  seq_length: float = 1,
                  data_sample_rate: int = 44100,
-                 sample_rate: int = 44100,
-                 channel: int = None):
+                 sample_rate: int = 44100):
         """
         __init__ method initiates InferenceDataset instance:
         Input:
@@ -498,17 +497,41 @@ class InferenceDataset(Dataset):
         Output:
         InferenceDataset Object - inherits from Dataset object in PyTorch package
         """
-        self.file_path = file_path
+        self.file_path = Path(file_path)
         self.metadata_path = self.file_path  # alias to support inference pipeline
         self.seq_length = seq_length
         self.sample_rate = sample_rate
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
         self.preprocessor = ClassifierDataset.set_preprocessor(preprocessors)
-        self.channel = channel
-        self._create_start_times()
+        self.metadata = self._create_inference_metadata()
 
-    def _create_start_times(self):
+    def _create_inference_metadata(self) -> pd.DataFrame:
+        """
+        create metadata to be used in the inference dataset
+        in case we have a directory, we will iterate over all files in the directory
+        and create metadata for each file and merge it together
+        For a single file, we will create metadata for that file
+        """
+        all_data_frames = []
+        if self.file_path.is_dir():
+            all_files = [self.file_path / x for x in self.file_path.iterdir()]
+        else:
+            all_files = [self.file_path]
+        for file in all_files:
+            if file.suffix not in ['.wav', '.WAV']:
+                raise ValueError(f'InferenceDataset only supports .wav files, got {file.suffix}')
+            file_start_time = self._create_start_times(file)
+            for channel_num in range(sf.info(file).channels):
+                metadata = pd.DataFrame({'filename': [file] * len(file_start_time),
+                                         'channel': [channel_num] * len(file_start_time),
+                                         'begin_time': file_start_time,
+                                         'end_time': file_start_time + self.seq_length})
+                all_data_frames.append(metadata)
+        metadata = pd.concat(all_data_frames, ignore_index=True)
+        return metadata
+
+    def _create_start_times(self, filepath: Path) -> np.ndarray:
         """
             create reference dict to extract audio files from metadata annotation
             Input:
@@ -516,12 +539,11 @@ class InferenceDataset(Dataset):
             Output:
             audio_dict contains references to audio paths given name from metadata
         """
-        audio_len = sf.info(self.file_path).duration
+        audio_len = sf.info(filepath).duration
         decimal_place = abs(Decimal(str(self.seq_length)).as_tuple().exponent)
-        self._start_times = np.arange(0, round(audio_len//self.seq_length * self.seq_length, decimal_place),
-                                      self.seq_length)
+        return np.arange(0, round(audio_len//self.seq_length * self.seq_length, decimal_place), self.seq_length)
 
-    def _get_audio(self, begin_time):
+    def _get_audio(self, filepath: Path, channel: int, begin_time: float) -> torch.Tensor:
         """
         _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
         and returns the audio segment in a torch.tensor
@@ -534,35 +556,33 @@ class InferenceDataset(Dataset):
         output:
         audio - pytorch tensor (1-D array)
         """
-        duration = sf.info(self.file_path).duration
+        duration = sf.info(filepath).duration
+        begin_time = int(begin_time * self.data_sample_rate)
         stop_time = begin_time + int(self.seq_length * self.data_sample_rate)
         assert duration * self.data_sample_rate >= stop_time, f"trying to load audio from {begin_time} to {stop_time} but audio is only {duration} long"
-        data, orig_sample_rate = sf.read(self.file_path, start=begin_time, stop=stop_time)
-        num_channels = sf.info(self.file_path).channels
-        if (self.channel is not None) and (num_channels > 1):
-            data = data[:, self.channel]
+        data, orig_sample_rate = sf.read(filepath, start=begin_time, stop=stop_time, always_2d=True)
+        data = data[:, channel]
         assert orig_sample_rate == self.data_sample_rate, \
             f'sample rate is {orig_sample_rate}, should be {self.data_sample_rate}'
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
         return audio
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         '''
-        __getitem__ method loads item according to idx from the metadata
+        __getitem__ method loads item according to idx from the metadata.
 
         input:
         idx - int
 
         output:
-        audio, label - torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
-        , int (if mode="train" only)
+        audio -  torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
         '''
-        begin_time = int(self._start_times[idx] * self.data_sample_rate)
-        audio = self._get_audio(begin_time)
+        filepath, channel, begin_time = self.metadata.loc[idx, ['filename', 'channel', 'begin_time']]
+        audio = self._get_audio(filepath=filepath, channel=channel, begin_time=begin_time)
         audio = self.sampler(audio)
         audio = self.preprocessor(audio)
 
         return audio
 
     def __len__(self):
-        return len(self._start_times)
+        return len(self.metadata)
