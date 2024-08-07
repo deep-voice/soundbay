@@ -7,13 +7,20 @@ Soundbay is an intuitive and comprehensive Python-based framework for training d
 Before installing, please verify you have a working Python environment, with pytorch, torchvision and torchaudio installed according to your local hardware.<br>
 More info on installing pytorchm torchaudio and torchvision can be found in the [guide](https://pytorch.org/get-started/locally/).
 
-```
+```sh
 git clone https://github.com/deep-voice/soundbay
 cd soundbay
+```
+Installation of the packages:
+```sh
 pip install -e .
-# OR 
+```
+
+Or 
+```sh
 pip install -r requirements.txt
 ```
+
 [sox](http://sox.sourceforge.net/) is also required and can be installed using:
 ```
 sudo apt update
@@ -42,16 +49,14 @@ A toy example is available for [data](tests/assets/data) and the respective [ann
 
 Running train and inference commands are done from src.
 Run the following command for a toy problem training:
-```
-cd src
-python train.py
+```sh
+python soundbay/train.py
 ```
 The toy run uses the default configuration with its default parameters. 
 Parameters overriding and config file changes are available, please refer Hydra tutorial for more details.
 For example,
-```
-cd src
-python train.py --config-name runs/main_unit_norm data.batch_size=8 optim=jasco_vgg_19 experiment.manual_seed=4321
+```sh
+python soundbay/train.py --config-name runs/main_unit_norm data.batch_size=8 +data.optim=jasco_vgg_19 experiment.manual_seed=4321
 ```
 Runs training with a config file under conf/runs/main_unit_norm, overriding the batch_size parameter in data, manual_seed in experiment, and the group parameter optim with jasco_vgg_19 instead of the default. 
 
