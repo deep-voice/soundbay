@@ -1,11 +1,9 @@
 import random
 from itertools import starmap, repeat
 from pathlib import Path
-from copy import deepcopy
 from typing import Union
 from decimal import Decimal
 
-import librosa
 import numpy as np
 import pandas as pd
 import soundfile as sf
@@ -17,8 +15,6 @@ from omegaconf import DictConfig
 from torch.utils.data import Dataset
 from torchvision import transforms
 from audiomentations import Compose
-
-import matplotlib.pyplot as plt
 
 
 class BaseDataset(Dataset):
@@ -40,7 +36,23 @@ class BaseDataset(Dataset):
         which means all the audio files are flattened in the same folder. If the value is 1, the audio files are
         organized in one folder per class, and so on. The annotations in the metadata has to be aligned with the path
         hierarchy, and to include the parent folder names in the filename column.
-
+        Example:
+            path_hierarchy = 0:
+            - main_folder
+                - file1.wav
+                - file2.wav
+                - file3.wav
+            path_hierarchy = 1:
+            - main_folder
+                - sub_folder1
+                    - file1.wav
+                    - file5.wav
+                - sub_folder2
+                    - file2.wav
+                    - file4.wav
+                - sub_folder3
+                    - file3.wav
+                    - file8.wav
         Output:
         ClassifierDataset Object - inherits from Dataset object in PyTorch package
         """
@@ -80,7 +92,8 @@ class BaseDataset(Dataset):
         def get_parent_path(path, path_hierarchy):
             parent_path_parts = path.parts[:-1]
             assert len(parent_path_parts) > path_hierarchy, \
-                f"Make sure path_hierarchy={path_hierarchy} is smaller than actual files hierarchy len(parent_path_parts)={len(parent_path_parts)}"
+                (f"Make sure path_hierarchy:{path_hierarchy} is smaller than actual files hierarchy "
+                 f"{len(parent_path_parts)}")
             return '/'.join(parent_path_parts[len(parent_path_parts) - path_hierarchy:])
 
         audio_paths = list(data_path.rglob('*.wav'))
@@ -226,7 +239,7 @@ class BaseDataset(Dataset):
 
         if self.mode == "train" or self.mode == "val":
             label = self.metadata["label"][idx]
-            return audio_processed, label, audio_raw, idx
+            return audio_processed, label, audio_raw, {"idx": idx, "begin_time": begin_time, "org_file": Path(path_to_file).stem}
 
         elif self.mode == "test":
             return audio_processed
