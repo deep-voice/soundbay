@@ -98,11 +98,12 @@ class Trainer:
                 break
 
             self.model.zero_grad()
-            audio, label, raw_wav, idx = batch
-            audio, label  = audio.to(self.device), label.to(self.device)
+            audio, label, raw_wav, meta = batch
+            audio, label = audio.to(self.device), label.to(self.device)
 
             if (it == 0) and (not self.debug) and ((epoch % 5) == 0):
-                self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='train')
+                self.logger.upload_artifacts(audio, label, raw_wav, meta, sample_rate=self.train_dataloader.dataset.sample_rate,
+                                             flag='train', data_sample_rate=self.train_dataloader.dataset.data_sample_rate)
 
             # estimate and calc losses
             estimated_label = self.model(audio)
@@ -137,10 +138,11 @@ class Trainer:
             for it, batch in tqdm(enumerate(dataloader), desc=datatset_name):
                 if it == 3 and self.debug:
                     break
-                audio, label, raw_wav, idx = batch
+                audio, label, raw_wav, meta = batch
                 audio, label = audio.to(self.device), label.to(self.device)
                 if (it == 0) and (not self.debug) and ((epoch % 5) == 0):
-                    self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag=datatset_name)
+                    self.logger.upload_artifacts(audio, label, raw_wav, meta, sample_rate=self.train_dataloader.dataset.sample_rate,
+                                                 flag=datatset_name, data_sample_rate=self.train_dataloader.dataset.data_sample_rate)
 
                 # estimate and calc losses
                 estimated_label = self.model(audio)

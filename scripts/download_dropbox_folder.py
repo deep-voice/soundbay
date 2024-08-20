@@ -25,7 +25,10 @@ def upload_to_s3(url, s3_client, user_name, folder_name, file_name):
 
     # file does not exist
     print("Uploading to S3")
-    response_s3 = bucket.upload_fileobj(r.raw, full_path)
+    if 'text' in r.headers.get('Content-Type'): # different treatment to make sure txt files are not compressed
+        _ = bucket.put_object(Body=r.content, Key=full_path)
+    else:  # better treatment for big files which don't suffer from the compression issues
+        _ = bucket.upload_fileobj(r.raw, full_path)
     print("Upload to S3 completed")
 
 
