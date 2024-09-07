@@ -12,6 +12,7 @@ data:
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
     data_path: './tests/assets/data/'
+    path_hierarchy: 0
     mode: train
     metadata_path: './tests/assets/annotations/sample_annotations.csv'
     augmentations_p: 0.8
@@ -25,6 +26,7 @@ data:
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
     data_path: './tests/assets/data'
+    path_hierarchy: 0
     mode: val
     metadata_path: './tests/assets/annotations/sample_annotations.csv'
     augmentations_p: 0
