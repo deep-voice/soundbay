@@ -139,7 +139,8 @@ def infer_without_metadata(
         model_name,
         save_raven,
         threshold,
-        label_names
+        label_names,
+        raven_max_freq
 ):
     """
         This functions takes the InferenceDataset dataset and produces the model prediction to a file, by iterating
@@ -169,6 +170,7 @@ def infer_without_metadata(
 
     concat_dataset = pandas.concat([test_dataset.metadata, results_df], axis=1)
     # create raven file
+    raven_max_freq = dataset_args['sample_rate'] // 2 if raven_max_freq is None else raven_max_freq
     if save_raven:
         for file, df in concat_dataset.groupby('filename'):
             file_raven_lists = []
@@ -180,7 +182,7 @@ def infer_without_metadata(
                                                               selected_class=label_names[i],
                                                               threshold=threshold,
                                                               class_name=label_names[i],
-                                                              max_freq=dataset_args['sample_rate'] // 2)
+                                                              max_freq=raven_max_freq)
                                    )
             whole_file_df = pd.concat(file_raven_lists, axis=0).sort_values('Begin Time (s)')
             whole_file_df['Selection'] = np.arange(1, len(whole_file_df) + 1)
@@ -221,6 +223,7 @@ def inference_to_file(
     save_raven,
     threshold,
     label_names,
+    raven_max_freq
 ):
     """
     This functions takes the dataset and produces the model prediction to a file
@@ -258,7 +261,8 @@ def inference_to_file(
                           model_name,
                           save_raven,
                           threshold,
-                          label_names)
+                          label_names,
+                          raven_max_freq)
     else:
         raise ValueError('Only ClassifierDataset or InferenceDataset allowed in inference')
 
@@ -297,7 +301,8 @@ def inference_main(args) -> None:
         model_name=Path(args.experiment.checkpoint.path).parent.stem,
         save_raven=args.experiment.save_raven,
         threshold=args.experiment.threshold,
-        label_names=args.data.label_names
+        label_names=args.data.label_names,
+        raven_max_freq=args.experiment.raven_max_freq,
     )
     print("Finished inference")
 
