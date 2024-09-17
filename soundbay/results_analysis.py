@@ -43,7 +43,7 @@ def inference_csv_to_raven(results_df: pd.DataFrame, num_classes, seq_len: float
                            threshold: float = 0.5, class_name: str = "call",
                            max_freq: float = 20_000) -> pd.DataFrame:
     """ Converts a csv file containing the inference results to a raven csv file.
-        Args: probsdataframe: a pandas dataframe cosntaining the inference results.
+        Args: probsdataframe: a pandas dataframe containing the inference results.
                       num_classes: the number of classes in the dataset.
                       seq_length: the length of the sequence.
                       selected_class: the class to be selected.
