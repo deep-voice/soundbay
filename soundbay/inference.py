@@ -190,6 +190,7 @@ def infer_without_metadata(
     dataset_name = Path(test_dataset.metadata_path).stem
     filename = f"Inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.csv"
     output_file = output_path / filename
+    concat_dataset = concat_dataset.sort_values(by=['filename', 'begin_time'])
     concat_dataset.to_csv(index=False, path_or_buf=output_file)
 
     # Save raven file
