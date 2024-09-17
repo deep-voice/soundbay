@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch import Tensor
 from torchvision.models.resnet import ResNet, BasicBlock, conv3x3, Bottleneck
 from torchvision.models.vgg import VGG
-from torchvision.models import squeezenet
+from torchvision.models import squeezenet, ResNet18_Weights
 import torchvision.models as models
 
 
@@ -350,7 +350,7 @@ class ResNet182D(nn.Module):
         super(ResNet182D, self).__init__()
 
         # Load a pre-trained ResNet-18
-        resnet = models.resnet18(pretrained=pretrained)
+        resnet = models.resnet18(weights=ResNet18_Weights.DEFAULT) if pretrained else models.resnet18(weights=None)
 
         num_features = resnet.fc.in_features
         resnet.fc = nn.Sequential(
