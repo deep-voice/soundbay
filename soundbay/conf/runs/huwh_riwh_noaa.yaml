@@ -3,6 +3,6 @@ defaults:
   - ../data: HUWH_RIWH_noaa
   - ../augmentations: _augmentations
   - ../preprocessors: _mel_preprocessors
-  - ../model: resnet_18_2d_4c
+  - ../model: resnet_18_2d_3c
   - ../optim: defaults
   - ../experiment: defaults

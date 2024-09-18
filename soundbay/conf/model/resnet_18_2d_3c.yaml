@@ -4,5 +4,5 @@ model:
     _target_: torch.nn.CrossEntropyLoss
   model:
     _target_: models.ResNet182D
-    num_classes: 4
+    num_classes: 3
     pretrained: True
