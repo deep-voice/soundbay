@@ -16,12 +16,12 @@ _augmentations:
     _target_: audiomentations.TimeStretch
     min_rate: 0.9
     max_rate: 1.1
-    p: 0.5
+    p: 0.0
   time_masking:
     _target_: audiomentations.TimeMask
     min_band_part: 0.05
     max_band_part: 0.2
-    p: 0.5
+    p: 0.0
   frequency_masking:
     _target_: audiomentations.BandStopFilter
 
@@ -29,4 +29,4 @@ _augmentations:
     max_center_freq: ${data.max_freq}
     min_bandwidth_fraction: 0.05
     max_bandwidth_fraction: 0.2
-    p: 0.5
+    p: 0.0
