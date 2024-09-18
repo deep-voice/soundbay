@@ -1,8 +1,8 @@
 # @package _global_
 defaults:
-  - ../data: right_whale_noaa
-  - ../augmentations: _augmentations
+  - ../data: FIWH_noaa
+  - ../augmentations: _fiwh_noaa_augmentations
   - ../preprocessors: _mel_preprocessors
-  - ../model: resnet_18_2d
+  - ../model: resnet_18_2d_2c
   - ../optim: defaults
   - ../experiment: defaults
