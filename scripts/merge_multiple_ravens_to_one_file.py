@@ -3,6 +3,7 @@ from pathlib import Path
 import argparse
 import soundfile as sf
 from tqdm import tqdm
+import numpy as np
 
 
 def make_parser():
@@ -14,6 +15,8 @@ def make_parser():
                         type=str)
     parser.add_argument("--output-path", "-o",
                         help="Path the the output path of the merged raven annotation", type=str)
+    parser.add_argument("--output-path-index", "-oi",
+                        help="Path the the output path of the index of files order", type=str)
     parser.add_argument("--include-begin-file", "-ibf",  dest="include_begin_file", action="store_true")
     parser.add_argument("--no-begin-file", "-nbf", dest="include_begin_file", action="store_false")
     parser.set_defaults(include_begin_file=True)
@@ -29,6 +32,7 @@ def main() -> None:
     raven_folder = Path(args.input_raven_folder)
     audio_folder = Path(args.input_audio_folder)
     output_path = Path(args.output_path)
+    output_path_index = Path(args.output_path_index)
     include_begin_file = args.include_begin_file
     # get the list of raven files
     raven_files = list(raven_folder.glob('*.txt'))
@@ -58,8 +62,7 @@ def main() -> None:
         df['Begin Time (s)'] += seconds_offset
         df['End Time (s)'] += seconds_offset
         df['Selection'] += entries_offset
-        if include_begin_file:
-            df['Begin File'] = [entry["audio_file"].name] * df.shape[0]
+        df['Begin File'] = [entry["audio_file"].name] * df.shape[0]
         # get the audio file duration
         audio_file_duration = sf.info(entry["audio_file"]).duration
         # add the audio file duration to the offset
@@ -70,6 +73,14 @@ def main() -> None:
 
     # concatenate the dataframes
     concatenated_df = pd.concat(df_list)
+
+    unique_files = concatenated_df["Begin File"].unique()
+    # save unique files to a file
+    np.savetxt(output_path_index, unique_files, fmt='%s')
+    # remove the begin file column if not needed
+    if not include_begin_file:
+        concatenated_df = concatenated_df.drop(columns=["Begin File"])
+
     # save the concatenated dataframe
     concatenated_df.to_csv(output_path, sep="\t", index=False)
 
