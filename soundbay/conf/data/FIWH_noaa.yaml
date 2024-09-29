@@ -14,7 +14,7 @@ data:
     data_path: '../datasets/right_whale_noaa/nefsc_sbnms_200903_nopp6_ch10/source-audio/'
     mode: train
     metadata_path: '../datasets/right_whale_noaa/train_fiwh_high_prob.csv'
-    augmentations_p: 0.8
+    augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
     seq_length: 4.0
