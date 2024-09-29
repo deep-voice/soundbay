@@ -1,3 +1,12 @@
 # @package _global_
 _augmentations:
-
+  time_stretch:
+    _target_: audiomentations.TimeStretch
+    min_rate: 0.9
+    max_rate: 1.1
+    p: 0.0
+  time_masking:
+    _target_: audiomentations.TimeMask
+    min_band_part: 0.05
+    max_band_part: 0.2
+    p: 0.0
