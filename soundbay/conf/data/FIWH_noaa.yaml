@@ -15,7 +15,7 @@ data:
     mode: train
     metadata_path: '../datasets/right_whale_noaa/train_fiwh_high_prob.csv'
     augmentations_p: 0.8
-    augmentations: ${_augmentations}
+    augmentations: null
     preprocessors: ${_preprocessors}
     seq_length: 4.0
     data_sample_rate: ${data.data_sample_rate}
