@@ -235,7 +235,7 @@ def main(validate_args) -> None:
 
 
     # extra asserts
-    assert args.data.max_freq == args.data.sample_rate // 2, "max_freq must be equal to sample_rate // 2"
+    assert args.data.max_freq <= args.data.sample_rate // 2, "max_freq must be equal to sample_rate // 2"
 
     # Finetune
     if args.optim.freeze_layers_for_finetune is None:
