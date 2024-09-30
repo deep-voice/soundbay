@@ -17,7 +17,7 @@ data:
     augmentations_p: 0
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
-    seq_length: 4.0
+    seq_length: 2.0
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     slice_flag: false
@@ -32,7 +32,7 @@ data:
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
-    seq_length: 4.0
+    seq_length: 2.0
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     slice_flag: true
