@@ -147,12 +147,8 @@ def modeling(
 
     optimizer_args = dict(optimizer_args)
     optimizer = optim_dict[optimizer_args.pop('_target_')](model.parameters(), **optimizer_args)
-
-    if 'ExponentialLR'in scheduler_args._target_:
-        scheduler = scheduler_dict[scheduler_args._target_](optimizer, gamma=scheduler_args['gamma'])
-    else:
-        scheduler = scheduler_dict[scheduler_args._target_](optimizer)
-
+    
+    scheduler = scheduler_dict[scheduler_args._target_](optimizer, gamma=scheduler_args['gamma'])
 
     # Add the rest of the parameters to trainer instance
     _trainer = trainer(
