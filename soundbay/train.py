@@ -148,7 +148,11 @@ def modeling(
     optimizer_args = dict(optimizer_args)
     optimizer = optim_dict[optimizer_args.pop('_target_')](model.parameters(), **optimizer_args)
 
-    scheduler = scheduler_dict[scheduler_args._target_](optimizer, gamma=scheduler_args['gamma'])
+    if 'ExponentialLR'in scheduler_args._target_:
+        scheduler = scheduler_dict[scheduler_args._target_](optimizer, gamma=scheduler_args['gamma'])
+    else:
+        scheduler = scheduler_dict[scheduler_args._target_](optimizer)
+
 
     # Add the rest of the parameters to trainer instance
     _trainer = trainer(
@@ -235,7 +239,7 @@ def main(validate_args) -> None:
 
 
     # extra asserts
-    assert args.data.max_freq <= args.data.sample_rate // 2, "max_freq must be equal to sample_rate // 2"
+    assert args.data.max_freq == args.data.sample_rate // 2, "max_freq must be equal to sample_rate // 2"
 
     # Finetune
     if args.optim.freeze_layers_for_finetune is None:
