@@ -3,9 +3,9 @@ data:
   label_names: ['Noise', 'FIWH']
   batch_size: 64
   num_workers: 6
-  sample_rate: 200
+  sample_rate: 100
   data_sample_rate: 2000
-  max_freq: 100
+  max_freq: 50
   min_freq: 0
   n_fft: 512
   hop_length: 128
