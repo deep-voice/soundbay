@@ -101,7 +101,7 @@ def annotations_df_to_csv(annotations_dataset, dataset_name: str = 'recordings_2
     annotations_dataset.to_csv(filename, index=False)
 
 
-def merge_calls(sorted_df: pd.DataFrame, overlap_pct_th: float) -> List[pd.Series]:
+def merge_calls(sorted_df: pd.DataFrame, overlap_pct_th: float = 0) -> List[pd.Series]:
     """
     Args:
         sorted_df: DataFrame with sorted calls by begin_time field
@@ -127,23 +127,38 @@ def merge_calls(sorted_df: pd.DataFrame, overlap_pct_th: float) -> List[pd.Serie
     """
     merged = [sorted_df.iloc[0].copy()]
     for _, higher in sorted_df.iterrows():
-        lower = merged[-1]
+        lower = merged[-1].copy()
         overlap_duration = lower.end_time - higher.begin_time
         # test for intersection between lower and higher:
         # we know via sorting that lower[0] <= higher[0]
         if overlap_duration >= 0:
+            max_end_time = max(lower.end_time, higher.end_time)
+            merged[-1].end_time = max_end_time  # replace by merged interval
             shorter_call_duration = min(lower.end_time - lower.begin_time, higher.end_time - higher.begin_time)
             overlap_pct = overlap_duration / shorter_call_duration
-            if overlap_pct >= overlap_pct_th:
-                max_end_time = max(lower.end_time, higher.end_time)
-                merged[-1].end_time = max_end_time  # replace by merged interval
-            else:
-                # split the overlap call equally between lower and higher
-                merged[-1].end_time -= overlap_duration / 2
-                higher.begin_time += overlap_duration / 2
-                merged.append(higher.copy())
+            if overlap_pct < overlap_pct_th:
+                merged = _split_calls_with_low_overlap(merged, higher, lower, overlap_duration)
         else:
             merged.append(higher.copy())
+    return merged
+
+def _split_calls_with_low_overlap(
+        merged: List[pd.Series],
+        higher: pd.Series,
+        lower: pd.Series,
+        overlap_duration: float) -> List[pd.Series]:
+    """
+    Split the overlapping duration equally between two calls.
+
+    merged: list of non-overlapping calls.
+    higher: the call that overlaps with the last call in merged.
+    lower: the last call in merged.
+    overlap_duration: the duration of the overlap between the last call in merged and higher.
+
+    """
+    merged[-1].end_time = lower.end_time - overlap_duration / 2
+    higher.begin_time += overlap_duration / 2
+    merged.append(higher.copy())
     return merged
 
 
