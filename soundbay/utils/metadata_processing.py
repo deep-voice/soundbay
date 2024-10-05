@@ -101,21 +101,47 @@ def annotations_df_to_csv(annotations_dataset, dataset_name: str = 'recordings_2
     annotations_dataset.to_csv(filename, index=False)
 
 
-def merge_calls(sorted_df: pd.DataFrame) -> List[pd.Series]:
+def merge_calls(sorted_df: pd.DataFrame, overlap_pct_th: float) -> List[pd.Series]:
     """
     Args:
         sorted_df: DataFrame with sorted calls by begin_time field
+        overlap_pct_th: determines the min [%] overlap between two calls to merge them:
+                        * if no overlap - do nothing
+                        * if overlap [%] >= overlap_pct_th - merge two calls
+                        * if overlap [%] < overlap_pct_th - split equally the overlapping part between cals
 
     Returns: List of non-overlapping merged calls from the DataFrame
+
+    example:
+    >>> df = pd.DataFrame({'begin_time': [5, 8, 10, 18], 'end_time': [6, 16, 20, 27]})
+    >>> merge_calls(sorted_df=df, overlap_pct_th=0.5)
+    output:
+    [
+        begin_time    end_time
+        5             6          ,
+        begin_time    end_time
+        8             19         ,
+        begin_time    end_time
+        19            27
+    ]
     """
     merged = [sorted_df.iloc[0].copy()]
     for _, higher in sorted_df.iterrows():
         lower = merged[-1]
+        overlap_duration = lower.end_time - higher.begin_time
         # test for intersection between lower and higher:
         # we know via sorting that lower[0] <= higher[0]
-        if higher.begin_time <= lower.end_time:
-            max_end_time = max(lower.end_time, higher.end_time)
-            merged[-1].end_time = max_end_time  # replace by merged interval
+        if overlap_duration >= 0:
+            shorter_call_duration = min(lower.end_time - lower.begin_time, higher.end_time - higher.begin_time)
+            overlap_pct = overlap_duration / shorter_call_duration
+            if overlap_pct >= overlap_pct_th:
+                max_end_time = max(lower.end_time, higher.end_time)
+                merged[-1].end_time = max_end_time  # replace by merged interval
+            else:
+                # split the overlap call equally between lower and higher
+                merged[-1].end_time -= overlap_duration / 2
+                higher.begin_time += overlap_duration / 2
+                merged.append(higher.copy())
         else:
             merged.append(higher.copy())
     return merged
