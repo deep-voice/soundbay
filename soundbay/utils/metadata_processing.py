@@ -125,6 +125,11 @@ def merge_calls(sorted_df: pd.DataFrame, overlap_pct_th: float = 0) -> List[pd.S
         19            27
     ]
     """
+    if 'call_type' in sorted_df.columns:
+        assert sorted_df.call_type.nunique() == 1, 'The function is designed for a single call type.'
+    if 'label' in sorted_df.columns:
+        assert sorted_df.label.nunique() <= 2, 'The function is designed for a binary label.'
+
     merged = [sorted_df.iloc[0].copy()]
     for _, higher in sorted_df.iterrows():
         lower = merged[-1].copy()
