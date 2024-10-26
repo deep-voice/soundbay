@@ -96,7 +96,7 @@ class BaseDataset(Dataset):
                  f"{len(parent_path_parts)}")
             return '/'.join(parent_path_parts[len(parent_path_parts) - path_hierarchy:])
 
-        audio_paths = list(data_path.rglob('*.wav'))
+        audio_paths = list(data_path.rglob('*.[Ww][Aa][Vv]'))
         return {f'{get_parent_path(x, path_hierarchy)}/{x.name[:-4]}'.strip('/'): x for x in audio_paths}
 
     def _preprocess_metadata(self, slice_flag=False):

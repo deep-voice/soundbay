@@ -48,20 +48,20 @@ class LibrosaPcen:
          pcen: per-channel energy normalized version of signal - torch tensor
     """
 
-    def __init__(self, sr, n_mels, fmin):
+    def __init__(self, sr, hop_length, fmin):
         self.sr = sr
-        self.n_mels = n_mels
+        self.hop_length = hop_length
         self.slice_len = 1
-        self.hop_length = int(self.sr / (self.n_mels / self.slice_len))
         self.fmin = fmin
         self.fmax = sr//2
 
     # sample,
 
     def __call__(self,  sample, gain=0.6, bias=0.1, power=0.2, time_constant=0.4, eps=1e-9):
-        hop_length = int(self.sr / (self.n_mels / self.slice_len))
-        pcen_librosa = librosa.core.pcen(sample, sr=self.sr, hop_length=self.hop_length, gain=gain, bias=bias, power=power,
-                                         time_constant=time_constant, eps=eps)
+
+        if isinstance(sample, torch.Tensor):
+            sample = sample.numpy()
+        pcen_librosa = librosa.pcen(sample, sr=self.sr, hop_length=self.hop_length, gain=gain, bias=bias, power=power, time_constant=time_constant, eps=eps)
         pcen_librosa = np.expand_dims(pcen_librosa, 0)  # expand dims to greyscale
 
 
