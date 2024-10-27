@@ -1,0 +1,40 @@
+# @package _global_
+data:
+  label_names: ['Noise', 'Upsweeps', 'Downsweeps']
+  # , 'Whistles', 'Tones', 'Squeaks']
+  batch_size: 64
+  num_workers: 6
+  sample_rate: 24000
+  data_sample_rate: 96000
+  min_freq: 0
+  max_freq: 12000
+  n_fft: 512
+  hop_length: 128
+  train_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: '/danielle_mnt/audio/audio_source/'
+    path_hierarchy: 0
+    mode: train
+    metadata_path: '../datasets/marion_island/train_0.75_by_files_3_class_per_frame.csv'
+    augmentations_p: 0.8
+    augmentations: ${_augmentations}
+    preprocessors: ${_preprocessors}
+    seq_length: 1.5 
+    margin_ratio: 0.25
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: false
+  val_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path:  '/danielle_mnt/audio/audio_source/'
+    path_hierarchy: 0
+    mode: val
+    metadata_path: '../datasets/marion_island/val_0.75_by_files_3_class_per_frame.csv'
+    augmentations_p: 0
+    augmentations: null
+    preprocessors: ${_preprocessors}
+    seq_length: 1.5
+    margin_ratio: 0
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: true
