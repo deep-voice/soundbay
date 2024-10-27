@@ -167,7 +167,7 @@ def _split_calls_with_low_overlap(
     return merged
 
 
-def non_overlap_df(input_df: pd.DataFrame) -> pd.DataFrame:
+def non_overlap_df(input_df: pd.DataFrame,  overlap_pct_th: float = 0) -> pd.DataFrame:
     """
     Args:
         input_df: DataFrame with possibly overlapping calls
@@ -177,7 +177,7 @@ def non_overlap_df(input_df: pd.DataFrame) -> pd.DataFrame:
     non_overlap = []
     for file_name, file_df in input_df.groupby(by='filename'):
         file_df.sort_values(by='begin_time', inplace=True)
-        merged = merge_calls(file_df)
+        merged = merge_calls(file_df,  overlap_pct_th=overlap_pct_th)
         non_overlap.extend(merged)
     non_overlap = pd.DataFrame(non_overlap)
     non_overlap['call_length'] = non_overlap['end_time'] - non_overlap['begin_time']
