@@ -1,6 +1,6 @@
 # @package _global_
 optim:
-  epochs: 100
+  epochs: 3 
   optimizer:
     _target_: torch.optim.Adam
     lr: 0.001

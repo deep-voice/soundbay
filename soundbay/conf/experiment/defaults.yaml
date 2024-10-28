@@ -9,6 +9,6 @@ experiment:
   artifacts_upload_limit: 64
   equalize_data: True
   checkpoint:
-    path: null
+    path: "../checkpoints/o5ot9qky/best.pth"
     resume: 'allow'
     load_optimizer_state: False

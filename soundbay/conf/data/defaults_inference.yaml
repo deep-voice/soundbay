@@ -1,15 +1,16 @@
 # @package _global_
 data:
-  batch_size: 64
+  batch_size: 32
   num_workers: 10
-  data_sample_rate: 44100
+  data_sample_rate: 96000
   test_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: './tests/assets/data'
+    data_path: '../datasets/Manatees/wav'
     mode: test
-    metadata_path: './tests/assets/annotations/sample_annotations.csv'
+    metadata_path: '../datasets/Manatees/manatee_update_sample_0.8_each_day_no_outliers.csv'
     augmentations_p: 0
     augmentations: null
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     slice_flag: true
+    path_hierarchy: 0
