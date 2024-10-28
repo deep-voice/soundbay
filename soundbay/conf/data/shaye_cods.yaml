@@ -11,10 +11,11 @@ data:
   hop_length: 256
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '/datadrive/shaye_train_data/shaye_cods_data/'
+    data_path: '/datadrive/shaye_train_data/shaye_cods_data_15_9_24'
     mode: train
-    metadata_path: '/datadrive/shaye_train_data/shaye_annotations_train_val_noleak.csv'
+    metadata_path: '/datadrive/soundbay_backup/soundbay/datasets/shaye_dataset/train_annotations_22_10_24.csv'
     augmentations_p: 0.8
+    path_hierarchy: 0
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
     seq_length: 1 
@@ -24,9 +25,10 @@ data:
     slice_flag: false
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '/datadrive/shaye_train_data/shaye_cods_data/'
+    data_path: '/datadrive/shaye_train_data/shaye_cods_data_15_9_24'
     mode: val
-    metadata_path: '/datadrive/shaye_train_data/shaye_annotations_train_val_noleak.csv'
+    path_hierarchy: 0
+    metadata_path: '/datadrive/soundbay_backup/soundbay/datasets/shaye_dataset/val_annotations_22_10_24.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
