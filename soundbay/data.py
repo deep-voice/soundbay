@@ -489,7 +489,8 @@ class InferenceDataset(Dataset):
                  preprocessors: DictConfig,
                  seq_length: float = 1,
                  data_sample_rate: int = 44100,
-                 sample_rate: int = 44100):
+                 sample_rate: int = 44100,
+                 overlap: float = 0):
         """
         __init__ method initiates InferenceDataset instance:
         Input:
@@ -497,11 +498,14 @@ class InferenceDataset(Dataset):
         Output:
         InferenceDataset Object - inherits from Dataset object in PyTorch package
         """
+        assert  0 <= overlap < 1, f'overlap should be between 0 and 1, got {overlap}'
+
         self.file_path = Path(file_path)
         self.metadata_path = self.file_path  # alias to support inference pipeline
         self.seq_length = seq_length
         self.sample_rate = sample_rate
         self.data_sample_rate = data_sample_rate
+        self.overlap = overlap
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
         self.preprocessor = ClassifierDataset.set_preprocessor(preprocessors)
         self.metadata = self._create_inference_metadata()
@@ -540,8 +544,13 @@ class InferenceDataset(Dataset):
             audio_dict contains references to audio paths given name from metadata
         """
         audio_len = sf.info(filepath).duration
-        decimal_place = abs(Decimal(str(self.seq_length)).as_tuple().exponent)
-        return np.arange(0, round(audio_len//self.seq_length * self.seq_length, decimal_place), self.seq_length)
+        step = self.seq_length * (1-self.overlap)
+        start_times =  np.arange(0, audio_len, step)
+        filtered_start_times = start_times[np.where(start_times <= audio_len - self.seq_length)]
+        # if (duration - seq_length) is not a multiple of the step size, add the last segment
+        if filtered_start_times[-1] < audio_len - self.seq_length:
+            filtered_start_times = np.append(filtered_start_times, audio_len - self.seq_length)
+        return filtered_start_times
 
     def _get_audio(self, filepath: Path, channel: int, begin_time: float) -> torch.Tensor:
         """
