@@ -41,7 +41,7 @@ def analysis_logging(results_df,num_classes):
 
 def inference_csv_to_raven(results_df: pd.DataFrame, num_classes, seq_len: float, selected_class: str,
                            threshold: float = 0.5, class_name: str = "call",
-                           max_freq: float = 20_000) -> pd.DataFrame:
+                           max_freq: float = 20_000, min_freq: float=0) -> pd.DataFrame:
     """ Converts a csv file containing the inference results to a raven csv file.
         Args: probsdataframe: a pandas dataframe containing the inference results.
                       num_classes: the number of classes in the dataset.
@@ -71,7 +71,7 @@ def inference_csv_to_raven(results_df: pd.DataFrame, num_classes, seq_len: float
                 end_times[-1] = round(len_dataset*seq_len,1)  # cut off last bbox if exceeding eof
 
         # create columns for raven format
-        low_freq = np.zeros_like(begin_times)
+        low_freq = np.ones_like(begin_times)*min_freq
         high_freq = np.ones_like(begin_times)*max_freq
         view = ['Spectrogram 1']*len(begin_times)
         selection = np.arange(1,len(begin_times)+1)
