@@ -1,7 +1,7 @@
 import os
 import glob
 from tqdm import tqdm
-from typing import Union
+from typing import Union, Optional
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -166,6 +166,30 @@ def per_file_count_analysis(base_path_with_inference_files: str, model_name: str
     df_total = pd.DataFrame(total)
     df_total = df_total.sort_values(by="filename")
     df_total.to_csv(Path(base_path_with_inference_files+f'/total_{model_name}_th{th}.txt').resolve(), index=False)
+
+
+def merge_results_by_filename(files_paths: list, save_path: Optional[str] = None) -> pd.DataFrame:
+    '''
+    this function can merge results into one file, merging on filename.
+    for example: beneficial if one used "per_file_count_analysis" and now would like to report the counts of a few columns / models in a single file.
+    '''
+    final_df = pd.DataFrame()
+    for i, f in enumerate(files_paths):
+        tmp_df = pd.read_csv(f)
+        if i!=0:
+            final_df = final_df.merge(tmp_df, on="filename", how="outer")
+        else:
+            final_df = tmp_df.copy()
+
+    # rearrange with filename first
+    cols = list(final_df)
+    cols.insert(0, cols.pop(cols.index('filename')))
+    final_df = final_df.loc[:, cols]
+
+    final_df.sort_values(by="filename")
+    if save_path:
+        final_df.to_csv(save_path, index=False)
+    return final_df
 
 
 if __name__ == "__main__":
