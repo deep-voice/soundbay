@@ -1,3 +1,7 @@
+import os
+import glob
+from tqdm import tqdm
+from typing import Union
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -134,6 +138,34 @@ def analysis_main() -> None:
 
 
     print("Finished analysis.")
+
+
+def per_file_count_analysis(base_path_with_inference_files: str, model_name: str, column_names: Union[list, str], th: float) -> None:
+    '''
+    given a directory, loads all the files in it (inference files produced by the model) and
+    count the number of calls (values > th). write all the results into a file named |total_{model_name}_{th=}|
+
+    assumptions:
+    - inference files names follow the current notation of outputs names.
+    '''
+    files = []
+    if isinstance(column_names, str):
+        column_names = [column_names]
+    total = {f"count_{column_name}": [] for column_name in column_names}
+
+    for f in tqdm(glob.glob(base_path_with_inference_files + '/*.csv'), "files"):
+        if "total" in f:
+            continue
+        df = pd.read_csv(f)
+        # fill information with counts
+        for col_name in column_names:
+            total[f"count_{col_name}"].append(sum(df[col_name] > th))
+        files.append(os.path.basename(f).split(model_name)[1].split('.csv')[0])
+
+    total['filename'] = files
+    df_total = pd.DataFrame(total)
+    df_total = df_total.sort_values(by="filename")
+    df_total.to_csv(Path(base_path_with_inference_files+f'/total_{model_name}_th{th}.txt').resolve(), index=False)
 
 
 if __name__ == "__main__":
