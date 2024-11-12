@@ -174,6 +174,7 @@ class Trainer:
                       "scheduler": self.scheduler.state_dict() if self.scheduler is not None else None,
                       "epochs": self.epochs_trained,
                       "model": self.model.state_dict(),
+                      "wandb_experiment_id": str(self.output_path).split('/')[-1] if not self.debug else None,
                       "args": app.args
                       }
 
