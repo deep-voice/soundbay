@@ -1,4 +1,5 @@
 from typing import Union, Generator, Tuple, List
+import numpy as np
 import torch
 import torch.utils.data
 from tqdm import tqdm
@@ -68,6 +69,7 @@ class Trainer:
 
     def train(self):
         best_loss = float('inf')
+        best_macro_f1 = 0
         # Run training script
         iterator = tqdm(range(self.epochs_trained, self.epochs),
                         desc='Running Epochs', leave=True, disable=not self.verbose)
@@ -80,9 +82,14 @@ class Trainer:
                 self.eval_epoch(epoch, 'train_as_val')
             # save checkpoint
             loss = self.logger.loss_meter_val['loss'].summarize_epoch()
+            macro_f1 = self.logger.metrics_dict['global']['call_f1_macro']
+            # pred_proba_array = np.concatenate(self.logger.pred_proba_list)
             if loss < best_loss:
                 best_loss = loss
                 self._save_checkpoint("best.pth")
+            if macro_f1 > best_macro_f1:
+                best_macro_f1 = macro_f1
+                self._save_checkpoint("best_macro_f1.pth")
             self._save_checkpoint("last.pth")
             if self.verbose:  # show batch metrics in progress bar
                 s = 'epoch: ' + str(epoch) + ', ' + str(self.logger.metrics_dict)
