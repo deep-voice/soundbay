@@ -1,5 +1,4 @@
 from typing import Union, Generator, Tuple, List
-import numpy as np
 import torch
 import torch.utils.data
 from tqdm import tqdm
@@ -83,7 +82,6 @@ class Trainer:
             # save checkpoint
             loss = self.logger.loss_meter_val['loss'].summarize_epoch()
             macro_f1 = self.logger.metrics_dict['global']['call_f1_macro']
-            # pred_proba_array = np.concatenate(self.logger.pred_proba_list)
             if loss < best_loss:
                 best_loss = loss
                 self._save_checkpoint("best.pth")
