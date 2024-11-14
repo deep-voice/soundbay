@@ -364,3 +364,26 @@ class ResNet182D(nn.Module):
     def forward(self, x):
         x = x.repeat(1, 3, 1, 1)
         return self.resnet(x)
+
+class EfficientNet2D(nn.Module):
+    """
+    EfficientNet model for 3 channel ("RGB") input.
+    """
+    def __init__(self, num_classes=2, pretrained=True):
+        super(EfficientNet2D, self).__init__()
+        
+        # Load a pre-trained EfficientNet-B7 model from torchvision
+        self.efficientnet = models.efficientnet_b7(pretrained=pretrained)
+        
+        # Replace the classification head to output the desired number of classes
+        in_features = self.efficientnet.classifier[1].in_features
+        self.efficientnet.classifier = nn.Sequential(
+            nn.Linear(in_features, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(256, num_classes)
+        )
+
+    def forward(self, x):
+        x = x.repeat(1, 3, 1, 1)  # Repeat channel to convert 1-channel to 3-channel input
+        return self.efficientnet(x)
