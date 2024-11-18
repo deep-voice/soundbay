@@ -545,7 +545,6 @@ class InferenceDataset(Dataset):
         """
         audio_len = sf.info(filepath).duration
         step = self.seq_length * (1-self.overlap)
-        # decimal_place = abs(Decimal(str(self.seq_length)).as_tuple().exponent)
         start_times =  np.arange(0, audio_len, step)
         filtered_start_times = start_times[np.where(start_times <= audio_len - self.seq_length)]
         # if (duration - seq_length) is not a multiple of the step size, add the last segment
