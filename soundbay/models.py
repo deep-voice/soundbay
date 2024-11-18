@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch import Tensor
 from torchvision.models.resnet import ResNet, BasicBlock, conv3x3, Bottleneck
 from torchvision.models.vgg import VGG
-from torchvision.models import squeezenet, ResNet18_Weights
+from torchvision.models import squeezenet, ResNet18_Weights, EfficientNet_B7_Weights
 import torchvision.models as models
 
 
@@ -373,7 +373,7 @@ class EfficientNet2D(nn.Module):
         super(EfficientNet2D, self).__init__()
         
         # Load a pre-trained EfficientNet-B7 model from torchvision
-        self.efficientnet = models.efficientnet_b7(pretrained=pretrained)
+        self.efficientnet = models.efficientnet_b7(weights=EfficientNet_B7_Weights.DEFAULT) if pretrained else models.efficientnet_b7(weights=None)
         
         # Replace the classification head to output the desired number of classes
         in_features = self.efficientnet.classifier[1].in_features
