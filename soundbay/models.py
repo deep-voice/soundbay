@@ -369,19 +369,24 @@ class EfficientNet2D(nn.Module):
     """
     EfficientNet model for 3 channel ("RGB") input.
     """
-    def __init__(self, num_classes=2, pretrained=True):
+
+    def __init__(self, num_classes=2, pretrained=True, dropout=0.5, hidden_dim=256):
         super(EfficientNet2D, self).__init__()
-        
+
         # Load a pre-trained EfficientNet-B7 model from torchvision
-        self.efficientnet = models.efficientnet_b7(weights=EfficientNet_B7_Weights.DEFAULT) if pretrained else models.efficientnet_b7(weights=None)
-        
+        self.efficientnet = (
+            models.efficientnet_b7(weights=EfficientNet_B7_Weights.DEFAULT)
+            if pretrained
+            else models.efficientnet_b7(weights=None)
+        )
+
         # Replace the classification head to output the desired number of classes
         in_features = self.efficientnet.classifier[1].in_features
         self.efficientnet.classifier = nn.Sequential(
-            nn.Linear(in_features, 256),
+            nn.Linear(in_features, hidden_dim),
             nn.ReLU(),
-            nn.Dropout(0.5),
-            nn.Linear(256, num_classes)
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, num_classes),
         )
 
     def forward(self, x):
