@@ -315,6 +315,18 @@ class ClassifierDataset(BaseDataset):
         return audio
 
 
+class MultiLabelDataset(ClassifierDataset):
+
+    def __getitem__(self, item):
+        item_args = ClassifierDataset.__getitem__(self, item)
+        if self.mode == "train" or self.mode == "val":
+            audio_processed, label, audio_raw, idx_dict = item_args
+            label = self.metadata.filter(like='multilabel').to_numpy()[idx_dict['idx']].astype(np.float32)
+            return audio_processed, label, audio_raw, idx_dict
+        else:
+            return item_args
+
+
 class NoBackGroundDataset(BaseDataset):
     """
     This  class inherits all the traits from BaseDataset and handles cases with no Background noise (calls only dataset)

@@ -1,8 +1,8 @@
 # @package _global_
 defaults:
-  - ../data: marion_killer_whale
+  - ../data: marion_killer_whale_multitarget
   - ../augmentations: marion_killer_whale
-  - ../preprocessors: _mel_preprocessors
+  - ../preprocessors: _preprocessors
   - ../model: marion_killer_whale
   - ../optim: defaults
   - ../experiment: defaults

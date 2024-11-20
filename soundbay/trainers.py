@@ -82,13 +82,14 @@ class Trainer:
                 self.eval_epoch(epoch, 'train_as_val')
             # save checkpoint
             loss = self.logger.loss_meter_val['loss'].summarize_epoch()
-            macro_f1 = self.logger.metrics_dict['global']['call_f1_macro']
+            if ('global' in self.logger.metrics_dict) and  ('call_f1_macro' in self.logger.metrics_dict['global']):
+                macro_f1 = self.logger.metrics_dict['global']['call_f1_macro']
+                if macro_f1 > best_macro_f1:
+                    best_macro_f1 = macro_f1
+                    self._save_checkpoint("best_macro_f1.pth")
             if loss < best_loss:
                 best_loss = loss
                 self._save_checkpoint("best.pth")
-            if macro_f1 > best_macro_f1:
-                best_macro_f1 = macro_f1
-                self._save_checkpoint("best_macro_f1.pth")
             self._save_checkpoint("last.pth")
             if self.verbose:  # show batch metrics in progress bar
                 s = 'epoch: ' + str(epoch) + ', ' + str(self.logger.metrics_dict)
@@ -123,7 +124,7 @@ class Trainer:
             self.logger.update_predictions((estimated_label, label))
 
         # logging
-        if not app.args.experiment.debug:
+        if not app.args.experiment.debug and (label.shape[1] <= 1):
             self.logger.calc_metrics(epoch, 'train', self.label_names)
 
         self.logger.log(epoch, 'train')
@@ -159,7 +160,7 @@ class Trainer:
                 self.logger.update_predictions((estimated_label, label))
 
             # logging
-            if not app.args.experiment.debug:
+            if not app.args.experiment.debug and (label.shape[1] <= 1):
                 self.logger.calc_metrics(epoch, datatset_name, self.label_names)
             self.logger.log(epoch, datatset_name)
 

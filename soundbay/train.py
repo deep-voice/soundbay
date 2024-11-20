@@ -222,8 +222,9 @@ def main(validate_args) -> None:
 
     # Define criterion
     # criterion = instantiate(args.model.criterion)
-    if args.model.criterion._target_ == 'torch.nn.CrossEntropyLoss':
+    if (args.model.criterion._target_ == 'torch.nn.CrossEntropyLoss') | (args.model.criterion._target_ == 'torch.nn.BCEWithLogitsLoss'):
         criterion = criterion_dict[args.model.criterion._target_]
+
     
         # criterion = torch.nn.CrossEntropyLoss()
 
