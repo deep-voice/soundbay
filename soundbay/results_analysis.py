@@ -9,6 +9,7 @@ import pandas
 import datetime
 from soundbay.utils.logging import Logger
 import argparse
+import matplotlib.pyplot as plt
 
 
 def make_parser():
@@ -20,6 +21,7 @@ def make_parser():
     parser.add_argument("--selected_class", default="1", help = "selected class, will be annotated raven file")
     parser.add_argument("--save_raven", default=True, help ="whether or not to create a raven file")
     parser.add_argument("--threshold", default=0.5, type=float, help="threshold for the classifier in the raven results")
+    parser.add_argument("--plot", default=False, help="whether or not to plot call occurrences")
 
     return parser
 
@@ -109,6 +111,7 @@ def analysis_main() -> None:
     output_dirpath = Path(args.filedir) #workdir.parent.absolute() / "outputs"
     output_dirpath.mkdir(exist_ok=True)
     save_raven = args.save_raven
+    plot = args.plot
     inference_csv_name = args.filename
     inference_results_path = output_dirpath / Path(inference_csv_name + ".csv")
     num_classes = int(args.num_classes)
@@ -136,7 +139,30 @@ def analysis_main() -> None:
         raven_df = inference_csv_to_raven(results_df, num_classes, seq_length, selected_class= selected_class_column, threshold=threshold, class_name=name_col)
         raven_df.to_csv(index=False, path_or_buf=raven_output_file, sep="\t")
 
+    if plot:
+        # Calculate number of calls per time unit
+        # Calculate the number of calls per time unit
+        calls_per_hour, calls_per_minute, recording_durations = calculate_calls_per_time_unit_inference(results_df,
+                                                                                                         seq_length,
+                                                                                                         threshold)
 
+        # Plot the number of calls per hour
+        plt.figure(figsize=(12, 6))
+        plt.plot(calls_per_hour['hour'], calls_per_hour['calls_per_hour'], label='Inference', linestyle='--')
+        plt.xlabel('Hour')
+        plt.ylabel('Number of Calls')
+        plt.title('Number of Calls per Hour')
+        plt.legend()
+        plt.show()
+
+        # Plot the number of calls per minute
+        plt.figure(figsize=(12, 6))
+        plt.plot(calls_per_minute['minute'], calls_per_minute['calls_per_minute'], label='Inference', linestyle='--')
+        plt.xlabel('Minute')
+        plt.ylabel('Number of Calls')
+        plt.title('Number of Calls per Minute')
+        plt.legend()
+        plt.show()
     print("Finished analysis.")
 
 
@@ -190,6 +216,46 @@ def merge_results_by_filename(files_paths: list, save_path: Optional[str] = None
     if save_path:
         final_df.to_csv(save_path, index=False)
     return final_df
+
+
+def calculate_calls_per_time_unit_inference(predictions_df, seq_length, threshold=0.5):
+    """
+    Calculate the number of calls per hour and per minute from continuous model predictions.
+
+    Args:
+    predictions_df (pd.DataFrame): Dataframe containing the prediction results with probabilities.
+    seq_length (float): Length of each time segment in seconds.
+    threshold (float, optional): Threshold for considering a segment as a positive call. Default is 0.5.
+
+    Returns:
+    calls_per_hour (pd.DataFrame): Number of calls per hour.
+    calls_per_minute (pd.DataFrame): Number of calls per minute.
+    recording_durations (dict): Dictionary containing the durations of each recording.
+    """
+    # Filter predictions based on the threshold
+    predictions_df['predicted_label'] = (predictions_df['1'] >= threshold).astype(int)
+
+    # Calculate the time segments
+    predictions_df['time_segment'] = predictions_df.index * seq_length
+
+    # Calculate the total duration of the recording
+    max_time_segment = predictions_df['time_segment'].max()
+    total_duration = (max_time_segment + 1) * seq_length
+
+    # Convert adjusted_time_segment to datetime format
+    predictions_df['datetime'] = pd.to_datetime(predictions_df['time_segment'], unit='s')
+
+    # Calculate the number of calls per hour
+    predictions_df['hour'] = (predictions_df['time_segment'] // 3600).astype(int)
+    calls_per_hour = predictions_df[predictions_df['predicted_label'] == 1].groupby('hour').size().reset_index(
+        name='calls_per_hour')
+
+    # Calculate the number of calls per minute
+    predictions_df['minute'] = (predictions_df['time_segment'] // 60).astype(int)
+    calls_per_minute = predictions_df[predictions_df['predicted_label'] == 1].groupby('minute').size().reset_index(
+        name='calls_per_minute')
+
+    return calls_per_hour, calls_per_minute, total_duration
 
 
 if __name__ == "__main__":
