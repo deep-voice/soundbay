@@ -1,0 +1,41 @@
+# @package _global_
+data:
+  label_names: ['Noise', 'HUWH', 'FIWH', 'RIWH']
+  batch_size: 64
+  num_workers: 6
+  sample_rate: 2000
+  data_sample_rate: 2000
+  max_freq: 1000
+  min_freq: 0
+  n_fft: 512
+  hop_length: 128
+  train_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: '../datasets/right_whale_noaa/nefsc_sbnms_200903_nopp6_ch10/source-audio/'
+    mode: train
+    metadata_path: '../datasets/right_whale_noaa/train.csv'
+    augmentations_p: 0.8
+    augmentations: ${_augmentations}
+    preprocessors: ${_preprocessors}
+    seq_length: 4.0
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: false
+    split_metadata_by_label: no
+    margin_ratio: 0.2
+    path_hierarchy: 0
+  val_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: '../datasets/right_whale_noaa/nefsc_sbnms_200903_nopp6_ch10/source-audio/'
+    mode: val
+    metadata_path: '../datasets/right_whale_noaa/val.csv'
+    augmentations_p: 0
+    augmentations: null
+    preprocessors: ${_preprocessors}
+    seq_length: 4.0
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: true
+    split_metadata_by_label: no
+    margin_ratio: 0.0
+    path_hierarchy: 0
