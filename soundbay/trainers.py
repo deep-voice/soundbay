@@ -5,6 +5,7 @@ from tqdm import tqdm
 from pathlib import Path
 from soundbay.utils.app import app
 from soundbay.utils.logging import Logger
+import wandb
 
 
 class Trainer:
@@ -68,6 +69,7 @@ class Trainer:
 
     def train(self):
         best_loss = float('inf')
+        best_macro_f1 = 0
         # Run training script
         iterator = tqdm(range(self.epochs_trained, self.epochs),
                         desc='Running Epochs', leave=True, disable=not self.verbose)
@@ -80,9 +82,13 @@ class Trainer:
                 self.eval_epoch(epoch, 'train_as_val')
             # save checkpoint
             loss = self.logger.loss_meter_val['loss'].summarize_epoch()
+            macro_f1 = self.logger.metrics_dict['global']['call_f1_macro']
             if loss < best_loss:
                 best_loss = loss
                 self._save_checkpoint("best.pth")
+            if macro_f1 > best_macro_f1:
+                best_macro_f1 = macro_f1
+                self._save_checkpoint("best_macro_f1.pth")
             self._save_checkpoint("last.pth")
             if self.verbose:  # show batch metrics in progress bar
                 s = 'epoch: ' + str(epoch) + ', ' + str(self.logger.metrics_dict)
@@ -169,6 +175,7 @@ class Trainer:
                       "scheduler": self.scheduler.state_dict() if self.scheduler is not None else None,
                       "epochs": self.epochs_trained,
                       "model": self.model.state_dict(),
+                      "wandb_experiment_id": wandb.run.id if not app.args.experiment.debug else None,
                       "args": app.args
                       }
 
