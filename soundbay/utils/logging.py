@@ -172,22 +172,25 @@ class Logger:
         artifact_wav = torch.squeeze(raw_wav).detach().cpu().numpy()
         artifact_wav = artifact_wav / np.expand_dims(np.abs(artifact_wav).max(axis=1) + 1e-8, 1) * 0.5  # gain -6dB
         list_of_wavs_objects = [wandb.Audio(data_or_path=wav, caption=f'{flag}_label{lab}_i{ind}_{round(b_t/data_sample_rate,2)}sec_{f_n}', sample_rate=sample_rate) for wav, ind, lab, b_t, f_n in zip(artifact_wav,idx, label, meta['begin_time'], meta['org_file'])]
+        log_wavs = {f'First batch {flag} original wavs': list_of_wavs_objects}
 
         # Spectrograms batch
-        artifact_spec = torch.squeeze(audio).detach().cpu().numpy()
-        specs = []
-        for artifact_id in range(artifact_spec.shape[0]):
-            ax = plt.subplots(nrows=1, ncols=1)
-            specs.append(librosa.display.specshow(artifact_spec[artifact_id,...], ax=ax[1]))
-            plt.close('all')
-            del ax
-        list_of_specs_objects = [wandb.Image(data_or_path=spec, caption=f'{flag}_label{lab}_i{ind}_{round(b_t/data_sample_rate,2)}sec_{f_n}') for spec, ind, lab, b_t, f_n in zip(specs,idx, label, meta['begin_time'], meta['org_file'])]
-        log_wavs = {f'First batch {flag} original wavs': list_of_wavs_objects}
-        log_specs = {f'First batch {flag} augmented spectrogram\'s': list_of_specs_objects}
+        if audio.dim() >= 4: # In case that spectrogram preprocessing was not applied the dimension is 3.
+            artifact_spec = torch.squeeze(audio).detach().cpu().numpy()
+            specs = []
+            for artifact_id in range(artifact_spec.shape[0]):
+                ax = plt.subplots(nrows=1, ncols=1)
+                specs.append(librosa.display.specshow(artifact_spec[artifact_id,...], ax=ax[1]))
+                plt.close('all')
+                del ax
+            list_of_specs_objects = [wandb.Image(data_or_path=spec, caption=f'{flag}_label{lab}_i{ind}_{round(b_t/data_sample_rate,2)}sec_{f_n}') for spec, ind, lab, b_t, f_n in zip(specs,idx, label, meta['begin_time'], meta['org_file'])]
+            log_specs = {f'First batch {flag} augmented spectrogram\'s': list_of_specs_objects}
+            # Upload spectrograms to W&B
+            wandb.log(log_specs, commit=False)
 
-        # Upload to W&B
+        # Upload WAVs to W&B
         wandb.log(log_wavs, commit=False)
-        wandb.log(log_specs, commit=False)
+
 
     @staticmethod
     def get_metrics_dict(label_list: Union[list, np.ndarray], pred_list: Union[list, np.ndarray],
