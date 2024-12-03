@@ -416,7 +416,7 @@ class EfficientNet2D(nn.Module):
         return self.efficientnet(x)
  
 
- class WAV2VEC2(nn.Module):
+class WAV2VEC2(nn.Module):
     def __init__(
             self,
             num_classes: int = 2,
