@@ -405,7 +405,7 @@ class WAV2VEC2(nn.Module):
             x = torch.squeeze(x, dim=1)
         x = self.wav2vec.extract_features(x)[0]
         # mean pooling over the layers: [layers, batch, time, features] -> [batch, time, features]
-        x = torch.stack(x, dim=0).mean(dim=0)
+        x = torch.stack(x, dim=0).mean(dim=(0,2))
         # mean pooling over the time: [batch, time, features] -> [batch, features]
         return x.mean(dim=1)
 
