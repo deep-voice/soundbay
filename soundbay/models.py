@@ -9,7 +9,6 @@ from torchvision.models.resnet import ResNet, BasicBlock, conv3x3, Bottleneck
 from torchvision.models.vgg import VGG
 from torchvision.models import squeezenet, ResNet18_Weights
 import torchvision.models as models
-from torchaudio.models import wav2vec2_model
 
 from soundbay.utils.files_handler import load_config
 
@@ -388,7 +387,7 @@ class WAV2VEC2(nn.Module):
         embedding_dim = config['encoder_embed_dim']
 
         self.freeze_encoder = freeze_encoder
-        self.wav2vec = wav2vec2_model(**config)
+        self.wav2vec = torchaudio.models.wav2vec2_model(**config)
         if pretrained:
             # Load a pre-trained WAV2VEC2
             self.wav2vec.load_state_dict(torch.hub.load_state_dict_from_url(path))
@@ -404,10 +403,9 @@ class WAV2VEC2(nn.Module):
         if len(x.shape) > 2:
             x = torch.squeeze(x, dim=1)
         x = self.wav2vec.extract_features(x)[0]
-        # mean pooling over the layers: [layers, batch, time, features] -> [batch, time, features]
+        # mean pooling over the layers and time: [layers, batch, time, features] -> [batch, features]
         x = torch.stack(x, dim=0).mean(dim=(0,2))
-        # mean pooling over the time: [batch, time, features] -> [batch, features]
-        return x.mean(dim=1)
+        return x
 
 
     def freeze_layers(self, ):
