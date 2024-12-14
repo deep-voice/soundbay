@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 from tqdm import tqdm
 from scipy.special import softmax
+from scipy.special import expit
 import hydra
 from pathlib import Path
 import os
@@ -49,8 +50,9 @@ def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
                     return predicted_probability[:, selected_class_idx]
                 else:
                     raise ValueError(f'selected class index {selected_class_idx} not in output dimensions')
-        softmax_activation = softmax(all_predictions, 1)
-        return softmax_activation
+        # softmax_activation = softmax(all_predictions, 1)
+        expit_activation = expit(all_predictions)
+        return expit_activation
 
 
 def load_model(model_params, checkpoint_state_dict):
