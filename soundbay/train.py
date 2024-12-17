@@ -76,7 +76,8 @@ def modeling(
     preprocessors=train_dataset_args['preprocessors'],
     seq_length=train_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
     sample_rate=train_dataset_args['sample_rate'], margin_ratio=train_dataset_args['margin_ratio'],
-    slice_flag=train_dataset_args['slice_flag'], mode=train_dataset_args['mode']
+    slice_flag=train_dataset_args['slice_flag'], mode=train_dataset_args['mode'],
+    path_hierarchy=train_dataset_args['path_hierarchy']
     )
 
     # train data which is handled as validation data
@@ -86,7 +87,8 @@ def modeling(
     preprocessors=val_dataset_args['preprocessors'],
     seq_length=val_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
     sample_rate=train_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
-    slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode']
+    slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode'],
+    path_hierarchy=val_dataset_args['path_hierarchy']
     )
 
     val_dataset = datasets_dict[val_dataset_args['_target_']](data_path = val_dataset_args['data_path'],
@@ -95,14 +97,13 @@ def modeling(
     preprocessors=val_dataset_args['preprocessors'],
     seq_length=val_dataset_args['seq_length'], data_sample_rate=val_dataset_args['data_sample_rate'],
     sample_rate=val_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
-    slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode']
+    slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode'],
+    path_hierarchy=train_dataset_args['path_hierarchy']
     )
-
 
     # Define model and device for training
     model_args = dict(model_args)
     model = models_dict[model_args.pop('_target_')](**model_args)
-
 
     print('*** model has been loaded successfully ***')
     print(f'number of trainable params: {sum([p.numel() for p in model.parameters() if p.requires_grad]):,}')
@@ -231,6 +232,10 @@ def main(validate_args) -> None:
         args.experiment.manual_seed = random.randint(1, 10000)
     random.seed(args.experiment.manual_seed)
     torch.manual_seed(args.experiment.manual_seed)
+
+
+    # extra asserts
+    assert args.data.max_freq == args.data.sample_rate // 2, "max_freq must be equal to sample_rate // 2"
 
     # Finetune
     if args.optim.freeze_layers_for_finetune is None:

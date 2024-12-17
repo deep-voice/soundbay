@@ -1,11 +1,9 @@
 import random
 from itertools import starmap, repeat
 from pathlib import Path
-from copy import deepcopy
 from typing import Union
 from decimal import Decimal
 
-import librosa
 import numpy as np
 import pandas as pd
 import soundfile as sf
@@ -18,8 +16,6 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 from audiomentations import Compose
 
-import matplotlib.pyplot as plt
-
 
 class BaseDataset(Dataset):
     """
@@ -27,7 +23,7 @@ class BaseDataset(Dataset):
     """
     def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
                  seq_length=1, data_sample_rate=44100, sample_rate=44100, mode="train",
-                 slice_flag=False, margin_ratio=0, split_metadata_by_label=False):
+                 slice_flag=False, margin_ratio=0, split_metadata_by_label=False, path_hierarchy: int = 0):
         """
         __init__ method initiates ClassifierDataset instance:
         Input:
@@ -36,11 +32,31 @@ class BaseDataset(Dataset):
         augmentations - list of classes audiogemtations
         augmentations_p - array of probabilities (float64)
         preprocessors - list of classes from preprocessors (TBD function)
-
+        path_hierarchy - enables working with data that is organized in a hierarchy of folders. The default value is 0,
+        which means all the audio files are flattened in the same folder. If the value is 1, the audio files are
+        organized in one folder per class, and so on. The annotations in the metadata has to be aligned with the path
+        hierarchy, and to include the parent folder names in the filename column.
+        Example:
+            path_hierarchy = 0:
+            - main_folder
+                - file1.wav
+                - file2.wav
+                - file3.wav
+            path_hierarchy = 1:
+            - main_folder
+                - sub_folder1
+                    - file1.wav
+                    - file5.wav
+                - sub_folder2
+                    - file2.wav
+                    - file4.wav
+                - sub_folder3
+                    - file3.wav
+                    - file8.wav
         Output:
         ClassifierDataset Object - inherits from Dataset object in PyTorch package
         """
-        self.audio_dict = self._create_audio_dict(Path(data_path))
+        self.audio_dict = self._create_audio_dict(Path(data_path), path_hierarchy=path_hierarchy)
         self.metadata_path = metadata_path
         self.dtype_dict = {'filename': 'str'}
         metadata = pd.read_csv(self.metadata_path, dtype=self.dtype_dict)
@@ -65,7 +81,7 @@ class BaseDataset(Dataset):
             metadata = metadata[metadata['split_type'] == mode]
         return metadata
 
-    def _create_audio_dict(self, data_path: Path) -> dict:
+    def _create_audio_dict(self, data_path: Path, path_hierarchy=0) -> dict:
         """
             create reference dict to extract audio files from metadata annotation
             Input:
@@ -73,8 +89,15 @@ class BaseDataset(Dataset):
             Output:
             audio_dict contains references to audio paths given name from metadata
         """
-        audio_paths = data_path.rglob('*.wav')
-        return {x.name.replace('.wav', ''): x for x in audio_paths}
+        def get_parent_path(path, path_hierarchy):
+            parent_path_parts = path.parts[:-1]
+            assert len(parent_path_parts) > path_hierarchy, \
+                (f"Make sure path_hierarchy:{path_hierarchy} is smaller than actual files hierarchy "
+                 f"{len(parent_path_parts)}")
+            return '/'.join(parent_path_parts[len(parent_path_parts) - path_hierarchy:])
+
+        audio_paths = list(data_path.rglob('*.wav'))
+        return {f'{get_parent_path(x, path_hierarchy)}/{x.name[:-4]}'.strip('/'): x for x in audio_paths}
 
     def _preprocess_metadata(self, slice_flag=False):
         """
@@ -92,6 +115,13 @@ class BaseDataset(Dataset):
             ((self.metadata['call_length'] >= self.seq_length) & (self.metadata['label'] == 0)) |
             (self.metadata['label'] > 0)
             ]
+
+        # sometimes the bbox's end time exceeds the file's length
+        for name, sub_df in self.metadata.groupby('filename'):
+            duration = sf.info(str(self.audio_dict[name])).duration
+            if not all(sub_df['end_time'] <= duration):
+                print(f'seems like some tags in file {name} have bigger end_time than its duration')
+                print(f"file {name} --- int(duration): {int(duration)} --- biggest end time: {sub_df['end_time'].max()}")
 
         if slice_flag:
             self._slice_sequence()
@@ -129,8 +159,11 @@ class BaseDataset(Dataset):
         self.metadata sliced according to buffers
         """
         self.metadata = self.metadata.reset_index(drop=True)
+        count_values_before = self.metadata.value_counts('label', sort=False) # for validating that the following code doesn't lose samples
         sliced_times = list(starmap(np.arange, zip(self.metadata['begin_time'], self.metadata['end_time'], repeat(self.seq_length))))
-
+        # add the last sequence at the end of this list for calls only (only if it does not exceed the file)
+        sliced_times = list([np.append(s, self.metadata.loc[i, 'end_time']) if self.metadata.loc[i, 'label'] != 0
+                             else s for i, s in enumerate(sliced_times)])
         new_begin_time = list(x[:-1] for x in sliced_times)
         duplicate_size_vector = [len(list_elem) for list_elem in new_begin_time] # vector to duplicate original dataframe
         new_begin_time = np.concatenate(new_begin_time) # vectorize to array
@@ -139,6 +172,8 @@ class BaseDataset(Dataset):
         self.metadata['begin_time'] = new_begin_time
         self.metadata['end_time'] = new_end_time
         self.metadata['call_length'] = np.shape(self.metadata)[0] * [self.seq_length]
+        if not all(self.metadata.value_counts('label', sort=False) >= count_values_before):
+            print(f'Note: seems like _slice_sequence erases data.\nbefore:{count_values_before}\nafter:{self.metadata.value_counts("label", sort=False)}')
         return
 
     def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
@@ -261,11 +296,19 @@ class ClassifierDataset(BaseDataset):
                 start_time = random.randint(max(begin_time - short_call_margin, 0),
                                             min(begin_time, last_start_time))
         else:
-            start_time = begin_time
+            if begin_time < last_start_time:
+                start_time = begin_time
+            else:
+                print(f'in {path_to_file}, one of the val\'s begin times is too big and exceeding the file so it was set to be smaller\nbegin time:{begin_time}, last_start_time:{last_start_time}')
+                start_time = last_start_time
         data, _ = sf.read(str(path_to_file), start=start_time,
                           stop=start_time + requested_seq_length)
+        if channel is not None and data.ndim > 1:
+            assert channel > 0, f"channel as to be a positive integer, got {channel}"
         if channel is not None and channel>1:
             data = data[:, channel - 1]
+        elif channel is None and data.ndim > 1:
+            data = data[:, 0] # when channel is not specified, take the first channel
         if data.shape[0] < 1:
             raise ValueError(f"Audio segment is empty. {path_to_file}: "
                              f"{start_time}, {start_time + requested_seq_length}")
@@ -313,7 +356,7 @@ class PeakNormalize:
 
     def __call__(self, sample):
 
-        return (sample - sample.min()) / (sample.max() - sample.min())
+        return (sample - sample.min()) / (sample.max() - sample.min() + 1e-8)
 
 
 class MinFreqFiltering:
@@ -492,9 +535,9 @@ class InferenceDataset(Dataset):
         output:
         audio - pytorch tensor (1-D array)
         """
-        duration = sf.info(self.file_path).duration*self.data_sample_rate
+        duration = sf.info(self.file_path).duration
         stop_time = begin_time + int(self.seq_length * self.data_sample_rate)
-        assert duration >= stop_time, f"trying to load audio from {begin_time} to {stop_time} but audio is only {duration} long"
+        assert duration * self.data_sample_rate >= stop_time, f"trying to load audio from {begin_time} to {stop_time} but audio is only {duration} long"
         data, orig_sample_rate = sf.read(self.file_path, start=begin_time, stop=stop_time)
         num_channels = sf.info(self.file_path).channels
         if (self.channel is not None) and (num_channels > 1):

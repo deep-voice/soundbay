@@ -17,10 +17,12 @@ jobs:
           sudo add-apt-repository ppa:deadsnakes/ppa
           sudo apt-get update
           sudo apt install sox
-          sudo apt-get install -y python3.7
-          sudo apt-get install -y python3.7-venv 
-          python3.7 -m venv venv
+          sudo apt-get install -y python3.8
+          sudo apt-get install -y python3.8-dev
+          sudo apt-get install -y python3.8-venv 
+          python3.8 -m venv venv
           source venv/bin/activate
-          pip install torch torchvision torchaudio
+          pip install -U pip
           pip install -e .
+          pip install torch torchvision torchaudio
           pytest

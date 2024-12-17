@@ -15,6 +15,7 @@ def make_parser():
     parser.add_argument("--filename", default="", help="csv file of inference results for analysis")
     parser.add_argument("--selected_class", default="1", help = "selected class, will be annotated raven file")
     parser.add_argument("--save_raven", default=True, help ="whether or not to create a raven file")
+    parser.add_argument("--threshold", default=0.5, type=float, help="threshold for the classifier in the raven results")
 
     return parser
 
@@ -97,7 +98,7 @@ def analysis_main() -> None:
     inference_results_path = output_dirpath / Path(inference_csv_name + ".csv")
     num_classes = int(args.num_classes)
     # threshold = 1/num_classes  # threshold for the classifier in the raven results
-    threshold = 0.01 # TODO: change back after placencia evaluation
+    threshold = args.threshold
     results_df = pd.read_csv(inference_results_path)
     name_col = args.selected_class  # selected class for raven results
 

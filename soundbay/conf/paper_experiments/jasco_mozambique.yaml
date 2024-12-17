@@ -1,8 +1,8 @@
 # @package _global_
 defaults:
-  - ../data: orcasound
+  - ../data: mozambique_2018
   - ../augmentations: _augmentations
   - ../preprocessors: _preprocessors
   - ../model: defaults
-  - ../optim: defaults
+  - ../optim: jasco_resnet_50
   - ../experiment: defaults

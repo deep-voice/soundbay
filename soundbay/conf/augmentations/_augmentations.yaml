@@ -7,11 +7,11 @@ _augmentations:
   #   max_snr_in_db: 30
   #   lru_cache_size: 100
   #   p: 0.5
-  freq_shift:
-    _target_: audiomentations.PitchShift
-    min_semitones: -4
-    max_semitones: 4
-    p: 0.5
+#  freq_shift:
+#    _target_: audiomentations.PitchShift
+#    min_semitones: -4
+#    max_semitones: 4
+#    p: 0.5
   time_stretch:
     _target_: audiomentations.TimeStretch
     min_rate: 0.9
@@ -24,7 +24,8 @@ _augmentations:
     p: 0.5
   frequency_masking:
     _target_: audiomentations.BandStopFilter
-    min_center_freq: 500
+
+    min_center_freq: ${data.min_freq}
     max_center_freq: ${data.max_freq}
     min_bandwidth_fraction: 0.05
     max_bandwidth_fraction: 0.2

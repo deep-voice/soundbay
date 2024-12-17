@@ -1,13 +1,13 @@
 numba>=0.54.0
-numpy<1.21.0
+numpy==1.*
 librosa>=0.9.0
-tqdm==4.64.1
+tqdm==4.*
 hydra-core==1.2.0
-pydantic>=1.10.2
+pydantic==1.*
 pytest>=5.4.1
 scikit-learn>=0.22.1
-omegaconf>=2.0.0
-soundfile>=0.10.2
+omegaconf==2.*
+soundfile==0.*
 pandas>=1.0.3
 wandb>=0.12.0
 beautifulsoup4>=4.9.1
@@ -18,5 +18,5 @@ future-fstrings>=1.0.0
 boto3>=1.20.0
 matplotlib>=2.0.0
 audiomentations==0.26.0
-click==8.1.3
-botocore==1.29.138
+click==8.*
+botocore==1.*

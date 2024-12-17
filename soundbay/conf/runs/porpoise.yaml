@@ -1,8 +1,8 @@
 # @package _global_
 defaults:
-  - ../data: orcasound
+  - ../data: porpoise
   - ../augmentations: _augmentations
-  - ../preprocessors: _preprocessors
-  - ../model: defaults
+  - ../preprocessors: _mel_preprocessors
+  - ../model: resnet_18_2d
   - ../optim: defaults
   - ../experiment: defaults

@@ -2,7 +2,7 @@
 data:
   label_names: ['Noise', 'Call']
   batch_size: 64
-  num_workers: 10
+  num_workers: 6
   sample_rate: 16000
   data_sample_rate: 20000
   max_freq: 1000
@@ -23,7 +23,7 @@ data:
     sample_rate: ${data.sample_rate}
     slice_flag: false
     split_metadata_by_label: yes
-    margin_ratio: 0
+    margin_ratio: 0.5
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
     data_path: '../datasets/orcasound/train_data/wav'

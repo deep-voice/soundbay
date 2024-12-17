@@ -122,7 +122,7 @@ def infer_multi_file(
     preprocessors=dataset_args['preprocessors'],
     seq_length=dataset_args['seq_length'], data_sample_rate=dataset_args['data_sample_rate'],
     sample_rate=dataset_args['sample_rate'], 
-    mode=dataset_args['mode']
+    mode=dataset_args['mode'], slice_flag=dataset_args['slice_flag'], path_hierarchy=dataset_args['path_hierarchy'],
     )
 
     # load model
@@ -268,6 +268,16 @@ def inference_to_file(
                          model_name,
                          save_raven,
                          threshold)
+    elif dataset_args._target_.endswith('NoBackGroundDataset'):
+        infer_multi_file(device,
+                         batch_size,
+                         dataset_args,
+                         model_args,
+                         checkpoint_state_dict,
+                         output_path,
+                         model_name,
+                         save_raven,
+                         threshold)
     elif dataset_args._target_.endswith('InferenceDataset'):
         infer_single_file(device,
                           batch_size,
@@ -313,7 +323,7 @@ def inference_main(args) -> None:
         model_args=args.model.model,
         checkpoint_state_dict=ckpt,
         output_path=output_dirpath,
-        model_name=Path(args.experiment.checkpoint.path).stem,
+        model_name=Path(args.experiment.checkpoint.path).parent.stem,
         save_raven=args.experiment.save_raven,
         threshold=args.experiment.threshold
     )
