@@ -1,3 +1,4 @@
+import ast
 import random
 from itertools import starmap, repeat
 from pathlib import Path
@@ -66,6 +67,7 @@ class BaseDataset(Dataset):
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
         self._preprocess_metadata(slice_flag)
+        self.label_type = self._evaluate_label_type()
         self.augmenter = self._set_augmentations(augmentations, augmentations_p)
         self.preprocessor = self.set_preprocessor(preprocessors)
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
@@ -106,7 +108,7 @@ class BaseDataset(Dataset):
         Output:
             ClassifierDataset object with self.metadata dataframe after applying the condition
         """
-        self._preprocess_target()
+        self.metadata['label'] = self._preprocess_target()
         is_noise = self.metadata['label'].apply(self._is_noise)
 
         # All calls are worthy (because we can later create a bigger slice contain them that is still a call in
@@ -125,7 +127,7 @@ class BaseDataset(Dataset):
 
         self.metadata.reset_index(drop=True, inplace=True)
 
-    def _preprocess_target(self):
+    def _preprocess_target(self) -> pd.Series:
         """
         Preprocesses the label column in the metadata. If the label is a string, it is evaluated and converted to an
         integer or a list of integers.
@@ -133,12 +135,28 @@ class BaseDataset(Dataset):
         if pd.api.types.is_string_dtype(self.metadata['label']):
             assert self.metadata['label'].str.match(r'^(\[|\()?(\d+)(\s*,\s*\d+)*(\]|\))?$').all(), \
                 "label should be a string that could be evaluated as a list of integers or integers."
-            self.metadata['label'] = self.metadata['label'].apply(eval)
+            self.metadata['label'] = self.metadata['label'].apply(ast.literal_eval)
             if self.metadata['label'].apply(lambda x: isinstance(x, (list, tuple))).all():
                 self.metadata['label'] = self.metadata['label'].apply(np.array, dtype=int)
+        return self.metadata['label']
+
+    def _evaluate_label_type(self) -> str:
+        """
+        function _evaluate_label_type evaluates the type of the label ("multi_label", "single_label") in the metadata
+        Input:
+            label - pd.Series
+        Output:
+            label_type - string
+        """
+        if self.metadata['label'].apply(lambda x: isinstance(x, np.ndarray)).all():
+            return 'multi_label'
+        elif self.metadata['label'].apply(lambda x: isinstance(x, (int, np.integer))).all():
+            return 'single_label'
+        else:
+            raise ValueError("label should be either a list of integers or integers.")
 
     @staticmethod
-    def _is_noise(value: [int, np.ndarray]) -> bool:
+    def _is_noise(value: Union[int, np.ndarray]) -> bool:
         """
         Checks if the value is a noise, i.e., if it is equal to 0.
         """
@@ -238,7 +256,7 @@ class BaseDataset(Dataset):
         """
         Returns the number of classes in the metadata.
         """
-        if self.metadata['label'].apply(lambda x: isinstance(x, np.ndarray)).all():
+        if self.label_type == 'multi_label':
             label_lengths = self.metadata['label'].apply(len)
             assert label_lengths.nunique() == 1, "All labels should have the same length"
             return label_lengths.iloc[0]
@@ -251,7 +269,7 @@ class BaseDataset(Dataset):
             - if the label is integer, the weight is the inverse of the class count.
             - if the label is a list, the weight is the inverse of the minimum class count.
         """
-        if self.metadata['label'].apply(lambda x: isinstance(x, np.ndarray)).all():
+        if self.label_type == 'multi_label':
             noise_counts = self.metadata['label'].apply(self._is_noise).sum()
             class_counts = np.sum(self.metadata['label'])
             per_sample_min_class_count = (self.metadata['label'].apply(
