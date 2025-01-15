@@ -116,7 +116,9 @@ class Trainer:
 
             # estimate and calc losses
             estimated_label = self.model(audio)
-            loss = self.criterion(estimated_label, label.type_as(estimated_label))
+            if self.label_type == 'multi_label':
+                label = label.type_as(estimated_label)
+            loss = self.criterion(estimated_label, label)
             loss.backward()
             self.optimizer.step()
 
@@ -158,7 +160,9 @@ class Trainer:
 
                 # estimate and calc losses
                 estimated_label = self.model(audio)
-                loss = self.criterion(estimated_label, label.type_as(estimated_label))
+                if self.label_type == 'multi_label':
+                    label = label.type_as(estimated_label)
+                loss = self.criterion(estimated_label, label)
 
                 # process the logit predictions:
                 predicted_proba, predicted_label = post_process_predictions(estimated_label.data, self.label_type)
