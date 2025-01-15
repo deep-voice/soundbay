@@ -26,7 +26,8 @@ optim_dict = {'torch.optim.Adam': torch.optim.Adam, 'torch.optim.SGD': torch.opt
 scheduler_dict = {'torch.optim.lr_scheduler.ExponentialLR': torch.optim.lr_scheduler.ExponentialLR}
 
 criterion_dict = {'torch.nn.CrossEntropyLoss': torch.nn.CrossEntropyLoss(),
-                  'torch.nn.MSELoss': torch.nn.MSELoss()}
+                  'torch.nn.MSELoss': torch.nn.MSELoss(),
+                  'torch.nn.BCEWithLogitsLoss': torch.nn.BCEWithLogitsLoss(),}
 
 augmentations_dict = {'freq_shift': PitchShift,
                       'frequency_masking': BandStopFilter,

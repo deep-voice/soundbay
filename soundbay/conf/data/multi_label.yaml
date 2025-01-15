@@ -1,6 +1,6 @@
 # @package _global_
 data:
-  label_names: ['Noise', 'Call']
+  label_names: ['Noise', 'Call_type1', 'Call_type2']
   batch_size: 64
   num_workers: 10
   sample_rate: 16000
@@ -9,7 +9,7 @@ data:
   max_freq: 8000
   n_fft: 1024
   hop_length: 256
-  label_type: 'single_label'
+  label_type: 'multi_label'
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
     data_path: './tests/assets/data/'

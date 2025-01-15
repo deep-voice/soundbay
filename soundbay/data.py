@@ -21,7 +21,7 @@ class BaseDataset(Dataset):
     """
     class for storing and loading data.
     """
-    def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
+    def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors, label_type,
                  seq_length=1, data_sample_rate=44100, sample_rate=44100, mode="train",
                  slice_flag=False, margin_ratio=0, split_metadata_by_label=False, path_hierarchy: int = 0):
         """
@@ -59,6 +59,7 @@ class BaseDataset(Dataset):
         self.audio_dict = self._create_audio_dict(Path(data_path), path_hierarchy=path_hierarchy)
         self.metadata_path = metadata_path
         self.dtype_dict = {'filename': 'str'}
+        self.label_type = label_type
         metadata = pd.read_csv(self.metadata_path, dtype=self.dtype_dict)
         self.metadata = self._update_metadata_by_mode(metadata, mode, split_metadata_by_label)
         self.mode = mode
@@ -67,7 +68,6 @@ class BaseDataset(Dataset):
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
         self._preprocess_metadata(slice_flag)
-        self.label_type = self._evaluate_label_type()
         self.augmenter = self._set_augmentations(augmentations, augmentations_p)
         self.preprocessor = self.set_preprocessor(preprocessors)
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
@@ -140,20 +140,6 @@ class BaseDataset(Dataset):
                 self.metadata['label'] = self.metadata['label'].apply(np.array, dtype=int)
         return self.metadata['label']
 
-    def _evaluate_label_type(self) -> str:
-        """
-        function _evaluate_label_type evaluates the type of the label ("multi_label", "single_label") in the metadata
-        Input:
-            label - pd.Series
-        Output:
-            label_type - string
-        """
-        if self.metadata['label'].apply(lambda x: isinstance(x, np.ndarray)).all():
-            return 'multi_label'
-        elif self.metadata['label'].apply(lambda x: isinstance(x, (int, np.integer))).all():
-            return 'single_label'
-        else:
-            raise ValueError("label should be either a list of integers or integers.")
 
     @staticmethod
     def _is_noise(value: Union[int, np.ndarray]) -> bool:

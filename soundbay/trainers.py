@@ -5,6 +5,7 @@ from tqdm import tqdm
 from pathlib import Path
 from soundbay.utils.app import app
 from soundbay.utils.logging import Logger
+from soundbay.utils.post_process import post_process_predictions
 import wandb
 
 
@@ -33,6 +34,7 @@ class Trainer:
                  train_as_val_dataloader: Generator[Tuple[torch.tensor, torch.tensor], None, None],
                  optimizer: torch.optim,
                  criterion,
+                 label_type: str,
                  epochs: int,
                  logger: Logger,
                  output_path: Union[str, Path],
@@ -62,6 +64,7 @@ class Trainer:
         self.train_as_val_interval = train_as_val_interval
         self.output_path = output_path
         self.label_names = list(label_names) if label_names else None
+        self.label_type = label_type
 
         # load checkpoint
         if checkpoint:
@@ -113,18 +116,21 @@ class Trainer:
 
             # estimate and calc losses
             estimated_label = self.model(audio)
-            loss = self.criterion(estimated_label, label)
+            loss = self.criterion(estimated_label, label.type_as(estimated_label))
             loss.backward()
             self.optimizer.step()
+
+            # process the logit predictions:
+            predicted_proba, predicted_label = post_process_predictions(estimated_label.data, self.label_type)
 
             # update losses and log batch
 
             self.logger.update_losses(loss.detach(), flag='train')
-            self.logger.update_predictions((estimated_label, label))
+            self.logger.update_predictions(predicted_label, predicted_proba, label.cpu().numpy())
 
         # logging
         if not app.args.experiment.debug:
-            self.logger.calc_metrics(epoch, 'train', self.label_names)
+            self.logger.calc_metrics(epoch, self.label_type,'train', self.label_names)
 
         self.logger.log(epoch, 'train')
         if self.scheduler is not None:
@@ -152,15 +158,18 @@ class Trainer:
 
                 # estimate and calc losses
                 estimated_label = self.model(audio)
-                loss = self.criterion(estimated_label, label)
+                loss = self.criterion(estimated_label, label.type_as(estimated_label))
+
+                # process the logit predictions:
+                predicted_proba, predicted_label = post_process_predictions(estimated_label.data, self.label_type)
 
                 # update losses
                 self.logger.update_losses(loss.detach(), flag=datatset_name)
-                self.logger.update_predictions((estimated_label, label))
+                self.logger.update_predictions(predicted_label, predicted_proba, label.cpu().numpy())
 
             # logging
             if not app.args.experiment.debug:
-                self.logger.calc_metrics(epoch, datatset_name, self.label_names)
+                self.logger.calc_metrics(epoch, self.label_type, datatset_name, self.label_names)
             self.logger.log(epoch, datatset_name)
 
 
