@@ -44,7 +44,8 @@ class Trainer:
                  load_optimizer_state: bool = False,
                  label_names: List[str] = None,
                  debug: bool = False,
-                 train_as_val_interval: int = 20):
+                 train_as_val_interval: int = 20,
+                 proba_threshold: Union[float,None] = None):
 
         # set parameters for stft loss
         self.model = model
@@ -65,6 +66,7 @@ class Trainer:
         self.output_path = output_path
         self.label_names = list(label_names) if label_names else None
         self.label_type = label_type
+        self.proba_threshold = proba_threshold
 
         # load checkpoint
         if checkpoint:
@@ -123,7 +125,7 @@ class Trainer:
             self.optimizer.step()
 
             # process the logit predictions:
-            predicted_proba, predicted_label = post_process_predictions(estimated_label.data, self.label_type)
+            predicted_proba, predicted_label = post_process_predictions(estimated_label.data, self.label_type, self.proba_threshold)
 
             # update losses and log batch
 
@@ -165,7 +167,7 @@ class Trainer:
                 loss = self.criterion(estimated_label, label)
 
                 # process the logit predictions:
-                predicted_proba, predicted_label = post_process_predictions(estimated_label.data, self.label_type)
+                predicted_proba, predicted_label = post_process_predictions(estimated_label.data, self.label_type, self.proba_threshold)
 
                 # update losses
                 self.logger.update_losses(loss.detach(), flag=datatset_name)

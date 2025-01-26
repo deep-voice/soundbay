@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 from tqdm import tqdm
 from scipy.special import softmax
+from scipy.special import expit
 import hydra
 from pathlib import Path
 import os
@@ -22,6 +23,7 @@ from soundbay.conf_dict import models_dict, datasets_dict
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
                   device: torch.device = torch.device('cpu'),
                   selected_class_idx: Union[None, int] = None,
+                  proba_norm_func: str = 'softmax'
                   ) -> np.ndarray:
     """
     calculates the predicted probability to belong to a class for all the samples in the dataset given a specific model
@@ -32,9 +34,10 @@ def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
         selected_class_idx: the wanted class for prediction. must be bound by the number of classes in the model
 
     Output:
-        softmax_activation: the vector of the predictions of all the samples after a softmax function
+        proba: the vector of the predictions normalized to probabilities.
 
     """
+    assert proba_norm_func in ['softmax', 'sigmoid'], 'proba_norm_func must be softmax or sigmoid'
     all_predictions = []
     with torch.no_grad():
         model.eval()
@@ -49,8 +52,13 @@ def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
                     return predicted_probability[:, selected_class_idx]
                 else:
                     raise ValueError(f'selected class index {selected_class_idx} not in output dimensions')
-        softmax_activation = softmax(all_predictions, 1)
-        return softmax_activation
+        if proba_norm_func == 'softmax':
+            proba = softmax(all_predictions, 1)
+        elif proba_norm_func == 'sigmoid':
+            proba = expit(all_predictions)
+        else:
+            raise ValueError('proba_norm_func must be softmax or sigmoid')
+        return proba
 
 
 def load_model(model_params, checkpoint_state_dict):
@@ -77,6 +85,7 @@ def infer_with_metadata(
         checkpoint_state_dict,
         output_path,
         model_name,
+        proba_norm_func
 ):
     """
         This functions takes the ClassifierDataset dataset and produces the model prediction to a file
@@ -95,6 +104,7 @@ def infer_with_metadata(
     seq_length=dataset_args['seq_length'], data_sample_rate=dataset_args['data_sample_rate'],
     sample_rate=dataset_args['sample_rate'], 
     mode=dataset_args['mode'], slice_flag=dataset_args['slice_flag'], path_hierarchy=dataset_args['path_hierarchy'],
+    label_type='single_label' if proba_norm_func == 'softmax' else 'multi_label'
     )
 
     # load model
@@ -104,7 +114,7 @@ def infer_with_metadata(
                                  pin_memory=False)
 
     # predict
-    predict_prob = predict_proba(model, test_dataloader, device, None)
+    predict_prob = predict_proba(model, test_dataloader, device, None, proba_norm_func)
 
     results_df = pandas.DataFrame(predict_prob)  # add class names
     if hasattr(test_dataset, 'metadata'):
@@ -140,7 +150,8 @@ def infer_without_metadata(
         save_raven,
         threshold,
         label_names,
-        raven_max_freq
+        raven_max_freq,
+        proba_norm_func
 ):
     """
         This functions takes the InferenceDataset dataset and produces the model prediction to a file, by iterating
@@ -162,7 +173,7 @@ def infer_without_metadata(
                                  pin_memory=False)
 
     # predict
-    predict_prob = predict_proba(model, test_dataloader, device, None)
+    predict_prob = predict_proba(model, test_dataloader, device, None, proba_norm_func)
     label_names = ['Noise'] + [f'Call_{i}' for i in
                                range(1, predict_prob.shape[1] + 1)] if label_names is None else label_names
 
@@ -223,7 +234,8 @@ def inference_to_file(
     save_raven,
     threshold,
     label_names,
-    raven_max_freq
+    raven_max_freq,
+    proba_norm_func
 ):
     """
     This functions takes the dataset and produces the model prediction to a file
@@ -234,7 +246,7 @@ def inference_to_file(
         model_path: directory for the wanted trained model
         output_path: directory to save the prediction file
     """
-    if dataset_args._target_.endswith('ClassifierDataset'):
+    if dataset_args._target_.endswith('ClassifierDataset') or dataset_args._target_.endswith('NoBackGroundDataset'):
         infer_with_metadata(device,
                          batch_size,
                          dataset_args,
@@ -242,15 +254,8 @@ def inference_to_file(
                          checkpoint_state_dict,
                          output_path,
                          model_name,
+                         proba_norm_func
                          )
-    elif dataset_args._target_.endswith('NoBackGroundDataset'):
-        infer_with_metadata(device,
-                         batch_size,
-                         dataset_args,
-                         model_args,
-                         checkpoint_state_dict,
-                         output_path,
-                         model_name,)
     elif dataset_args._target_.endswith('InferenceDataset'):
         infer_without_metadata(device,
                           batch_size,
@@ -262,7 +267,8 @@ def inference_to_file(
                           save_raven,
                           threshold,
                           label_names,
-                          raven_max_freq)
+                          raven_max_freq,
+                          proba_norm_func)
     else:
         raise ValueError('Only ClassifierDataset or InferenceDataset allowed in inference')
 
@@ -303,6 +309,7 @@ def inference_main(args) -> None:
         threshold=args.experiment.threshold,
         label_names=args.data.label_names,
         raven_max_freq=args.experiment.raven_max_freq,
+        proba_norm_func=args.data.get('proba_norm_func', 'softmax') # using "get" for backward compatibility
     )
     print("Finished inference")
 

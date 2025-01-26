@@ -247,6 +247,12 @@ def main(validate_args) -> None:
     if args.optim.freeze_layers_for_finetune:
         print('The model is in finetune mode!')
 
+    # proba threshold (for multi-label classification, using "get" for backward compatibility)
+    classification_proba_threshold = args.data.get('proba_threshold', None)
+
+    # label type, using "get" for backward compatibility
+    label_type = args.data.get('label_type', 'single_label')
+
     # instantiate Trainer class with parameters "meta" parameters
     trainer_partial = partial(
         Trainer,
@@ -258,7 +264,8 @@ def main(validate_args) -> None:
         output_path=output_dirpath,
         load_optimizer_state=args.experiment.checkpoint.load_optimizer_state,
         label_names=args.data.label_names,
-        label_type=args.data.label_type,
+        label_type=label_type,
+        proba_threshold=classification_proba_threshold,
     )
     # modeling function for training
     modeling(
@@ -274,7 +281,7 @@ def main(validate_args) -> None:
         logger=logger,
         freeze_layers_for_finetune=args.optim.freeze_layers_for_finetune,
         equalize_data=args.experiment.equalize_data,
-        label_type=args.data.label_type
+        label_type=label_type
     )
 
     if args.experiment.bucket_name and not args.experiment.debug:
