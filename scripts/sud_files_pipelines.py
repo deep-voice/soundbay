@@ -164,13 +164,14 @@ class ProcessingPipeline:
                 self._clean_directory(self.wav_folder)
         self.file_logger.save_and_upload()
 
-    def run_predictions(self, files_mapping) -> None:
+    def run_predictions(self, files_mapping, process_files=True) -> None:
         """Process files and run predictions."""
         chunks = self._chunk_files(files_mapping)
         outputs_path = Path(hydra.utils.get_original_cwd()).parent.absolute() / "outputs"
 
         for chunk in tqdm(chunks, desc="Processing and predicting"):
-            self.process_chunk(chunk)
+            if process_files:
+                self.process_chunk(chunk)
 
             for wav_file in glob.glob(f"{self.wav_folder}/*.wav"):
                 self.cfg.data.test_dataset.file_path = wav_file
@@ -210,7 +211,7 @@ def main(cfg: DictConfig) -> None:
     if cfg.pipeline.mode == "wav":
         pipeline.process_files(files_mapping)
     elif cfg.pipeline.mode == "predictions":
-        pipeline.run_predictions(files_mapping)
+        pipeline.run_predictions(files_mapping, process_files=cfg.pipeline.process_files)
     else:
         raise ValueError(f"Unknown mode: {cfg.mode}")
 
