@@ -1,0 +1,14 @@
+# @package _global_
+pipeline:
+  mode: 'wav'
+  sud_folder: null
+  wav_folder: null
+  chunk_size: 2
+  sud2wav_path: null  # Will default to ~/SUD2WAV
+  s3_bucket: null
+  delete_sud_files: true
+  delete_wav_files: true
+  s3_save: true
+  files_path: null
+  log_folder: "logs"
+  log_filename: "pipeline_log.json"
