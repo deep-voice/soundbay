@@ -1,0 +1,1 @@
+{"columns": ["Actual", "Predicted", "nPredictions"], "data": [["Noise", "Noise", 1.0], ["Noise", "Call", 0.0], ["Call", "Noise", 1.0], ["Call", "Call", 1.0]]}

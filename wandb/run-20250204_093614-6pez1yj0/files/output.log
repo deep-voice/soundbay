@@ -1,0 +1,44 @@
+GPU!!!!!!!!!
+/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/models.py:56: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  state_dict = torch.load(weight_path)
+Traceback (most recent call last):
+  File "/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/train.py", line 280, in <module>
+    main()
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/hydra/main.py", line 94, in decorated_main
+    _run_hydra(
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/hydra/_internal/utils.py", line 394, in _run_hydra
+    _run_app(
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/hydra/_internal/utils.py", line 457, in _run_app
+    run_and_report(
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/hydra/_internal/utils.py", line 220, in run_and_report
+    return func()
+           ^^^^^^
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/hydra/_internal/utils.py", line 458, in <lambda>
+    lambda: hydra.run(
+            ^^^^^^^^^^
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/hydra/_internal/hydra.py", line 119, in run
+    ret = run_job(
+          ^^^^^^^^
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/hydra/core/utils.py", line 186, in run_job
+    ret.return_value = task_function(task_cfg)
+                       ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/train.py", line 259, in main
+    modeling(
+  File "/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/train.py", line 106, in modeling
+    model = models_dict[model_args.pop('_target_')](**model_args)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/models.py", line 56, in __init__
+    state_dict = torch.load(weight_path)
+                 ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/torch/serialization.py", line 1360, in load
+    return _load(
+           ^^^^^^
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/torch/serialization.py", line 1848, in _load
+    result = unpickler.load()
+             ^^^^^^^^^^^^^^^^
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/torch/serialization.py", line 1812, in persistent_load
+    typed_storage = load_tensor(
+                    ^^^^^^^^^^^^
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/torch/serialization.py", line 1772, in load_tensor
+    zip_file.get_storage_from_record(name, numel, torch.UntypedStorage)
+KeyboardInterrupt

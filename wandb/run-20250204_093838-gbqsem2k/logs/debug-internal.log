@@ -1,0 +1,17 @@
+{"time":"2025-02-04T09:38:38.039410154+01:00","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2025-02-04T09:38:38.039454818+01:00","level":"INFO","msg":"created symlink","path":"/mnt/ncshare/ozkilim/TensorRush/soundbay/wandb/run-20250204_093838-gbqsem2k/logs/debug-core.log"}
+{"time":"2025-02-04T09:38:38.161877551+01:00","level":"INFO","msg":"created new stream","id":"gbqsem2k"}
+{"time":"2025-02-04T09:38:38.161975841+01:00","level":"INFO","msg":"stream: started","id":"gbqsem2k"}
+{"time":"2025-02-04T09:38:38.162019346+01:00","level":"INFO","msg":"writer: Do: started","stream_id":"gbqsem2k"}
+{"time":"2025-02-04T09:38:38.162084901+01:00","level":"INFO","msg":"handler: started","stream_id":"gbqsem2k"}
+{"time":"2025-02-04T09:38:38.162161848+01:00","level":"INFO","msg":"sender: started","stream_id":"gbqsem2k"}
+{"time":"2025-02-04T09:38:39.182636166+01:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-02-04T09:38:39.270587594+01:00","level":"ERROR","msg":"error getting latest commit","error":"exit status 128"}
+{"time":"2025-02-04T09:38:46.410188276+01:00","level":"INFO","msg":"stream: closing","id":"gbqsem2k"}
+{"time":"2025-02-04T09:38:46.410332376+01:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-02-04T09:38:46.411653426+01:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-02-04T09:38:48.723314788+01:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-02-04T09:38:48.919176187+01:00","level":"INFO","msg":"handler: closed","stream_id":"gbqsem2k"}
+{"time":"2025-02-04T09:38:48.919252677+01:00","level":"INFO","msg":"writer: Close: closed","stream_id":"gbqsem2k"}
+{"time":"2025-02-04T09:38:48.919270937+01:00","level":"INFO","msg":"sender: closed","stream_id":"gbqsem2k"}
+{"time":"2025-02-04T09:38:48.92086456+01:00","level":"INFO","msg":"stream: closed","id":"gbqsem2k"}

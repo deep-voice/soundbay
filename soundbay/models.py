@@ -13,6 +13,8 @@ import torchvision.models as models
 from soundbay.utils.files_handler import load_config
 from transformers import AutoProcessor, ASTModel
 
+
+
 class ResNet1Channel(ResNet):
     """ resnet model for 1 channel ("grayscale") """
     def __init__(self, block, *args, **kwargs):
@@ -54,6 +56,7 @@ class AST(nn.Module):
 
         self.model = ASTModel.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
         state_dict = torch.load(weight_path)
+
         self.model.load_state_dict(state_dict)
         self.num_classes = num_classes
 
@@ -61,12 +64,16 @@ class AST(nn.Module):
 
     def forward(self, x):
         # Assuming x is the input that needs to be processed before passing to the model
-        processed_x = self.processor(x)
-        embedding  = self.model(processed_x) # TODO: if we want to freeze...
+        import ipdb;
+        sampling_rate = 16000 #TODO: add sample rate from config --> only takes this!  
+        mel_spectogram = self.processor(x.squeeze(1).cpu().numpy(), sampling_rate = sampling_rate, return_tensors="pt")
+        
+        inputs = {key: val.to(x.device) for key, val in mel_spectogram.items()}  # Move to device
 
-        print(embedding.shape)
-    
-        output = self.fc(embedding)
+        embedding  = self.model(**inputs) # TODO: if we want to freeze...
+        # ipdb.set_trace()
+
+        output = self.fc(embedding.pooler_output)
 
         return output
 

@@ -1,0 +1,17 @@
+{"time":"2025-02-04T09:32:13.277480527+01:00","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2025-02-04T09:32:13.277516418+01:00","level":"INFO","msg":"created symlink","path":"/mnt/ncshare/ozkilim/TensorRush/soundbay/wandb/run-20250204_093213-rjyf36rx/logs/debug-core.log"}
+{"time":"2025-02-04T09:32:13.39813141+01:00","level":"INFO","msg":"created new stream","id":"rjyf36rx"}
+{"time":"2025-02-04T09:32:13.398220232+01:00","level":"INFO","msg":"stream: started","id":"rjyf36rx"}
+{"time":"2025-02-04T09:32:13.398240538+01:00","level":"INFO","msg":"sender: started","stream_id":"rjyf36rx"}
+{"time":"2025-02-04T09:32:13.398241174+01:00","level":"INFO","msg":"handler: started","stream_id":"rjyf36rx"}
+{"time":"2025-02-04T09:32:13.398280201+01:00","level":"INFO","msg":"writer: Do: started","stream_id":"rjyf36rx"}
+{"time":"2025-02-04T09:32:13.878198086+01:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-02-04T09:32:13.965520856+01:00","level":"ERROR","msg":"error getting latest commit","error":"exit status 128"}
+{"time":"2025-02-04T09:32:20.86114873+01:00","level":"INFO","msg":"stream: closing","id":"rjyf36rx"}
+{"time":"2025-02-04T09:32:20.861286268+01:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-02-04T09:32:20.862895451+01:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-02-04T09:32:23.216843703+01:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-02-04T09:32:23.426840781+01:00","level":"INFO","msg":"handler: closed","stream_id":"rjyf36rx"}
+{"time":"2025-02-04T09:32:23.42693869+01:00","level":"INFO","msg":"writer: Close: closed","stream_id":"rjyf36rx"}
+{"time":"2025-02-04T09:32:23.42698021+01:00","level":"INFO","msg":"sender: closed","stream_id":"rjyf36rx"}
+{"time":"2025-02-04T09:32:23.429041676+01:00","level":"INFO","msg":"stream: closed","id":"rjyf36rx"}

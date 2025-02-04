@@ -1,0 +1,37 @@
+GPU!!!!!!!!!
+/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/models.py:56: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  state_dict = torch.load(weight_path)
+*** model has been loaded successfully ***
+number of trainable params: 86,188,802
+Running Epochs:   0%|    It is strongly recommended to pass the `sampling_rate` argument to this function. Failing to do so can result in silent errors that might be hard to debug.
+train: 0it [00:00, ?it/s]
+Running Epochs:   0%|                                                                          | 0/100 [00:00<?, ?it/s]
+Error executing job with overrides: ['model.model.weight_path=/mnt/ncshare/ozkilim/TensorRush/FM_pipeline/dino/W_AST_state_dict.pt']
+Traceback (most recent call last):
+  File "/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/train.py", line 259, in main
+    modeling(
+  File "/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/train.py", line 170, in modeling
+    _trainer.train()
+  File "/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/trainers.py", line 78, in train
+    self.train_epoch(epoch)
+  File "/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/trainers.py", line 115, in train_epoch
+    estimated_label = self.model(audio)
+                      ^^^^^^^^^^^^^^^^^
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1736, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1747, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/models.py", line 65, in forward
+    processed_x = self.processor(x)
+                  ^^^^^^^^^^^^^^^^^
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/transformers/models/audio_spectrogram_transformer/feature_extraction_audio_spectrogram_transformer.py", line 210, in __call__
+    raw_speech = np.asarray(raw_speech, dtype=np.float32)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/torch/_tensor.py", line 1151, in __array__
+    return self.numpy().astype(dtype, copy=False)
+           ^^^^^^^^^^^^
+TypeError: can't convert cuda:0 device type tensor to numpy. Use Tensor.cpu() to copy the tensor to host memory first.
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.

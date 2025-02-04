@@ -1,0 +1,24 @@
+diff --git a/soundbay/conf/model/AST.yaml b/soundbay/conf/model/AST.yaml
+index 444c9a1..f868006 100644
+--- a/soundbay/conf/model/AST.yaml
++++ b/soundbay/conf/model/AST.yaml
+@@ -5,4 +5,4 @@ model:
+   model:
+     _target_: models.AST
+     num_classes: 2
+-    weight_path: ? 
++    weight_path: ???
+diff --git a/soundbay/models.py b/soundbay/models.py
+index e13f53f..fbf41f7 100644
+--- a/soundbay/models.py
++++ b/soundbay/models.py
+@@ -54,7 +54,8 @@ class AST(nn.Module):
+ 
+         self.model = ASTModel.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
+         state_dict = torch.load(weight_path)
+-        self.model.load_state_dict(state_dict)
++        
++        self.model.backbone.load_state_dict(state_dict)
+         self.num_classes = num_classes
+ 
+         self.fc = nn.Linear(self.model.config.hidden_size, self.num_classes)

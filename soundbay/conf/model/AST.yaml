@@ -5,4 +5,4 @@ model:
   model:
     _target_: models.AST
     num_classes: 2
-    weight_path: ? 
+    weight_path: ???

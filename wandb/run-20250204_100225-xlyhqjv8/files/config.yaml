@@ -1,0 +1,485 @@
+_augmentations.frequency_masking._target_:
+    value: audiomentations.BandStopFilter
+_augmentations.frequency_masking.max_bandwidth_fraction:
+    value: 0.2
+_augmentations.frequency_masking.max_center_freq:
+    value: 8000
+_augmentations.frequency_masking.min_bandwidth_fraction:
+    value: 0.05
+_augmentations.frequency_masking.min_center_freq:
+    value: 0
+_augmentations.frequency_masking.p:
+    value: 0.5
+_augmentations.time_masking._target_:
+    value: audiomentations.TimeMask
+_augmentations.time_masking.max_band_part:
+    value: 0.2
+_augmentations.time_masking.min_band_part:
+    value: 0.05
+_augmentations.time_masking.p:
+    value: 0.5
+_augmentations.time_stretch._target_:
+    value: audiomentations.TimeStretch
+_augmentations.time_stretch.max_rate:
+    value: 1.1
+_augmentations.time_stretch.min_rate:
+    value: 0.9
+_augmentations.time_stretch.p:
+    value: 0.5
+_preprocessors:
+    value: []
+_wandb:
+    value:
+        cli_version: 0.18.7
+        code_path: code/soundbay/train.py
+        m: []
+        python_version: 3.11.11
+        t:
+            "1":
+                - 1
+                - 5
+                - 11
+                - 41
+                - 49
+                - 50
+                - 53
+                - 55
+            "2":
+                - 1
+                - 5
+                - 11
+                - 41
+                - 49
+                - 50
+                - 53
+                - 55
+            "3":
+                - 1
+                - 23
+                - 55
+                - 61
+            "4": 3.11.11
+            "5": 0.18.7
+            "6": 4.47.1
+            "8":
+                - 2
+                - 5
+            "12": 0.18.7
+            "13": linux-x86_64
+        visualize:
+            train_as_val_charts/PR Curve:
+                panel_config:
+                    fieldSettings:
+                        class: class
+                        x: recall
+                        "y": precision
+                    panelDefId: wandb/area-under-curve/v0
+                    stringSettings:
+                        title: Precision-Recall Curve
+                    transform:
+                        name: tableWithLeafColNames
+                    userQuery:
+                        queryFields:
+                            - args:
+                                - name: runSets
+                                  value: ${runSets}
+                              fields:
+                                - fields: []
+                                  name: id
+                                - fields: []
+                                  name: name
+                                - fields: []
+                                  name: _defaultColorIndex
+                                - args:
+                                    - name: tableKey
+                                      value: train_as_val_charts/PR Curve_table
+                                  fields: []
+                                  name: summaryTable
+                              name: runSets
+                panel_type: Vega2
+            train_as_val_charts/ROC Curve:
+                panel_config:
+                    fieldSettings:
+                        class: class
+                        x: fpr
+                        "y": tpr
+                    panelDefId: wandb/area-under-curve/v0
+                    stringSettings:
+                        title: ROC Curve
+                        x-axis-title: False positive rate
+                        y-axis-title: True positive rate
+                    transform:
+                        name: tableWithLeafColNames
+                    userQuery:
+                        queryFields:
+                            - args:
+                                - name: runSets
+                                  value: ${runSets}
+                              fields:
+                                - fields: []
+                                  name: id
+                                - fields: []
+                                  name: name
+                                - fields: []
+                                  name: _defaultColorIndex
+                                - args:
+                                    - name: tableKey
+                                      value: train_as_val_charts/ROC Curve_table
+                                  fields: []
+                                  name: summaryTable
+                              name: runSets
+                panel_type: Vega2
+            train_as_val_charts/conf_mat:
+                panel_config:
+                    fieldSettings:
+                        Actual: Actual
+                        Predicted: Predicted
+                        nPredictions: nPredictions
+                    panelDefId: wandb/confusion_matrix/v1
+                    stringSettings:
+                        title: Confusion Matrix Curve
+                    transform:
+                        name: tableWithLeafColNames
+                    userQuery:
+                        queryFields:
+                            - args:
+                                - name: runSets
+                                  value: ${runSets}
+                              fields:
+                                - fields: []
+                                  name: id
+                                - fields: []
+                                  name: name
+                                - fields: []
+                                  name: _defaultColorIndex
+                                - args:
+                                    - name: tableKey
+                                      value: train_as_val_charts/conf_mat_table
+                                  fields: []
+                                  name: summaryTable
+                              name: runSets
+                panel_type: Vega2
+            train_charts/PR Curve:
+                panel_config:
+                    fieldSettings:
+                        class: class
+                        x: recall
+                        "y": precision
+                    panelDefId: wandb/area-under-curve/v0
+                    stringSettings:
+                        title: Precision-Recall Curve
+                    transform:
+                        name: tableWithLeafColNames
+                    userQuery:
+                        queryFields:
+                            - args:
+                                - name: runSets
+                                  value: ${runSets}
+                              fields:
+                                - fields: []
+                                  name: id
+                                - fields: []
+                                  name: name
+                                - fields: []
+                                  name: _defaultColorIndex
+                                - args:
+                                    - name: tableKey
+                                      value: train_charts/PR Curve_table
+                                  fields: []
+                                  name: summaryTable
+                              name: runSets
+                panel_type: Vega2
+            train_charts/ROC Curve:
+                panel_config:
+                    fieldSettings:
+                        class: class
+                        x: fpr
+                        "y": tpr
+                    panelDefId: wandb/area-under-curve/v0
+                    stringSettings:
+                        title: ROC Curve
+                        x-axis-title: False positive rate
+                        y-axis-title: True positive rate
+                    transform:
+                        name: tableWithLeafColNames
+                    userQuery:
+                        queryFields:
+                            - args:
+                                - name: runSets
+                                  value: ${runSets}
+                              fields:
+                                - fields: []
+                                  name: id
+                                - fields: []
+                                  name: name
+                                - fields: []
+                                  name: _defaultColorIndex
+                                - args:
+                                    - name: tableKey
+                                      value: train_charts/ROC Curve_table
+                                  fields: []
+                                  name: summaryTable
+                              name: runSets
+                panel_type: Vega2
+            train_charts/conf_mat:
+                panel_config:
+                    fieldSettings:
+                        Actual: Actual
+                        Predicted: Predicted
+                        nPredictions: nPredictions
+                    panelDefId: wandb/confusion_matrix/v1
+                    stringSettings:
+                        title: Confusion Matrix Curve
+                    transform:
+                        name: tableWithLeafColNames
+                    userQuery:
+                        queryFields:
+                            - args:
+                                - name: runSets
+                                  value: ${runSets}
+                              fields:
+                                - fields: []
+                                  name: id
+                                - fields: []
+                                  name: name
+                                - fields: []
+                                  name: _defaultColorIndex
+                                - args:
+                                    - name: tableKey
+                                      value: train_charts/conf_mat_table
+                                  fields: []
+                                  name: summaryTable
+                              name: runSets
+                panel_type: Vega2
+            val_charts/PR Curve:
+                panel_config:
+                    fieldSettings:
+                        class: class
+                        x: recall
+                        "y": precision
+                    panelDefId: wandb/area-under-curve/v0
+                    stringSettings:
+                        title: Precision-Recall Curve
+                    transform:
+                        name: tableWithLeafColNames
+                    userQuery:
+                        queryFields:
+                            - args:
+                                - name: runSets
+                                  value: ${runSets}
+                              fields:
+                                - fields: []
+                                  name: id
+                                - fields: []
+                                  name: name
+                                - fields: []
+                                  name: _defaultColorIndex
+                                - args:
+                                    - name: tableKey
+                                      value: val_charts/PR Curve_table
+                                  fields: []
+                                  name: summaryTable
+                              name: runSets
+                panel_type: Vega2
+            val_charts/ROC Curve:
+                panel_config:
+                    fieldSettings:
+                        class: class
+                        x: fpr
+                        "y": tpr
+                    panelDefId: wandb/area-under-curve/v0
+                    stringSettings:
+                        title: ROC Curve
+                        x-axis-title: False positive rate
+                        y-axis-title: True positive rate
+                    transform:
+                        name: tableWithLeafColNames
+                    userQuery:
+                        queryFields:
+                            - args:
+                                - name: runSets
+                                  value: ${runSets}
+                              fields:
+                                - fields: []
+                                  name: id
+                                - fields: []
+                                  name: name
+                                - fields: []
+                                  name: _defaultColorIndex
+                                - args:
+                                    - name: tableKey
+                                      value: val_charts/ROC Curve_table
+                                  fields: []
+                                  name: summaryTable
+                              name: runSets
+                panel_type: Vega2
+            val_charts/conf_mat:
+                panel_config:
+                    fieldSettings:
+                        Actual: Actual
+                        Predicted: Predicted
+                        nPredictions: nPredictions
+                    panelDefId: wandb/confusion_matrix/v1
+                    stringSettings:
+                        title: Confusion Matrix Curve
+                    transform:
+                        name: tableWithLeafColNames
+                    userQuery:
+                        queryFields:
+                            - args:
+                                - name: runSets
+                                  value: ${runSets}
+                              fields:
+                                - fields: []
+                                  name: id
+                                - fields: []
+                                  name: name
+                                - fields: []
+                                  name: _defaultColorIndex
+                                - args:
+                                    - name: tableKey
+                                      value: val_charts/conf_mat_table
+                                  fields: []
+                                  name: summaryTable
+                              name: runSets
+                panel_type: Vega2
+data.batch_size:
+    value: 64
+data.data_sample_rate:
+    value: 44100
+data.hop_length:
+    value: 256
+data.label_names:
+    value:
+        - Noise
+        - Call
+data.max_freq:
+    value: 8000
+data.min_freq:
+    value: 0
+data.n_fft:
+    value: 1024
+data.num_workers:
+    value: 10
+data.sample_rate:
+    value: 16000
+data.train_dataset._target_:
+    value: soundbay.data.ClassifierDataset
+data.train_dataset.augmentations.frequency_masking._target_:
+    value: audiomentations.BandStopFilter
+data.train_dataset.augmentations.frequency_masking.max_bandwidth_fraction:
+    value: 0.2
+data.train_dataset.augmentations.frequency_masking.max_center_freq:
+    value: 8000
+data.train_dataset.augmentations.frequency_masking.min_bandwidth_fraction:
+    value: 0.05
+data.train_dataset.augmentations.frequency_masking.min_center_freq:
+    value: 0
+data.train_dataset.augmentations.frequency_masking.p:
+    value: 0.5
+data.train_dataset.augmentations.time_masking._target_:
+    value: audiomentations.TimeMask
+data.train_dataset.augmentations.time_masking.max_band_part:
+    value: 0.2
+data.train_dataset.augmentations.time_masking.min_band_part:
+    value: 0.05
+data.train_dataset.augmentations.time_masking.p:
+    value: 0.5
+data.train_dataset.augmentations.time_stretch._target_:
+    value: audiomentations.TimeStretch
+data.train_dataset.augmentations.time_stretch.max_rate:
+    value: 1.1
+data.train_dataset.augmentations.time_stretch.min_rate:
+    value: 0.9
+data.train_dataset.augmentations.time_stretch.p:
+    value: 0.5
+data.train_dataset.augmentations_p:
+    value: 0.8
+data.train_dataset.data_path:
+    value: ./tests/assets/data/
+data.train_dataset.data_sample_rate:
+    value: 44100
+data.train_dataset.margin_ratio:
+    value: 0.5
+data.train_dataset.metadata_path:
+    value: ./tests/assets/annotations/sample_annotations.csv
+data.train_dataset.mode:
+    value: train
+data.train_dataset.path_hierarchy:
+    value: 0
+data.train_dataset.preprocessors:
+    value: []
+data.train_dataset.sample_rate:
+    value: 16000
+data.train_dataset.seq_length:
+    value: 1
+data.train_dataset.slice_flag:
+    value: false
+data.val_dataset._target_:
+    value: soundbay.data.ClassifierDataset
+data.val_dataset.augmentations:
+    value: null
+data.val_dataset.augmentations_p:
+    value: 0
+data.val_dataset.data_path:
+    value: ./tests/assets/data
+data.val_dataset.data_sample_rate:
+    value: 44100
+data.val_dataset.margin_ratio:
+    value: 0
+data.val_dataset.metadata_path:
+    value: ./tests/assets/annotations/sample_annotations.csv
+data.val_dataset.mode:
+    value: val
+data.val_dataset.path_hierarchy:
+    value: 0
+data.val_dataset.preprocessors:
+    value: []
+data.val_dataset.sample_rate:
+    value: 16000
+data.val_dataset.seq_length:
+    value: 1
+data.val_dataset.slice_flag:
+    value: true
+experiment.artifacts_upload_limit:
+    value: 64
+experiment.bucket_name:
+    value: deepvoice-experiments
+experiment.checkpoint.load_optimizer_state:
+    value: false
+experiment.checkpoint.path:
+    value: null
+experiment.checkpoint.resume:
+    value: allow
+experiment.debug:
+    value: false
+experiment.equalize_data:
+    value: true
+experiment.group_name:
+    value: null
+experiment.manual_seed:
+    value: 1234
+experiment.name:
+    value: null
+experiment.run_id:
+    value: null
+model.criterion._target_:
+    value: torch.nn.CrossEntropyLoss
+model.model._target_:
+    value: models.AST
+model.model.num_classes:
+    value: 2
+model.model.weight_path:
+    value: /mnt/ncshare/ozkilim/TensorRush/FM_pipeline/dino/W_AST_state_dict.pt
+optim.epochs:
+    value: 100
+optim.freeze_layers_for_finetune:
+    value: false
+optim.optimizer._target_:
+    value: torch.optim.Adam
+optim.optimizer.lr:
+    value: 0.001
+optim.scheduler._target_:
+    value: torch.optim.lr_scheduler.ExponentialLR
+optim.scheduler.gamma:
+    value: 0.995

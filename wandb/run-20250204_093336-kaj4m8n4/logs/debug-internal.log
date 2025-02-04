@@ -1,0 +1,17 @@
+{"time":"2025-02-04T09:33:36.373851113+01:00","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2025-02-04T09:33:36.373894771+01:00","level":"INFO","msg":"created symlink","path":"/mnt/ncshare/ozkilim/TensorRush/soundbay/wandb/run-20250204_093336-kaj4m8n4/logs/debug-core.log"}
+{"time":"2025-02-04T09:33:36.492502749+01:00","level":"INFO","msg":"created new stream","id":"kaj4m8n4"}
+{"time":"2025-02-04T09:33:36.492572347+01:00","level":"INFO","msg":"stream: started","id":"kaj4m8n4"}
+{"time":"2025-02-04T09:33:36.492683637+01:00","level":"INFO","msg":"writer: Do: started","stream_id":"kaj4m8n4"}
+{"time":"2025-02-04T09:33:36.492744747+01:00","level":"INFO","msg":"handler: started","stream_id":"kaj4m8n4"}
+{"time":"2025-02-04T09:33:36.49285769+01:00","level":"INFO","msg":"sender: started","stream_id":"kaj4m8n4"}
+{"time":"2025-02-04T09:33:37.022087776+01:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-02-04T09:33:37.113721422+01:00","level":"ERROR","msg":"error getting latest commit","error":"exit status 128"}
+{"time":"2025-02-04T09:33:40.931408095+01:00","level":"INFO","msg":"stream: closing","id":"kaj4m8n4"}
+{"time":"2025-02-04T09:33:40.931524636+01:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-02-04T09:33:40.932803205+01:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-02-04T09:33:43.689259842+01:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-02-04T09:33:44.620634446+01:00","level":"INFO","msg":"handler: closed","stream_id":"kaj4m8n4"}
+{"time":"2025-02-04T09:33:44.620709347+01:00","level":"INFO","msg":"sender: closed","stream_id":"kaj4m8n4"}
+{"time":"2025-02-04T09:33:44.620687667+01:00","level":"INFO","msg":"writer: Close: closed","stream_id":"kaj4m8n4"}
+{"time":"2025-02-04T09:33:44.622306885+01:00","level":"INFO","msg":"stream: closed","id":"kaj4m8n4"}

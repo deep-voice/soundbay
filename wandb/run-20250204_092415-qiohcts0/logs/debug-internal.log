@@ -1,0 +1,17 @@
+{"time":"2025-02-04T09:24:15.792628669+01:00","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2025-02-04T09:24:15.792662521+01:00","level":"INFO","msg":"created symlink","path":"/mnt/ncshare/ozkilim/TensorRush/soundbay/wandb/run-20250204_092415-qiohcts0/logs/debug-core.log"}
+{"time":"2025-02-04T09:24:15.910835649+01:00","level":"INFO","msg":"created new stream","id":"qiohcts0"}
+{"time":"2025-02-04T09:24:15.910874361+01:00","level":"INFO","msg":"stream: started","id":"qiohcts0"}
+{"time":"2025-02-04T09:24:15.910970573+01:00","level":"INFO","msg":"handler: started","stream_id":"qiohcts0"}
+{"time":"2025-02-04T09:24:15.91098828+01:00","level":"INFO","msg":"writer: Do: started","stream_id":"qiohcts0"}
+{"time":"2025-02-04T09:24:15.911025875+01:00","level":"INFO","msg":"sender: started","stream_id":"qiohcts0"}
+{"time":"2025-02-04T09:24:16.415403676+01:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-02-04T09:24:16.498650373+01:00","level":"ERROR","msg":"error getting latest commit","error":"exit status 128"}
+{"time":"2025-02-04T09:24:19.071534175+01:00","level":"INFO","msg":"stream: closing","id":"qiohcts0"}
+{"time":"2025-02-04T09:24:19.071562137+01:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-02-04T09:24:19.072816276+01:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-02-04T09:24:21.68975192+01:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-02-04T09:24:21.906058896+01:00","level":"INFO","msg":"handler: closed","stream_id":"qiohcts0"}
+{"time":"2025-02-04T09:24:21.906138777+01:00","level":"INFO","msg":"writer: Close: closed","stream_id":"qiohcts0"}
+{"time":"2025-02-04T09:24:21.906164087+01:00","level":"INFO","msg":"sender: closed","stream_id":"qiohcts0"}
+{"time":"2025-02-04T09:24:21.907735628+01:00","level":"INFO","msg":"stream: closed","id":"qiohcts0"}

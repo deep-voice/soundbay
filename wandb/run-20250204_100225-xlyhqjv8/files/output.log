@@ -1,0 +1,81 @@
+GPU!!!!!!!!!
+/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/models.py:58: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  state_dict = torch.load(weight_path)
+*** model has been loaded successfully ***
+number of trainable params: 86,188,802
+train: 1it [00:01,  1.58s/it]                                                  | 0/100 [00:00<?, ?it/s]
+/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+val: 1it [00:00,  1.17it/s]
+/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+train_as_val: 1it [00:00,  1.10it/s]
+/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+train: 1it [00:00,  1.54it/s] [00:30<51:02, 30.94s/it, epoch: 0, {'global': {'accuracy': 0.8, 'call_ave
+/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+val: 1it [00:00,  1.36it/s]
+/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+train: 1it [00:00,  1.59it/s] [00:58<47:14, 28.92s/it, epoch: 1, {'global': {'accuracy': 0.2, 'call_ave
+/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/sklearn/metrics/_ranking.py:1030: UserWarning: No positive class found in y_true, recall is set to one for all thresholds.
+  warnings.warn(
+/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/utils/logging.py:229: RuntimeWarning: Mean of empty slice
+  metrics_dict['global']['call_auc_macro'] = np.nanmean(pos_auc_list)
+/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1531: UndefinedMetricWarning: Recall is ill-defined and being set to 0.0 due to no true samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/sklearn/metrics/_ranking.py:1174: UndefinedMetricWarning: No negative samples in y_true, false positive value should be meaningless
+  warnings.warn(
+val: 1it [00:00,  1.37it/s]
+/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+train: 1it [00:00,  1.51it/s] [01:24<44:34, 27.57s/it, epoch: 2, {'global': {'accuracy': 0.8, 'call_ave
+/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+val: 1it [00:00,  1.33it/s]
+/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+train: 1it [00:00,  2.02it/s] [01:51<43:38, 27.27s/it, epoch: 3, {'global': {'accuracy': 0.8, 'call_ave
+/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+val: 1it [00:00,  1.34it/s]
+/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/sklearn/metrics/_classification.py:1531: UndefinedMetricWarning: Precision is ill-defined and being set to 0.0 due to no predicted samples. Use `zero_division` parameter to control this behavior.
+  _warn_prf(average, modifier, f"{metric.capitalize()} is", len(result))
+Running Epochs:   4%| | 4/100 [02:06<50:37, 31.64s/it, epoch: 3, {'global': {'accuracy': 0.8, 'call_ave
+Traceback (most recent call last):
+  File "/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/train.py", line 280, in <module>
+    main()
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/hydra/main.py", line 94, in decorated_main
+    _run_hydra(
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/hydra/_internal/utils.py", line 394, in _run_hydra
+    _run_app(
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/hydra/_internal/utils.py", line 457, in _run_app
+    run_and_report(
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/hydra/_internal/utils.py", line 220, in run_and_report
+    return func()
+           ^^^^^^
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/hydra/_internal/utils.py", line 458, in <lambda>
+    lambda: hydra.run(
+            ^^^^^^^^^^
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/hydra/_internal/hydra.py", line 119, in run
+    ret = run_job(
+          ^^^^^^^^
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/hydra/core/utils.py", line 186, in run_job
+    ret.return_value = task_function(task_cfg)
+                       ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/train.py", line 259, in main
+    modeling(
+  File "/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/train.py", line 170, in modeling
+    _trainer.train()
+  File "/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/trainers.py", line 92, in train
+    self._save_checkpoint("last.pth")
+  File "/mnt/ncshare/ozkilim/TensorRush/soundbay/soundbay/trainers.py", line 182, in _save_checkpoint
+    torch.save(state_dict, self.output_path / checkpoint_path)
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/torch/serialization.py", line 849, in save
+    with _open_zipfile_writer(f) as opened_zipfile:
+  File "/home/ozkilim/anaconda3/envs/whaleViT/lib/python3.11/site-packages/torch/serialization.py", line 690, in __exit__
+    self.file_like.write_end_of_file()
+KeyboardInterrupt
