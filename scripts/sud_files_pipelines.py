@@ -205,7 +205,7 @@ def main(cfg: DictConfig) -> None:
     converter = Sud2WavConverter(sud_folder, wav_folder, cfg.pipeline.sud2wav_path, cfg.pipeline.s3_bucket)
     pipeline = ProcessingPipeline(box_client=box_client, converter=converter, file_logger=file_logger, cfg=cfg)
 
-    files_list = pd.read_csv(cfg.pipeline.files_path)['files'].tolist()
+    files_list = pd.read_csv(cfg.pipeline.files_path)['files'].unique().tolist()
     files_mapping = box_client.get_files_map(cfg.box.folder_id, files_list)
 
     if cfg.pipeline.mode == "wav":
