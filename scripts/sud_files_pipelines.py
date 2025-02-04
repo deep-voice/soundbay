@@ -163,7 +163,7 @@ class ProcessingPipeline:
                 self._clean_directory(self.sud_folder)
             if self.clean_wav:
                 self._clean_directory(self.wav_folder)
-        self.file_logger.save_and_upload()
+            self.file_logger.save_and_upload()
 
     def run_predictions(self, files_mapping, process_files=True) -> None:
         """Process files and run predictions."""
