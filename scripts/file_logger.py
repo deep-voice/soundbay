@@ -4,13 +4,13 @@ from datetime import datetime
 from pathlib import Path
 import subprocess
 from typing import Optional
-
+import datetime
 
 class FileLogger:
-    def __init__(self, log_folder: Path, log_filename: str, s3_bucket: Optional[str] = None):
+    def __init__(self, log_folder: Path, log_filename: str, s3_bucket: Optional[str] = None, file_type: Optional[str] = 'json'):
         self.log_folder = Path(log_folder)
         self.log_folder.mkdir(parents=True, exist_ok=True)
-        self.log_path = self.log_folder / log_filename
+        self.log_path = self.log_folder / (log_filename + datetime.date.today().strftime("%Y%m%d%H") + f".{file_type}")
         self.s3_bucket = s3_bucket
         self.logger = logging.getLogger(__name__)
 

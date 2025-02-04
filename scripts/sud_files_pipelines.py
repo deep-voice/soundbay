@@ -185,8 +185,8 @@ class ProcessingPipeline:
                 if self.cfg.pipeline.s3_bucket:
                     self.logger.info("Uploading predictions to s3")
                     upload_directory_to_s3(outputs_path, "predictions", self.cfg.pipeline.s3_bucket)
+                self.file_logger.save_and_upload()
 
-            self.file_logger.save_and_upload()
             if self.clean_sud:
                 self._clean_directory(self.sud_folder)
             self._clean_directory(self.wav_folder)
@@ -195,8 +195,8 @@ class ProcessingPipeline:
 @hydra.main(version_base="1.2", config_path="../soundbay/conf", config_name="runs/main_pipeline")
 def main(cfg: DictConfig) -> None:
     """CLI entry point."""
-    sud_folder = Path(cfg.pipeline.sud_folder if cfg.pipeline.sud_folder else os.path.expanduser("~") + '/SUD2WAV/input_sud_files')
-    wav_folder = Path(cfg.pipeline.wav_folder if cfg.pipeline.wav_folder else os.path.expanduser("~") + '/SUD2WAV/output_sud_files')
+    sud_folder = Path(cfg.pipeline.sud_folder if cfg.pipeline.sud_folder else os.path.expanduser("~") + '/SUD2WAV/input_files')
+    wav_folder = Path(cfg.pipeline.wav_folder if cfg.pipeline.wav_folder else os.path.expanduser("~") + '/SUD2WAV/output_files')
     sud_folder.mkdir(parents=True, exist_ok=True)
     wav_folder.mkdir(parents=True, exist_ok=True)
 
