@@ -71,7 +71,6 @@ class AST(nn.Module):
         inputs = {key: val.to(x.device) for key, val in mel_spectogram.items()}  # Move to device
 
         embedding  = self.model(**inputs) # TODO: if we want to freeze...
-        # ipdb.set_trace()
 
         output = self.fc(embedding.pooler_output)
 
