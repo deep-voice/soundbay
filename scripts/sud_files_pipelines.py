@@ -153,6 +153,7 @@ class ProcessingPipeline:
     def process_files(self, files_mapping) -> None:
         """Process all files in chunks."""
         chunks = self._chunk_files(files_mapping)
+        self._clean_directory(self.wav_folder)
 
         for chunk in tqdm(chunks, desc="Processing file chunks"):
             self.process_chunk(chunk)
@@ -168,7 +169,6 @@ class ProcessingPipeline:
         """Process files and run predictions."""
         chunks = self._chunk_files(files_mapping)
         outputs_path = Path(hydra.utils.get_original_cwd()).parent.absolute() / "outputs"
-        self._clean_directory(self.wav_folder)
 
         for chunk in tqdm(chunks, desc="Processing and predicting"):
             if process_files:
@@ -196,8 +196,8 @@ class ProcessingPipeline:
 @hydra.main(version_base="1.2", config_path="../soundbay/conf", config_name="runs/main_pipeline")
 def main(cfg: DictConfig) -> None:
     """CLI entry point."""
-    sud_folder = Path(cfg.pipeline.sud_folder if cfg.pipeline.sud_folder else os.path.expanduser("~") + '/SUD2WAV/input_sud_files')
-    wav_folder = Path(cfg.pipeline.wav_folder if cfg.pipeline.wav_folder else os.path.expanduser("~") + '/SUD2WAV/output_wav_files')
+    sud_folder = Path(cfg.pipeline.sud_folder if cfg.pipeline.sud_folder else os.path.expanduser("~") + '/SUD2WAV/input_files')
+    wav_folder = Path(cfg.pipeline.wav_folder if cfg.pipeline.wav_folder else os.path.expanduser("~") + '/SUD2WAV/output_files')
     sud_folder.mkdir(parents=True, exist_ok=True)
     wav_folder.mkdir(parents=True, exist_ok=True)
 
