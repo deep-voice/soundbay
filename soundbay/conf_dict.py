@@ -4,7 +4,7 @@ Configuration dicts
 These dicts describe the allowed values of the soundbay framework
 '''
 
-from soundbay.models import ResNet1Channel, GoogleResNet50withPCEN, ChristophCNN, ResNet182D, Squeezenet2D, EfficientNet2D, WAV2VEC2
+from soundbay.models import ResNet1Channel, GoogleResNet50withPCEN, ChristophCNN, ResNet182D, Squeezenet2D, EfficientNet2D, WAV2VEC2, AST
 from soundbay.data import ClassifierDataset, InferenceDataset, NoBackGroundDataset
 import torch
 from audiomentations import PitchShift, BandStopFilter, TimeMask, TimeStretch
@@ -15,7 +15,8 @@ models_dict = {'models.ResNet1Channel': ResNet1Channel,
                'models.Squeezenet2D': Squeezenet2D,
                'models.ChristophCNN': ChristophCNN,
                'models.EfficientNet2D': EfficientNet2D, 
-               'models.WAV2VEC2': WAV2VEC2}
+               'models.WAV2VEC2': WAV2VEC2,
+               'models.AST': AST}
 
 datasets_dict = {'soundbay.data.ClassifierDataset': ClassifierDataset,
                  'soundbay.data.NoBackGroundDataset': NoBackGroundDataset,

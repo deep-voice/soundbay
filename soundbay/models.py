@@ -11,7 +11,7 @@ from torchvision.models import squeezenet, ResNet18_Weights
 import torchvision.models as models
 
 from soundbay.utils.files_handler import load_config
-
+from transformers import AutoProcessor, ASTModel
 
 class ResNet1Channel(ResNet):
     """ resnet model for 1 channel ("grayscale") """
@@ -45,6 +45,30 @@ class ResNet1Channel(ResNet):
             param.requires_grad = True
         for param in self.layer4.parameters():
             param.requires_grad = True
+
+
+class AST(nn.Module):
+    def __init__(self, weight_path, num_classes):
+        super(AST, self).__init__()
+        self.processor = AutoProcessor.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593", max_length=1024)
+
+        self.model = ASTModel.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
+        state_dict = torch.load(weight_path)
+        self.model.load_state_dict(state_dict)
+        self.num_classes = num_classes
+
+        self.fc = nn.Linear(self.model.config.hidden_size, self.num_classes)
+
+    def forward(self, x):
+        # Assuming x is the input that needs to be processed before passing to the model
+        processed_x = self.processor(x)
+        embedding  = self.model(processed_x) # TODO: if we want to freeze...
+
+        print(embedding.shape)
+    
+        output = self.fc(embedding)
+
+        return output
 
 
 class SqueezeNet1D(squeezenet.SqueezeNet):
