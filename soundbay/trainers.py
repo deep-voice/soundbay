@@ -125,7 +125,7 @@ class Trainer:
             self.optimizer.step()
 
             # process the logit predictions:
-            predicted_proba, predicted_label = post_process_predictions(estimated_label.data, self.label_type, self.proba_threshold)
+            predicted_proba, predicted_label = post_process_predictions(estimated_label.detach(), self.label_type, self.proba_threshold)
 
             # update losses and log batch
 
@@ -167,7 +167,7 @@ class Trainer:
                 loss = self.criterion(estimated_label, label)
 
                 # process the logit predictions:
-                predicted_proba, predicted_label = post_process_predictions(estimated_label.data, self.label_type, self.proba_threshold)
+                predicted_proba, predicted_label = post_process_predictions(estimated_label.detach(), self.label_type, self.proba_threshold)
 
                 # update losses
                 self.logger.update_losses(loss.detach(), flag=datatset_name)

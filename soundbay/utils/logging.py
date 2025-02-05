@@ -140,7 +140,7 @@ class Logger:
                 self.log_writer.log({f'Call Metrics {mode}/{metric}_{label_names[class_id]}':
                                     self.metrics_dict['calls'][class_id][metric]}, step=epoch)
 
-        if (not self.debug_mode) and isinstance(self.label_list[0], int) == 1:
+        if (not self.debug_mode) and label_type == 'single_label':
             self.log_writer.log(
                 {f'{mode}_charts/ROC Curve': wandb.plot.roc_curve(self.label_list, pred_proba_array,
                                                                   labels=label_names)},

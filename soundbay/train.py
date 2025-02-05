@@ -248,7 +248,7 @@ def main(validate_args) -> None:
         print('The model is in finetune mode!')
 
     # proba threshold (for multi-label classification, using "get" for backward compatibility)
-    classification_proba_threshold = args.data.get('proba_threshold', None)
+    classification_proba_threshold = args.data.get('proba_threshold', 0.5)
 
     # label type, using "get" for backward compatibility
     label_type = args.data.get('label_type', 'single_label')

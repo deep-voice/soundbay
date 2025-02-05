@@ -64,6 +64,7 @@ def merge_with_checkpoint(run_args, checkpoint_args):
     run_args.data.sample_rate = checkpoint_args.data.sample_rate
     run_args.data.n_fft = checkpoint_args.data.n_fft
     run_args.data.hop_length = checkpoint_args.data.hop_length
+    run_args.data.label_type = checkpoint_args.data.get('label_type', 'single_label')  # using "get" for backward compatibility
     min_freq = checkpoint_args.data.get('min_freq', None)
     if min_freq is None:
         min_freq = checkpoint_args.data.min_freq_filtering

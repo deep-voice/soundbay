@@ -10,6 +10,7 @@ data:
   n_fft: 1024
   hop_length: 256
   label_type: 'single_label'
+  proba_threshold: 0.5
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
     data_path: './tests/assets/data/'

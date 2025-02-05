@@ -1,4 +1,4 @@
-from typing import Generator, Union
+from typing import Union, Literal
 
 import pandas as pd
 import torch
@@ -23,7 +23,7 @@ from soundbay.conf_dict import models_dict, datasets_dict
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
                   device: torch.device = torch.device('cpu'),
                   selected_class_idx: Union[None, int] = None,
-                  proba_norm_func: str = 'softmax'
+                  proba_norm_func: Literal["softmax", "sigmoid"] = 'softmax'
                   ) -> np.ndarray:
     """
     calculates the predicted probability to belong to a class for all the samples in the dataset given a specific model
@@ -85,7 +85,8 @@ def infer_with_metadata(
         checkpoint_state_dict,
         output_path,
         model_name,
-        proba_norm_func
+        proba_norm_func,
+        label_type
 ):
     """
         This functions takes the ClassifierDataset dataset and produces the model prediction to a file
@@ -104,7 +105,7 @@ def infer_with_metadata(
     seq_length=dataset_args['seq_length'], data_sample_rate=dataset_args['data_sample_rate'],
     sample_rate=dataset_args['sample_rate'], 
     mode=dataset_args['mode'], slice_flag=dataset_args['slice_flag'], path_hierarchy=dataset_args['path_hierarchy'],
-    label_type='single_label' if proba_norm_func == 'softmax' else 'multi_label'
+    label_type=label_type
     )
 
     # load model
@@ -235,7 +236,8 @@ def inference_to_file(
     threshold,
     label_names,
     raven_max_freq,
-    proba_norm_func
+    proba_norm_func,
+    label_type
 ):
     """
     This functions takes the dataset and produces the model prediction to a file
@@ -254,7 +256,8 @@ def inference_to_file(
                          checkpoint_state_dict,
                          output_path,
                          model_name,
-                         proba_norm_func
+                         proba_norm_func,
+                         label_type
                          )
     elif dataset_args._target_.endswith('InferenceDataset'):
         infer_without_metadata(device,
@@ -309,7 +312,8 @@ def inference_main(args) -> None:
         threshold=args.experiment.threshold,
         label_names=args.data.label_names,
         raven_max_freq=args.experiment.raven_max_freq,
-        proba_norm_func=args.data.get('proba_norm_func', 'softmax') # using "get" for backward compatibility
+        proba_norm_func=args.data.get('proba_norm_func', 'softmax'), # using "get" for backward compatibility,
+        label_type=args.data.label_type
     )
     print("Finished inference")
 
