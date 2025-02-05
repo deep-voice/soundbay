@@ -23,6 +23,8 @@ class FileLogger:
                 "failed_downloads": 0,
                 "successful_conversions": 0,
                 "failed_conversions": 0,
+                "successful_resamples": 0,
+                "failed_resamples": 0,
                 "successful_predictions": 0,
                 "failed_predictions": 0
             }
@@ -61,6 +63,11 @@ class FileLogger:
                 self.log_data["stats"]["successful_predictions"] += 1
             else:
                 self.log_data["stats"]["failed_predictions"] += 1
+        elif stage == "resample":
+            if status == "success":
+                self.log_data["stats"]["successful_resamples"] += 1
+            else:
+                self.log_data["stats"]["failed_resamples"] += 1
 
         self.log_data["stats"]["total_files_processed"] = len(set(
             entry["file_name"] for entry in self.log_data["processed_files"]
