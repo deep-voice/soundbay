@@ -89,7 +89,6 @@ class ProcessingPipeline:
         self.box_chunk_size = cfg.pipeline.box_chunk_size
         self.sud_folder = converter.sud_folder
         self.wav_folder = converter.wav_folder
-        self.clean_sud = cfg.pipeline.delete_sud_files
         self.clean_wav = cfg.pipeline.delete_wav_files
         self.resample_rate = cfg.pipeline.resample_rate
         self.logger = logging.getLogger(__name__)
@@ -135,8 +134,7 @@ class ProcessingPipeline:
             for file_name, file_id in files_chunk.items():
                 self.file_logger.log_file_event(file_id, file_name, "success", "conversion")
             self.logger.info("Finished converting current file chunk")
-            if self.clean_sud:
-                self._clean_directory(self.converter.sud_folder, files_chunk.keys())
+            self._clean_directory(self.converter.sud_folder, files_chunk.keys())
         except Exception as e:
             self.logger.error(f"Error converting files: {e}")
             for file_name, file_id in files_chunk.items():
@@ -237,9 +235,6 @@ class ProcessingPipeline:
                 for files_chunk in tqdm(files_chunks, desc="Processing and predicting files"):
                     self._process_files_chunk(files_chunk, files_mapping)
                     self.run_predictions(files_mapping, outputs_path)
-                    if self.clean_wav:
-                        self._clean_directory(self.wav_folder,
-                                              [Path(str(f).replace('.sud', '.wav')) for f in files_chunk.keys()])
 
 
 @hydra.main(version_base="1.2", config_path="../soundbay/conf", config_name="runs/main_pipeline")
