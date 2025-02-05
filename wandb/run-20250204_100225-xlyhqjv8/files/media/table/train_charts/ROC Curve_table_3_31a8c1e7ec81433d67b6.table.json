@@ -1,1 +1,0 @@
-{"columns": ["class", "fpr", "tpr"], "data": [["Noise", 0.0, 0.0], ["Noise", 0.5, 0.0], ["Noise", 1.0, 0.0], ["Noise", 1.0, 1.0], ["Call", 0.0, 0.0], ["Call", 1.0, 0.0], ["Call", 1.0, 1.0]]}
