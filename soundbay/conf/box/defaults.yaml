@@ -1,8 +1,8 @@
 # @package _global_
 box:
-  client_id: ???
-  client_secret: ???
-  access_token: ???
-  refresh_token: ???
-  folder_id: ???
+  client_id: ak5baat3nr5s5pxoyn32xp8tppalyoj1
+  client_secret: Ou1oKgQDtumWbcjkXKyaGY9OWwJTG2Yt
+  access_token: abVg0MLjWz5LVIgmYpLnnzxSRBlnEGqN
+  refresh_token: AMwTJGTkiMEk6SpJJ8uze3tQedICerA2LTXduNytMI4Yp6NVA9XgT9U2Lx7feWev
+  folder_id: 251471163695
 

@@ -73,6 +73,17 @@ class Sud2WavConverter:
         self.sud2wav_path = sud2wav_path or os.path.expanduser("~") + '/SUD2WAV'
         self.logger = logging.getLogger(__name__)
 
+    def resample_wav_files(folder_path, original_sample_rate, new_sample_rate):
+        for file_name in os.listdir(folder_path):
+            if file_name.endswith(".wav"):
+                file_path = os.path.join(folder_path, file_name)
+                audio = AudioSegment.from_wav(file_path)
+
+            # Check if the sample rate matches the expected original sample rate
+            if audio.frame_rate == original_sample_rate:
+                resampled_audio = audio.set_frame_rate(new_sample_rate)
+                resampled_audio.export(file_path, format="wav")
+
     def convert_to_wav(self, s3_save: bool) -> None:
         """Convert .sud files to .wav using Docker container."""
         with open("/tmp/output.log", "a") as output:
@@ -86,7 +97,12 @@ class Sud2WavConverter:
             self.logger.info("Finished extracting SUD files")
 
         if s3_save and self.s3_bucket:
-            self.logger.info("Uploading .wav files to s3")
+            self.logger.info("Resampling .wav files before uploading to s3")
+            try:
+                resample_wav_files(self.wav_folder, 96000, 9600)
+            except:
+                pass
+            self.logger.info("Uploading to s3")
             upload_directory_to_s3(self.wav_folder, "", self.s3_bucket)
             self.logger.info("Finished uploading .wav files to s3")
 
@@ -132,7 +148,7 @@ class ProcessingPipeline:
         """Convert a single chunk of files from .sud to .wav."""
         try:
             self.converter.convert_to_wav(self.cfg.pipeline.s3_save)
-            for file_name, file_id in files_chunk.items():
+            for file_name, file_id in tqdm(files_chunk.items(), "file in chunk"):
                 self.file_logger.log_file_event(file_id, file_name, "success", "conversion")
         except Exception as e:
             self.logger.error(f"Error converting files: {e}")
@@ -153,7 +169,6 @@ class ProcessingPipeline:
     def process_files(self, files_mapping) -> None:
         """Process all files in chunks."""
         chunks = self._chunk_files(files_mapping)
-        self._clean_directory(self.wav_folder)
 
         for chunk in tqdm(chunks, desc="Processing file chunks"):
             self.process_chunk(chunk)
@@ -222,4 +237,5 @@ if __name__ == "__main__":
     from cli run:
         python scripts/sud_files_pipelines.py pipeline.mode=<predictions or wav> pipline.files_path=<path to csv file containing a "files" column>
     """
+    print("START")
     main()
