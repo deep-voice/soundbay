@@ -187,6 +187,7 @@ class ProcessingPipeline:
         if self.s3_save and self.s3_bucket:
             self._upload_directory_to_s3(self.wav_folder, "", self.s3_bucket,
                                          additional_syntax='--exclude "*" --include "*.wav"')
+        self.file_logger.save_and_upload()
 
     def process_files(self, files_mapping) -> None:
         """Process all files in chunks."""
