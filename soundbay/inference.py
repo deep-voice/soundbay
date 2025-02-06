@@ -300,6 +300,8 @@ def inference_main(args) -> None:
     args = merge_with_checkpoint(args, ckpt_args)
     ckpt = ckpt_dict['model']
 
+    default_norm_func = 'softmax' if args.data.label_type == 'single_label' else 'sigmoid'
+
     inference_to_file(
         device=device,
         batch_size=args.data.batch_size,
@@ -312,7 +314,7 @@ def inference_main(args) -> None:
         threshold=args.experiment.threshold,
         label_names=args.data.label_names,
         raven_max_freq=args.experiment.raven_max_freq,
-        proba_norm_func=args.data.get('proba_norm_func', 'softmax'), # using "get" for backward compatibility,
+        proba_norm_func=args.data.get('proba_norm_func', default_norm_func), # using "get" for backward compatibility,
         label_type=args.data.label_type
     )
     print("Finished inference")
