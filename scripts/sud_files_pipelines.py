@@ -3,11 +3,11 @@ import subprocess
 import logging
 import soundfile as sf
 from pathlib import Path
-from typing import List, Optional, Union, Generator, Dict, Iterable
+from typing import List, Optional, Generator, Dict, Iterable
 
 import librosa
 import pandas as pd
-from boxsdk import OAuth2, Client
+from box_sdk_gen import BoxClient, BoxCCGAuth, CCGConfig
 from tqdm import tqdm
 import hydra
 from omegaconf import DictConfig
@@ -17,37 +17,39 @@ from soundbay.inference import inference_main
 from file_logger import FileLogger
 
 
-class BoxClient:
-    def __init__(self, client_id: str, client_secret: str, folder_id: str, access_token: str, refresh_token: Union[str, None] = None):
-        self.client = self._setup_client(client_id, client_secret, access_token, refresh_token)
+class BoxLocalClient:
+    def __init__(self, client_id: str, client_secret: str, folder_id: str, user_id:str):
+        self.client = self._setup_client(client_id, client_secret, user_id)
         self.folder_id = folder_id
         self.logger = logging.getLogger(__name__)
 
     def _setup_client(self,
                       client_id: str,
                       client_secret: str,
-                      access_token: str,
-                      refresh_token) -> Client:
+                      user_id: str) -> BoxClient:
         """Initialize Box API client."""
-        auth = OAuth2(
+        ccg_config = CCGConfig(
             client_id=client_id,
             client_secret=client_secret,
-            access_token=access_token,
-            refresh_token=refresh_token
+            user_id=user_id
         )
-        return Client(auth)
+        auth = BoxCCGAuth(config=ccg_config)
+
+        return BoxClient(auth=auth)
 
     def get_files_map(self, folder_id: str, files_list: List[str]) -> dict:
         """Get files ids from Box folder."""
         self.logger.info("Getting files ids from Box")
-        items = self.client.folder(folder_id).get_items(limit=None)
-        return {item.name: item.id for item in items if item.name in files_list}
+        total_count = self.client.folders.get_folder_items(folder_id).to_dict()['total_count']
+        return {item['name']: item['id'] for i in range(0, total_count, min(total_count, 100)) for item in
+                self.client.folders.get_folder_items(folder_id, offset=i).to_dict()['entries']
+                 if item['name'] in files_list}
 
     def download_file(self, file_id: str, file_name: str, output_dir: Path) -> None:
         """Download a single file from Box."""
         output_path = output_dir / file_name
         with open(output_path, 'wb') as f:
-            self.client.file(file_id).download_to(f)
+            self.client.downloads.download_file_to_output_stream(file_id, f)
 
 
 class Sud2WavConverter:
@@ -77,7 +79,7 @@ class Sud2WavConverter:
 
 class ProcessingPipeline:
     def __init__(self,
-                 box_client: BoxClient,
+                 box_client: BoxLocalClient,
                  converter: Sud2WavConverter,
                  file_logger: FileLogger,
                  cfg: DictConfig):
@@ -248,7 +250,7 @@ def main(cfg: DictConfig) -> None:
     sud_folder.mkdir(parents=True, exist_ok=True)
     wav_folder.mkdir(parents=True, exist_ok=True)
 
-    box_client = BoxClient(**cfg.box)
+    box_client = BoxLocalClient(**cfg.box)
     file_logger = FileLogger(cfg.pipeline.log_folder, cfg.pipeline.log_filename, cfg.pipeline.s3_bucket)
     converter = Sud2WavConverter(sud_folder, wav_folder, cfg.pipeline.sud2wav_path, cfg.pipeline.s3_bucket)
     pipeline = ProcessingPipeline(box_client=box_client, converter=converter, file_logger=file_logger, cfg=cfg)
