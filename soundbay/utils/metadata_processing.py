@@ -309,7 +309,7 @@ def multi_target_from_time_intervals_df(
             0	4.051811	6.051811	2
             1	8.789995	9.789995	2
             2	5.861857	6.861857	1
-    >>> multi_target_from_time_intervals_df(df, overlap_threshold_pct=0.5, noise_class_value=0)
+    >>> multi_target_from_time_intervals_df(df, overlap_threshold_pct=0, noise_class_value=0)
         0    [1, 1]
         1    [0, 1]
         2    [1, 1]
