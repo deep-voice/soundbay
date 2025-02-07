@@ -1,4 +1,5 @@
 import os
+from collections import namedtuple
 from pathlib import Path
 import pandas as pd
 import numpy as np
@@ -100,6 +101,37 @@ def annotations_df_to_csv(annotations_dataset, dataset_name: str = 'recordings_2
     filename = 'combined_annotations_' + dataset_name + '.csv'
     annotations_dataset.to_csv(filename, index=False)
 
+def get_overlap_pct(ref_start: float, ref_end: float, curr_start: float, curr_end: float) -> float:
+    """
+    Calculates the percentage of overlap between two time intervals.
+
+    Ensures `ref_start` and `ref_end` represent the earlier interval.
+
+    Parameters:
+    - ref_start (float): Start time of the reference interval (earlier interval).
+    - ref_end (float): End time of the reference interval.
+    - curr_start (float): Start time of the current interval (may start later).
+    - curr_end (float): End time of the current interval.
+
+    Returns:
+    - float: The overlap percentage, computed as:
+      (overlap duration) / (shorter interval length).
+      Returns a negative percentage if there is a gap between intervals.
+    """
+    # Ensure `ref_start` is earlier than `curr_start`
+    assert ref_start <= ref_end, 'Reference interval should start before it ends.'
+    assert curr_start <= curr_end, 'Current interval should start before it ends.'
+    if curr_start < ref_start:
+        ref_start, ref_end, curr_start, curr_end = curr_start, curr_end, ref_start, ref_end
+
+    shorter_interval = min(ref_end - ref_start, curr_end - curr_start)
+
+    # Compute overlap as negative if there's no overlap (ref_end < curr_start)
+    overlap_duration = min(ref_end, curr_end) - curr_start
+
+    # If the intervals don't overlap, the overlap_duration will be negative
+    return overlap_duration / shorter_interval if shorter_interval != 0 else 0
+
 
 def merge_calls(sorted_df: pd.DataFrame, overlap_pct_th: float = 0) -> List[pd.Series]:
     """
@@ -139,8 +171,7 @@ def merge_calls(sorted_df: pd.DataFrame, overlap_pct_th: float = 0) -> List[pd.S
         if overlap_duration >= 0:
             max_end_time = max(lower.end_time, higher.end_time)
             merged[-1].end_time = max_end_time  # replace by merged interval
-            shorter_call_duration = min(lower.end_time - lower.begin_time, higher.end_time - higher.begin_time)
-            overlap_pct = overlap_duration / shorter_call_duration
+            overlap_pct = get_overlap_pct(lower.begin_time, lower.end_time, higher.begin_time, higher.end_time)
             if overlap_pct < overlap_pct_th:
                 merged = _split_calls_with_low_overlap(merged, higher, lower, overlap_duration)
         else:
@@ -254,3 +285,61 @@ def bg_from_non_overlap_calls(df: pd.DataFrame):
     bg_df = pd.concat(bg_calls)
     bg_df['label'] = 0
     return pd.concat([bg_df, df], ignore_index=True)
+
+
+def multi_target_from_time_intervals_df(
+        df: pd.DataFrame,
+        overlap_threshold_pct: float = 0.0,
+        noise_class_value: int = 0) -> pd.Series:
+    """
+    Args:
+        df: a dataframe with the columns: 'begin_time', 'end_time', 'label'.
+        overlap_threshold_pct: the minimum overlap between two calls to be considered as a true overlap.
+        noise_class_value: the value of the noise class, e.g. 0.
+
+    Returns: a pd.Series of the multi-label target with the df original index.
+
+    example:
+        >>> start_times = np.random.uniform(0, 10, 3)
+        >>> end_times = start_times + 1
+        >>> labels = np.random.choice([1,2], 3)
+        >>> df = pd.DataFrame({'begin_time': start_times, 'end_time': end_times, 'label': labels})
+        >>> df
+                begin_time	end_time	label
+            0	4.051811	6.051811	2
+            1	8.789995	9.789995	2
+            2	5.861857	6.861857	1
+    >>> multi_target_from_time_intervals_df(df, overlap_threshold_pct=0, noise_class_value=0)
+        0    [1, 1]
+        1    [0, 1]
+        2    [1, 1]
+    """
+    assert 0 <= overlap_threshold_pct <= 1, 'overlap_threshold_pct should be in the range [0, 1]'
+    assert pd.api.types.is_integer_dtype(df.label), 'label should be an integer type'
+
+    Interval = namedtuple('Interval', ['start', 'end', 'label'])
+    n_classes = df["label"].nunique() - (noise_class_value in df["label"].unique())
+    overlaps = {idx: [0] * n_classes for idx in df.index}
+    reference_intervals = {}
+
+    # Process intervals in chronological order
+    for idx, row in df.query(f'label != {noise_class_value}').sort_values('begin_time').iterrows():
+        interval = Interval(row.begin_time, row.end_time, row.label)
+
+        # Mark the interval as overlapping with itself
+        overlaps[idx][int(interval.label) - 1] = 1
+
+        # Remove expired previous intervals (end time < current interval start time)
+        reference_intervals = {idx: reference_interval for idx, reference_interval in reference_intervals.items()
+                               if reference_interval.end >= interval.start}
+
+        # Check overlaps with reference intervals (overlap >= min_overlap_threshold) and update overlaps
+        for ref_idx, ref in reference_intervals.items():
+            overlap_pct = get_overlap_pct(ref.start, ref.end, interval.start, interval.end)
+            if overlap_pct >= overlap_threshold_pct:
+                overlaps[idx][int(ref.label) - 1] = 1
+                overlaps[ref_idx][int(interval.label) - 1] = 1
+
+        reference_intervals[idx] = interval
+
+    return pd.Series(overlaps, name='label')
