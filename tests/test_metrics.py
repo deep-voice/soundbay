@@ -20,7 +20,7 @@ def test_metrics_calculator():
     labels = np.random.choice([0, 1, 2, 3], n_samples).tolist()
     pred = np.random.choice([0, 1, 2, 3], n_samples).tolist()
     proba = np.random.rand(n_samples, 4)
-    proba = proba / proba.sum(axis=1, keepdims=True)
+    proba = [proba / proba.sum(axis=1, keepdims=True)]
     label_type = 'single_label'
 
     metrics = MetricsCalculator(labels, pred, proba, label_type).calc_all_metrics()
