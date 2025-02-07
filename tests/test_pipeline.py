@@ -34,7 +34,7 @@ def check_variable_change(model_before, model_after, vars_change=True, device=to
             )
 
 
-def test_trainer(model, optimizer, scheduler, train_data_loader, criterion):
+def test_trainer(model, optimizer, scheduler, train_data_loader, criterion, label_type):
 
     wandb.init(project=None, mode='disabled')
     args = DictConfig({'experiment': {'debug': False}})
@@ -55,7 +55,8 @@ def test_trainer(model, optimizer, scheduler, train_data_loader, criterion):
         logger=logger,
         debug=True,
         criterion=criterion,
-        output_path=output_dirpath
+        output_path=output_dirpath,
+        label_type=label_type
     )
     trainer.train()
     check_variable_change(pre_training_model, model)
