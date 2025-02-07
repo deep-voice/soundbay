@@ -76,7 +76,8 @@ def test_trainer(model, optimizer, scheduler, train_data_loader, criterion, labe
         debug=True,
         criterion=criterion,
         checkpoint='last.pth',
-        output_path=output_dirpath
+        output_path=output_dirpath,
+        label_type=label_type
     )
     trainer.train()
     os.remove('last.pth')
