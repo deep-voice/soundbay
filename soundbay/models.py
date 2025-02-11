@@ -14,7 +14,6 @@ from soundbay.utils.files_handler import load_config
 from transformers import AutoProcessor, ASTModel
 
 
-
 class ResNet1Channel(ResNet):
     """ resnet model for 1 channel ("grayscale") """
     def __init__(self, block, *args, **kwargs):
