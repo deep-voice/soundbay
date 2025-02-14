@@ -3,6 +3,6 @@ defaults:
   - ../data: mozambique_2018
   - ../augmentations: _augmentations
   - ../preprocessors: _preprocessors
-  - ../model: defaults
+  - ../model: resnet_18_2d
   - ../optim: defaults
   - ../experiment: defaults
