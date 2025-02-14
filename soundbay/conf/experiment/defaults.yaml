@@ -3,7 +3,7 @@ experiment:
   debug: False
   manual_seed: 1234
   project: 'ast_ssl_mozambique_2018'
-  name: 'resnet_182d_all_data'
+  name: 'AST_all_data'
   run_id: null
   group_name: null
   bucket_name: deepvoice-experiments

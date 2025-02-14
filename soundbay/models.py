@@ -54,16 +54,17 @@ class AST(nn.Module):
         self.processor = AutoProcessor.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593", max_length=1024)
 
         self.model = ASTModel.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
-        state_dict = torch.load(weight_path)
+        if weight_path != 'None':
+            state_dict = torch.load(weight_path)
+            self.model.load_state_dict(state_dict)
 
-        self.model.load_state_dict(state_dict)
         self.num_classes = num_classes
 
         self.fc = nn.Linear(self.model.config.hidden_size, self.num_classes)
 
     def forward(self, x):
         # Assuming x is the input that needs to be processed before passing to the model
-        import ipdb;
+        # import ipdb;
         sampling_rate = 16000 #TODO: add sample rate from config --> only takes this!  
         mel_spectogram = self.processor(x.squeeze(1).cpu().numpy(), sampling_rate = sampling_rate, return_tensors="pt")
         
