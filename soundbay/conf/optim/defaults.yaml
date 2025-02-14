@@ -5,7 +5,7 @@ optim:
     _target_: torch.optim.Adam
     lr: 0.001
   scheduler:
-    _target_: torch.optim.lr_scheduler.ExponentialLR
+    _target_: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
     kwargs:
-      gamma: 0.995
+      T_0: 5
   freeze_layers_for_finetune: False # Default is False.
