@@ -71,38 +71,53 @@ def modeling(
     """
     # Set paths and create dataset
 
-    train_dataset = datasets_dict[train_dataset_args['_target_']](data_path = train_dataset_args['data_path'],
-    metadata_path=train_dataset_args['metadata_path'], augmentations=train_dataset_args['augmentations'],
-    augmentations_p=train_dataset_args['augmentations_p'],
-    preprocessors=train_dataset_args['preprocessors'],
-    seq_length=train_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
-    sample_rate=train_dataset_args['sample_rate'], margin_ratio=train_dataset_args['margin_ratio'],
-    slice_flag=train_dataset_args['slice_flag'], mode=train_dataset_args['mode'],
-    path_hierarchy=train_dataset_args['path_hierarchy'],
-    label_type=label_type
+    train_dataset = datasets_dict[train_dataset_args['_target_']](
+        data_path = train_dataset_args['data_path'],
+        metadata_path=train_dataset_args['metadata_path'], 
+        augmentations=train_dataset_args['augmentations'],
+        augmentations_p=train_dataset_args['augmentations_p'],
+        preprocessors=train_dataset_args['preprocessors'],
+        seq_length=train_dataset_args['seq_length'], 
+        data_sample_rate=train_dataset_args['data_sample_rate'],
+        sample_rate=train_dataset_args['sample_rate'], 
+        margin_ratio=train_dataset_args['margin_ratio'],
+        slice_flag=train_dataset_args['slice_flag'], 
+        mode=train_dataset_args['mode'],
+        path_hierarchy=train_dataset_args['path_hierarchy'],
+        label_type=label_type
     )
 
     # train data which is handled as validation data
-    train_as_val_dataset = datasets_dict[train_dataset_args['_target_']](data_path=train_dataset_args['data_path'],
-    metadata_path=train_dataset_args['metadata_path'], augmentations=val_dataset_args['augmentations'],
-    augmentations_p=val_dataset_args['augmentations_p'],
-    preprocessors=val_dataset_args['preprocessors'],
-    seq_length=val_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
-    sample_rate=train_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
-    slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode'],
-    path_hierarchy=val_dataset_args['path_hierarchy'],
-    label_type=label_type
+    train_as_val_dataset = datasets_dict[train_dataset_args['_target_']](
+        data_path=train_dataset_args['data_path'],
+        metadata_path=train_dataset_args['metadata_path'], 
+        augmentations=val_dataset_args['augmentations'],
+        augmentations_p=val_dataset_args['augmentations_p'],
+        preprocessors=val_dataset_args['preprocessors'],
+        seq_length=val_dataset_args['seq_length'], 
+        data_sample_rate=train_dataset_args['data_sample_rate'],
+        sample_rate=train_dataset_args['sample_rate'], 
+        margin_ratio=val_dataset_args['margin_ratio'],
+        slice_flag=val_dataset_args['slice_flag'], 
+        mode=val_dataset_args['mode'],
+        path_hierarchy=val_dataset_args['path_hierarchy'],
+        label_type=label_type
     )
 
-    val_dataset = datasets_dict[val_dataset_args['_target_']](data_path = val_dataset_args['data_path'],
-    metadata_path=val_dataset_args['metadata_path'], augmentations=val_dataset_args['augmentations'],
-    augmentations_p=val_dataset_args['augmentations_p'],
-    preprocessors=val_dataset_args['preprocessors'],
-    seq_length=val_dataset_args['seq_length'], data_sample_rate=val_dataset_args['data_sample_rate'],
-    sample_rate=val_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
-    slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode'],
-    path_hierarchy=train_dataset_args['path_hierarchy'],
-    label_type=label_type
+    val_dataset = datasets_dict[val_dataset_args['_target_']](
+        data_path = val_dataset_args['data_path'],
+        metadata_path=val_dataset_args['metadata_path'], 
+        augmentations=val_dataset_args['augmentations'],
+        augmentations_p=val_dataset_args['augmentations_p'],
+        preprocessors=val_dataset_args['preprocessors'],
+        seq_length=val_dataset_args['seq_length'], 
+        data_sample_rate=val_dataset_args['data_sample_rate'],
+        sample_rate=val_dataset_args['sample_rate'], 
+        margin_ratio=val_dataset_args['margin_ratio'],
+        slice_flag=val_dataset_args['slice_flag'], 
+        mode=val_dataset_args['mode'],
+        path_hierarchy=train_dataset_args['path_hierarchy'],
+        label_type=label_type
     )
 
     # Define model and device for training
@@ -179,7 +194,7 @@ def modeling(
 # TODO check how to use hydra without path override
 @hydra.main(config_name="/runs/main", config_path="conf", version_base='1.2')
 def main(validate_args) -> None:
-    
+
     args = deepcopy(validate_args)
     OmegaConf.resolve(validate_args)
     Config(**validate_args)
@@ -191,8 +206,13 @@ def main(validate_args) -> None:
         _logger = wandb
 
     experiment_name = get_experiment_name(args)
-    _logger.init(project="finding_willy", name=experiment_name, group=args.experiment.group_name,
-                 id=args.experiment.run_id, resume=args.experiment.checkpoint.resume)
+    _logger.init(
+        project=args.experiment.project, 
+        name=experiment_name,
+        group=args.experiment.group_name,
+        id=args.experiment.run_id, 
+        resume=args.experiment.checkpoint.resume
+    )
 
     # Set device
     if not torch.cuda.is_available():
