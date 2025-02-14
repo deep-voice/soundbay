@@ -34,3 +34,4 @@ outputs/
 /soundbay/.null/inference.log
 /soundbay/wandb/
 
+wandb/*
