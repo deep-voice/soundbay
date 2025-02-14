@@ -63,9 +63,11 @@ class AST(nn.Module):
         self.fc = nn.Linear(self.model.config.hidden_size, self.num_classes)
 
     def forward(self, x):
+        # TODO: x is not the input that needs to be processed, currently x is the spectrogram and the processor expects the the audio
+        # TODO: using the processor on the raw_wav is also not got since the parameters do not match, need to understand how the model was trained
         # Assuming x is the input that needs to be processed before passing to the model
         # import ipdb;
-        sampling_rate = 16000 #TODO: add sample rate from config --> only takes this!  
+        sampling_rate = 16000 #TODO: add sample rate from config --> only takes this!
         mel_spectogram = self.processor(x.squeeze(1).cpu().numpy(), sampling_rate = sampling_rate, return_tensors="pt")
         
         inputs = {key: val.to(x.device) for key, val in mel_spectogram.items()}  # Move to device
