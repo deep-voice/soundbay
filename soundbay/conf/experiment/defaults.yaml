@@ -2,7 +2,8 @@
 experiment:
   debug: False
   manual_seed: 1234
-  name: null
+  project: 'ast_ssl_mozambique_2018'
+  name: 'ast_ssl_test_baseline'
   run_id: null
   group_name: null
   bucket_name: deepvoice-experiments
