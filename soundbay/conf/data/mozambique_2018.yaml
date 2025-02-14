@@ -9,9 +9,10 @@ data:
   min_freq_filtering: 0
   n_fft: 1024
   hop_length: 256
+  label_type: 'single_label'
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/mozambique_2018'
+    data_path: 'D:\Data\mozambique_2018'
     mode: train 
     metadata_path: '../datasets/mozambique_2018/combined_annotations_filtered_train.csv'
     augmentations_p: 0.8
@@ -25,7 +26,7 @@ data:
     slice_flag: false
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/mozambique_2018'
+    data_path: 'D:\Data\mozambique_2018'
     mode: val 
     metadata_path: '../datasets/mozambique_2018/combined_annotations_filtered_val.csv'
     augmentations_p: 0
