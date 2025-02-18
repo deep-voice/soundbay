@@ -1,0 +1,30 @@
+#!/bin/bash
+
+# Path to the SSH key
+SSH_KEY_PATH="~/.ssh/dv-template-key.pem"
+
+# Local directory containing the files
+LOCAL_DIR="/Users/shai/personal/deepvoice/amber/wavs"
+
+# Remote directory to upload the files to
+REMOTE_DIR="/home/azureuser/data_amber_jul21"
+
+# Remote server address
+REMOTE_SERVER="azureuser@137.117.85.203"
+
+# File containing the list of failed files
+FAILED_FILES="failed_files.txt"
+
+# Loop through each file in the list and upload it
+while IFS= read -r file; do
+    # Extract the filename from the full path
+    filename=$(basename "$file")
+    
+    # Construct the full local and remote paths
+    local_path="$LOCAL_DIR/$filename"
+    remote_path="$REMOTE_DIR/$filename"
+
+    # Upload the file using scp
+    scp -i "$SSH_KEY_PATH" "$local_path" "$REMOTE_SERVER:$remote_path"
+done < "$FAILED_FILES"
+
