@@ -61,9 +61,8 @@ class AST(nn.Module):
         self.num_classes = num_classes
 
         self.fc = nn.Linear(self.model.config.hidden_size, self.num_classes)
-
-    def forward(self, x):
-        # Assuming x is the input that needs to be processed before passing to the model
+        
+    def get_embedding(self, x):
         import ipdb;
         sampling_rate = 16000 #TODO: add sample rate from config --> only takes this!  
         mel_spectogram = self.processor(x.squeeze(1).cpu().numpy(), sampling_rate = sampling_rate, return_tensors="pt")
@@ -71,6 +70,11 @@ class AST(nn.Module):
         inputs = {key: val.to(x.device) for key, val in mel_spectogram.items()}  # Move to device
 
         embedding  = self.model(**inputs) # TODO: if we want to freeze...
+        return embedding
+
+    def forward(self, x):
+        # Assuming x is the input that needs to be processed before passing to the model
+        embedding = self.get_embedding(x)
 
         output = self.fc(embedding.pooler_output)
 
