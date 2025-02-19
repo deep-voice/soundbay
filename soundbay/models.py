@@ -11,6 +11,8 @@ from torchvision.models import squeezenet, ResNet18_Weights
 import torchvision.models as models
 
 from soundbay.utils.files_handler import load_config
+from transformers import AutoProcessor, ASTModel
+
 
 
 class ResNet1Channel(ResNet):
@@ -45,6 +47,34 @@ class ResNet1Channel(ResNet):
             param.requires_grad = True
         for param in self.layer4.parameters():
             param.requires_grad = True
+
+
+class AST(nn.Module):
+    def __init__(self, weight_path, num_classes):
+        super(AST, self).__init__()
+        self.processor = AutoProcessor.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593", max_length=1024)
+
+        self.model = ASTModel.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
+        state_dict = torch.load(weight_path)
+
+        self.model.load_state_dict(state_dict)
+        self.num_classes = num_classes
+
+        self.fc = nn.Linear(self.model.config.hidden_size, self.num_classes)
+
+    def forward(self, x):
+        # Assuming x is the input that needs to be processed before passing to the model
+        import ipdb;
+        sampling_rate = 16000 #TODO: add sample rate from config --> only takes this!  
+        mel_spectogram = self.processor(x.squeeze(1).cpu().numpy(), sampling_rate = sampling_rate, return_tensors="pt")
+        
+        inputs = {key: val.to(x.device) for key, val in mel_spectogram.items()}  # Move to device
+
+        embedding  = self.model(**inputs) # TODO: if we want to freeze...
+
+        output = self.fc(embedding.pooler_output)
+
+        return output
 
 
 class SqueezeNet1D(squeezenet.SqueezeNet):

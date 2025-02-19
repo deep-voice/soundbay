@@ -2,14 +2,13 @@ from typing import Optional
 from pydantic import BaseModel, validator
 from conf_dict import datasets_dict, criterion_dict, models_dict 
 
-
 class Dataset(BaseModel):
     batch_size: int
     num_workers: int
     sample_rate: int
     data_sample_rate: int
     max_freq: int
-
+    label_type: str
     min_freq: int
     n_fft: int
     hop_length: int
@@ -48,6 +47,14 @@ class Dataset(BaseModel):
         if sample_rate < 0: 
             raise ValueError(f"sample_rate must be a positive integer")
         return sample_rate
+
+    @validator("label_type")
+    def validate_label_type(cls, label_type:str) :
+        if label_type not in ['single_label', 'multi_label']:
+            raise ValueError(f"Label type is not allowed: {label_type}")
+        return label_type
+
+
 class Model(BaseModel):
     criterion: dict
     model: dict

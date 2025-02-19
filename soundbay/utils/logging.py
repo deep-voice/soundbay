@@ -9,6 +9,8 @@ import matplotlib
 import matplotlib.pyplot as plt
 from typing import Union, List, Optional
 
+from soundbay.utils.metrics import MetricsCalculator
+
 matplotlib.rc('figure', max_open_warning = 0)
 
 try:
@@ -112,18 +114,21 @@ class Logger:
             else:
                 raise ValueError('accept train or flag only!')
 
-    def update_predictions(self, pred_tuple):
+    def update_predictions(self, pred: np.ndarray, proba: np.ndarray, label: np.ndarray):
         """update prediction and label list from current batch/iteration"""
-        _, predicted = torch.max(pred_tuple[0].data, 1)
-        label = pred_tuple[1].data
-        self.pred_list += predicted.cpu().numpy().tolist()  # add current batch prediction to full epoch pred list
-        self.pred_proba_list.append(torch.softmax(pred_tuple[0].data, 1).cpu().numpy())
-        self.label_list += label.cpu().numpy().tolist()
+        self.pred_list += pred.tolist()  # add current batch prediction to full epoch pred list
+        self.pred_proba_list.append(proba)
+        self.label_list += label.tolist()
 
-    def calc_metrics(self, epoch: int, mode: str = 'train', label_names: Optional[List[str]] = None):
+    def calc_metrics(self, epoch: int, label_type: str, mode: str = 'train', label_names: Optional[List[str]] = None):
         """calculates metrics, saves to tensorboard log & flush prediction list"""
+        self.metrics_dict = MetricsCalculator(
+            label_list=self.label_list,
+            pred_list=self.pred_list,
+            pred_proba_list=self.pred_proba_list,
+            label_type=label_type).calc_all_metrics()
+
         pred_proba_array = np.concatenate(self.pred_proba_list)
-        self.metrics_dict = self.get_metrics_dict(self.label_list, self.pred_list, pred_proba_array)
         for metric, value in self.metrics_dict['global'].items():
             self.log_writer.log({f'Global Metrics {mode}/{metric}': value}, step=epoch)
 
@@ -135,7 +140,7 @@ class Logger:
                 self.log_writer.log({f'Call Metrics {mode}/{metric}_{label_names[class_id]}':
                                     self.metrics_dict['calls'][class_id][metric]}, step=epoch)
 
-        if not self.debug_mode:
+        if (not self.debug_mode) and label_type == 'single_label':
             self.log_writer.log(
                 {f'{mode}_charts/ROC Curve': wandb.plot.roc_curve(self.label_list, pred_proba_array,
                                                                   labels=label_names)},
@@ -190,53 +195,6 @@ class Logger:
 
         # Upload WAVs to W&B
         wandb.log(log_wavs, commit=False)
-
-
-    @staticmethod
-    def get_metrics_dict(label_list: Union[list, np.ndarray], pred_list: Union[list, np.ndarray],
-                         pred_proba_array: np.ndarray):
-        """calculate the metrics comparing the predictions to the ground-truth labels, and return them in dict format"""
-
-        label_list = np.array(label_list)
-        pred_list = np.array(pred_list)
-        pred_proba_array = np.array(pred_proba_array)
-
-        metrics_dict = {
-            'global': {'accuracy': metrics.accuracy_score(label_list, pred_list),
-                       'call_average_precision_macro': np.nanmean([metrics.average_precision_score(
-                           label_list == i, pred_proba_array[:, i]) for i in range(1, pred_proba_array.shape[1])]),
-                       'bg_average_precision': metrics.average_precision_score(label_list == 0, pred_proba_array[:, 0]),
-                       'call_f1_macro': metrics.f1_score(label_list, pred_list, average='macro',
-                                                         labels=list(range(1, pred_proba_array.shape[1]))),
-                       'bg_f1': metrics.f1_score(label_list == 0, pred_list == 0),
-                       'bg_precision': metrics.precision_score(label_list == 0, pred_list == 0),
-                       'bg_recall': metrics.recall_score(label_list == 0, pred_list == 0),
-                       },
-            'calls': {}
-        }
-
-        def nan_auc(y_true, y_pred):
-            try:
-                return metrics.roc_auc_score(y_true, y_pred)
-            except ValueError:
-                return np.nan
-
-        metrics_dict['global']['bg_auc'] = nan_auc(label_list == 0, pred_proba_array[:, 0])
-
-        # Equivalent of 'macro' 'ovr' auc for only the positive classes.
-        # nan auc are not counted towards the mean.
-        pos_auc_list = [nan_auc(label_list == i, pred_proba_array[:, i]) for i in range(1, pred_proba_array.shape[1])]
-        metrics_dict['global']['call_auc_macro'] = np.nanmean(pos_auc_list)
-
-        for class_id in range(1, pred_proba_array.shape[1]):
-            metrics_dict['calls'][class_id] = {
-                'precision': metrics.precision_score(label_list == class_id, pred_list == class_id),
-                'recall': metrics.recall_score(label_list == class_id, pred_list == class_id),
-                'f1': metrics.f1_score(label_list == class_id, pred_list == class_id),
-            }
-
-        return metrics_dict
-
 
 def get_experiment_name(args) -> Union[str, None]:
     if args.experiment.name:
