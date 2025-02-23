@@ -289,6 +289,7 @@ def bg_from_non_overlap_calls(df: pd.DataFrame):
 
 def multi_target_from_time_intervals_df(
         df: pd.DataFrame,
+        n_classes: int, 
         overlap_threshold_pct: float = 0.0,
         noise_class_value: int = 0) -> pd.Series:
     """
@@ -309,7 +310,7 @@ def multi_target_from_time_intervals_df(
             0	4.051811	6.051811	2
             1	8.789995	9.789995	2
             2	5.861857	6.861857	1
-    >>> multi_target_from_time_intervals_df(df, overlap_threshold_pct=0, noise_class_value=0)
+    >>> multi_target_from_time_intervals_df(df, overlap_threshold_pct=0, n_classes=2, noise_class_value=0)
         0    [1, 1]
         1    [0, 1]
         2    [1, 1]
@@ -318,7 +319,6 @@ def multi_target_from_time_intervals_df(
     assert pd.api.types.is_integer_dtype(df.label), 'label should be an integer type'
 
     Interval = namedtuple('Interval', ['start', 'end', 'label'])
-    n_classes = df["label"].nunique() - (noise_class_value in df["label"].unique())
     overlaps = {idx: [0] * n_classes for idx in df.index}
     reference_intervals = {}
 

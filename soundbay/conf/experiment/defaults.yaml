@@ -2,7 +2,7 @@
 experiment:
   debug: False
   manual_seed: 1234
-  name: null
+  name: 'marion_island_new_multi_min_freq_1000'
   run_id: null
   group_name: null
   bucket_name: deepvoice-experiments

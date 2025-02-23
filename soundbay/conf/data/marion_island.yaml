@@ -1,0 +1,40 @@
+# @package _global_
+data:
+  label_names: ['Upsweeps', 'Downsweeps', 'Tones', 'Squeaks', 'Clicks', 'device_noise']
+  batch_size: 64
+  num_workers: 4
+  sample_rate: 24000
+  data_sample_rate: 96000
+  min_freq: 1000
+  max_freq: 12000
+  n_fft: 512
+  hop_length: 128
+  label_type: 'multi_label'
+  train_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: '/opt/dlami/nvme/danielle/audio_source'
+    path_hierarchy: 0
+    mode: train
+    metadata_path: '/home/ubuntu/train_multitarget.csv'
+    augmentations_p: 0.8
+    augmentations: ${_augmentations}
+    preprocessors: ${_preprocessors}
+    seq_length: 1.5 
+    margin_ratio: 0.25
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: false
+  val_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: '/opt/dlami/nvme/danielle/audio_source'
+    path_hierarchy: 0
+    mode: val
+    metadata_path: '/home/ubuntu/val_multitarget.csv'
+    augmentations_p: 0
+    augmentations: null
+    preprocessors: ${_preprocessors}
+    seq_length: 1.5
+    margin_ratio: 0
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: true

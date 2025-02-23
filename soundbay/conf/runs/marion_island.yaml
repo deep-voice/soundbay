@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - ../data: marion_island
+  - ../augmentations: marion_island
+  - ../preprocessors: _preprocessors
+  - ../model: marion_island
+  - ../optim: defaults
+  - ../experiment: defaults
