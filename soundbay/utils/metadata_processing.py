@@ -321,6 +321,7 @@ def multi_target_from_time_intervals_df(
     """
     assert 0 <= overlap_threshold_pct <= 1, 'overlap_threshold_pct should be in the range [0, 1]'
     assert pd.api.types.is_integer_dtype(df.label), 'label should be an integer type'
+    assert n_classes > 0, 'n_classes should be greater than 0'
 
     Interval = namedtuple('Interval', ['start', 'end', 'label'])
     overlaps = {idx: [0] * n_classes for idx in df.index}
