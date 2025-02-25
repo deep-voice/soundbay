@@ -289,11 +289,13 @@ def bg_from_non_overlap_calls(df: pd.DataFrame):
 
 def multi_target_from_time_intervals_df(
         df: pd.DataFrame,
+        n_classes: int,
         overlap_threshold_pct: float = 0.0,
         noise_class_value: int = 0) -> pd.Series:
     """
     Args:
         df: a dataframe with the columns: 'begin_time', 'end_time', 'label'.
+        n_classes: the number of classes in the multi-label target not including noise class.
         overlap_threshold_pct: the minimum overlap between two calls to be considered as a true overlap.
         noise_class_value: the value of the noise class, e.g. 0.
 
@@ -313,12 +315,15 @@ def multi_target_from_time_intervals_df(
         0    [1, 1]
         1    [0, 1]
         2    [1, 1]
+
+    If df contains multiple files use it with groupby:
+    >>> df.groupby('filename').apply(multi_target_from_time_intervals_df, n_classes=2, overlap_threshold_pct=0, noise_class_value=0)
     """
     assert 0 <= overlap_threshold_pct <= 1, 'overlap_threshold_pct should be in the range [0, 1]'
     assert pd.api.types.is_integer_dtype(df.label), 'label should be an integer type'
+    assert n_classes > 0, 'n_classes should be greater than 0'
 
     Interval = namedtuple('Interval', ['start', 'end', 'label'])
-    n_classes = df["label"].nunique() - (noise_class_value in df["label"].unique())
     overlaps = {idx: [0] * n_classes for idx in df.index}
     reference_intervals = {}
 
