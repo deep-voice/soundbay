@@ -41,13 +41,14 @@ def analysis_logging(results_df,num_classes):
 
 def inference_csv_to_raven(results_df: pd.DataFrame, num_classes, seq_len: float, selected_class: str,
                            threshold: float = 0.5, class_name: str = "call",
-                           max_freq: float = 20_000) -> pd.DataFrame:
+                           max_freq: float = 20_000, rms_threshold: float = 0.32) -> pd.DataFrame:
     """ Converts a csv file containing the inference results to a raven csv file.
         Args: probsdataframe: a pandas dataframe containing the inference results.
                       num_classes: the number of classes in the dataset.
                       seq_length: the length of the sequence.
                       selected_class: the class to be selected.
                       threshold: the threshold to be used for the selection.
+                      rms_threshold: the threshold for the rms value.
                       class_name: the name of the class for which the raven csv file is generated.
 
         Returns: a pandas dataframe containing the raven csv file.
@@ -57,7 +58,7 @@ def inference_csv_to_raven(results_df: pd.DataFrame, num_classes, seq_len: float
         relevant_columns = df.columns[-int(num_classes):]
         relevant_columns_df = df[relevant_columns]
         len_dataset = relevant_columns_df.shape[0]  # number of segments in wav
-        if_positive = df[selected_class] > threshold  # check if the probability is above the threshold
+        if_positive = (df[selected_class] > threshold) & (df['rms'] < rms_threshold)# check if the probability is above the threshold
         if "begin_time" in df.columns: #if the dataframe has metadata
             all_begin_times = df["begin_time"].values
         else: #if the dataframe came from a file with no ground truth
