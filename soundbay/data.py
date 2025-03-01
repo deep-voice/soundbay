@@ -655,8 +655,10 @@ class InferenceDataset(Dataset):
         audio = self._get_audio(filepath=filepath, channel=channel, begin_time=begin_time)
         audio = self.sampler(audio)
         audio = self.preprocessor(audio)
+        rms = torch.sqrt(torch.mean(audio ** 2))
+        # print(f'file: {filepath} channel: {channel} begin_time: {begin_time} rms: {rms}')
 
-        return audio
+        return audio, rms
 
     def __len__(self):
         return len(self.metadata)
