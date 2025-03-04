@@ -36,11 +36,13 @@ def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
 
     """
     all_predictions = []
+    all_rms = []
     with torch.no_grad():
         model.eval()
-        for audio in tqdm(data_loader):
+        for audio, rms in tqdm(data_loader):
             audio = audio.to(device)
-
+            rms = rms.cpu().numpy()
+            all_rms.extend(rms)
             predicted_probability = model(audio).cpu().numpy()
             if selected_class_idx is None:
                 all_predictions.extend(predicted_probability)
@@ -50,7 +52,7 @@ def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
                 else:
                     raise ValueError(f'selected class index {selected_class_idx} not in output dimensions')
         softmax_activation = softmax(all_predictions, 1)
-        return softmax_activation
+        return softmax_activation, all_rms
 
 
 def load_model(model_params, checkpoint_state_dict):
@@ -162,13 +164,13 @@ def infer_without_metadata(
                                  pin_memory=False)
 
     # predict
-    predict_prob = predict_proba(model, test_dataloader, device, None)
+    predict_prob, all_rms = predict_proba(model, test_dataloader, device, None)
     label_names = ['Noise'] + [f'Call_{i}' for i in
                                range(1, predict_prob.shape[1] + 1)] if label_names is None else label_names
 
     results_df = pandas.DataFrame(predict_prob, columns=label_names)
 
-    concat_dataset = pandas.concat([test_dataset.metadata, results_df], axis=1)
+    concat_dataset = pandas.concat([test_dataset.metadata, results_df, pd.Series(all_rms, name='rms')], axis=1)
     # create raven file
     raven_max_freq = dataset_args['sample_rate'] // 2 if raven_max_freq is None else raven_max_freq
     if save_raven:
