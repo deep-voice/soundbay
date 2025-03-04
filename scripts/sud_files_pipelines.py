@@ -12,9 +12,11 @@ from tqdm import tqdm
 import hydra
 from omegaconf import DictConfig
 import glob
+from pathlib import Path
 
 from soundbay.inference import inference_main
 from file_logger import FileLogger
+from subprocess import check_call
 
 
 class BoxLocalClient:
@@ -150,13 +152,14 @@ class ProcessingPipeline:
     def _resample_wav_files_inplace(self, files_mapping: dict):
         """Resamples a list of .wav files to the specified sample rate and overwrites them."""
         for file_path in glob.glob(f"{self.wav_folder}/*.wav"):
-            file_name = Path(file_path).stem + '.sud'
+            file_path = Path(file_path)
+            file_name = file_path.stem + '.sud'
             try:
                 # Load and resample audio
-                audio, sr = librosa.load(file_path, sr=self.resample_rate)
-
-                # Overwrite the original file
-                sf.write(file_path, audio, self.resample_rate)
+                file_path_tmp = file_path.parent / f"{file_path.stem}_tmp.wav"
+                file_path.rename(file_path_tmp)
+                check_call(['sox', str(file_path_tmp), str(file_path), 'rate', str(self.resample_rate)])
+                file_path_tmp.unlink()
                 self.logger.info(f"Resampled {file_path} to {self.resample_rate} Hz")
                 self.file_logger.log_file_event(files_mapping[file_name], file_name, "success", "resample")
             except Exception as e:
