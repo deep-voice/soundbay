@@ -41,9 +41,12 @@ class BoxLocalClient:
         """Get files ids from Box folder."""
         self.logger.info("Getting files ids from Box")
         total_count = self.client.folders.get_folder_items(folder_id).to_dict()['total_count']
-        return {item['name']: item['id'] for i in range(0, total_count, min(total_count, 100)) for item in
+        files_map = {item['name']: item['id'] for i in range(0, total_count, min(total_count, 100)) for item in
                 self.client.folders.get_folder_items(folder_id, offset=i).to_dict()['entries']
-                 if item['name'] in files_list}
+                 }
+        if files_list is not None:
+            files_map = {k:v for k,v in files_map.items() if k in files_list}
+        return files_map
 
     def download_file(self, file_id: str, file_name: str, output_dir: Path) -> None:
         """Download a single file from Box."""
@@ -255,7 +258,10 @@ def main(cfg: DictConfig) -> None:
     converter = Sud2WavConverter(sud_folder, wav_folder, cfg.pipeline.sud2wav_path, cfg.pipeline.s3_bucket)
     pipeline = ProcessingPipeline(box_client=box_client, converter=converter, file_logger=file_logger, cfg=cfg)
 
-    files_list = pd.read_csv(cfg.pipeline.files_path)['files'].unique().tolist()
+    if cfg.pipeline.files_path is not None:
+        files_list = pd.read_csv(cfg.pipeline.files_path)['files'].unique().tolist()
+    else:
+        files_list = None
     files_mapping = box_client.get_files_map(cfg.box.folder_id, files_list)
 
     if cfg.pipeline.mode == "wav":
