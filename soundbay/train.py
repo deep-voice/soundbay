@@ -249,14 +249,11 @@ def main(validate_args) -> None:
     if args.model.criterion._target_ in ['torch.nn.CrossEntropyLoss', 'torch.nn.BCEWithLogitsLoss']:
         criterion = criterion_dict[args.model.criterion._target_]
     
-        # criterion = torch.nn.CrossEntropyLoss()
-
     # Seed script
     if args.experiment.manual_seed is None:
         args.experiment.manual_seed = random.randint(1, 10000)
     random.seed(args.experiment.manual_seed)
     torch.manual_seed(args.experiment.manual_seed)
-
 
     # extra asserts
     assert args.data.max_freq == args.data.sample_rate // 2, "max_freq must be equal to sample_rate // 2"
