@@ -61,10 +61,12 @@ class Sud2WavConverter:
     def __init__(self,
                  sud_folder: Path,
                  wav_folder: Path,
+                 wav_backup_folder: Path,
                  sud2wav_path: Optional[str] = None,
                  s3_bucket: Optional[str] = None):
         self.sud_folder = sud_folder
         self.wav_folder = wav_folder
+        self.wav_backup_folder = wav_backup_folder
         self.s3_bucket = s3_bucket
         self.sud2wav_path = sud2wav_path or os.path.expanduser("~") + '/SUD2WAV'
         self.logger = logging.getLogger(__name__)
@@ -96,6 +98,7 @@ class ProcessingPipeline:
         self.box_chunk_size = cfg.pipeline.box_chunk_size
         self.sud_folder = converter.sud_folder
         self.wav_folder = converter.wav_folder
+        self.wav_backup_folder = converter.wav_backup_folder
         self.clean_wav = cfg.pipeline.delete_wav_files
         self.resample_rate = cfg.pipeline.resample_rate
         self.logger = logging.getLogger(__name__)
@@ -112,6 +115,19 @@ class ProcessingPipeline:
                 remove_list = [directory / file for file in files_list]
             for file in remove_list:
                 file.unlink()
+        except Exception as e:
+            self.logger.error(f"Failed to clean directory {directory}: {str(e)}")
+
+    def _move_directory(self, directory: Path, target_dir: Path, files_list = None) -> None:
+        """Safely clean a directory."""
+        self.logger.info(f"move directory {directory} to {target_dir}")
+        try:
+            if files_list is None:
+                remove_list = directory.glob("*")
+            else:
+                remove_list = [directory / file for file in files_list]
+            for file in remove_list:
+                file.rename(target_dir / Path(file.name))
         except Exception as e:
             self.logger.error(f"Failed to clean directory {directory}: {str(e)}")
 
@@ -208,9 +224,11 @@ class ProcessingPipeline:
             files_chunks = self._chunk_files(chunk, self.chunk_size)
             for files_chunk in tqdm(files_chunks, desc="Extracting SUD files"):
                 self._process_files_chunk(files_chunk, files_mapping)
+                files_to_postprocess = [Path(str(f).replace('.sud', '.wav')) for f in files_chunk.keys()]
                 if self.clean_wav:
-                    self._clean_directory(self.wav_folder,
-                                          [Path(str(f).replace('.sud', '.wav')) for f in files_chunk.keys()])
+                    self._clean_directory(self.wav_folder, files_to_postprocess)
+                else:
+                    self._move_directory(self.wav_folder, self.wav_backup_folder, files_to_postprocess)
             self.logger.info("Finished processing box chunk")
 
     def run_predictions(self, files_mapping, outputs_path) -> None:
@@ -253,12 +271,14 @@ def main(cfg: DictConfig) -> None:
 
     sud_folder = Path(cfg.pipeline.sud_folder if cfg.pipeline.sud_folder else os.path.expanduser("~") + '/SUD2WAV/input_files')
     wav_folder = Path(cfg.pipeline.wav_folder if cfg.pipeline.wav_folder else os.path.expanduser("~") + '/SUD2WAV/output_files')
+    wav_backup_folder = Path(cfg.pipeline.wav_backup_folder if cfg.pipeline.wav_backup_folder else os.path.expanduser("~") + '/SUD2WAV/output_files_backup')
     sud_folder.mkdir(parents=True, exist_ok=True)
     wav_folder.mkdir(parents=True, exist_ok=True)
+    wav_backup_folder.mkdir(parents=True, exist_ok=True)
 
     box_client = BoxLocalClient(**cfg.box)
     file_logger = FileLogger(cfg.pipeline.log_folder, cfg.pipeline.log_filename, cfg.pipeline.s3_bucket)
-    converter = Sud2WavConverter(sud_folder, wav_folder, cfg.pipeline.sud2wav_path, cfg.pipeline.s3_bucket)
+    converter = Sud2WavConverter(sud_folder, wav_folder, wav_backup_folder, cfg.pipeline.sud2wav_path, cfg.pipeline.s3_bucket)
     pipeline = ProcessingPipeline(box_client=box_client, converter=converter, file_logger=file_logger, cfg=cfg)
 
     if cfg.pipeline.files_path is not None:
