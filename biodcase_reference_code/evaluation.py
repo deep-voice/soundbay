@@ -1,4 +1,5 @@
 import numpy as np
+import sys
 import pandas as pd
 from tqdm import tqdm
 import pathlib
@@ -125,8 +126,17 @@ def run(predictions_path, ground_truth_path, iou_threshold=0.3):
     print('Final results')
     print(conf_matrix)
 
+def get_args(args):
+    import argparse
+    parser = argparse.ArgumentParser(description='Evaluate the predictions against the ground truth')
+    parser.add_argument('--predictions_csv_path', type=str, help='Path to the predictions csv file or folder')
+    parser.add_argument('--ground_truth_csv_path', type=str, help='Path to the ground truth csv file or folder')
+    return parser.parse_args(args)
+
 
 if __name__ == '__main__':
-    predictions_csv_path = pathlib.Path(input('Where are the predictions in csv format?'))
-    ground_truth_csv_path = pathlib.Path(input('Where are the ground truth in csv format?'))
-    run(predictions_csv_path, ground_truth_csv_path)
+    # predictions_csv_path = pathlib.Path(input('Where are the predictions in csv format?'))
+    # ground_truth_csv_path = pathlib.Path(input('Where are the ground truth in csv format?'))
+    args = sys.argv[1:] 
+    args = get_args(args)
+    run(args.predictions_csv_path, args.ground_truth_csv_path)
