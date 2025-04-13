@@ -1,12 +1,9 @@
 import os
 import subprocess
 import logging
-import soundfile as sf
-from pathlib import Path
-from typing import List, Optional, Generator, Dict, Iterable
-
-import librosa
+from typing import List, Optional, Generator, Dict, Iterable, Union
 import pandas as pd
+import boto3
 from box_sdk_gen import BoxClient, BoxCCGAuth, CCGConfig
 from tqdm import tqdm
 import hydra
@@ -17,6 +14,39 @@ from pathlib import Path
 from soundbay.inference import inference_main
 from file_logger import FileLogger
 from subprocess import check_call
+
+
+class S3Client:
+    def __init__(self, bucket: str, prefix: str = ""):
+        self.s3_client = boto3.client('s3')
+        self.bucket = bucket
+        self.prefix = prefix
+        self.logger = logging.getLogger(__name__)
+
+    def get_files_map(self, files_list: List[str] = None) -> dict:
+        """Get files from S3 bucket."""
+        self.logger.info("Getting files from S3")
+        files_map = {}
+        
+        # List objects in the bucket with the given prefix
+        paginator = self.s3_client.get_paginator('list_objects_v2')
+        for page in paginator.paginate(Bucket=self.bucket, Prefix=self.prefix):
+            if 'Contents' not in page:
+                continue
+                
+            for obj in page['Contents']:
+                file_name = os.path.basename(obj['Key'])
+                if file_name.endswith('.sud'):  # Only include .sud files
+                    files_map[file_name] = obj['Key']
+        
+        if files_list is not None:
+            files_map = {k: v for k, v in files_map.items() if k in files_list}
+        return files_map
+
+    def download_file(self, file_key: str, file_name: str, output_dir: Path) -> None:
+        """Download a single file from S3."""
+        output_path = output_dir / file_name
+        self.s3_client.download_file(self.bucket, file_key, str(output_path))
 
 
 class BoxLocalClient:
@@ -86,12 +116,12 @@ class Sud2WavConverter:
 
 class ProcessingPipeline:
     def __init__(self,
-                 box_client: BoxLocalClient,
+                 source_client: Union[BoxLocalClient, S3Client],
                  converter: Sud2WavConverter,
                  file_logger: FileLogger,
                  cfg: DictConfig):
         self.cfg = cfg
-        self.box_client = box_client
+        self.source_client = source_client
         self.converter = converter
         self.file_logger = file_logger
         self.chunk_size = cfg.pipeline.chunk_size
@@ -144,7 +174,7 @@ class ProcessingPipeline:
         for file_name, file_id in files_chunk.items():
             self.logger.info(f"Processing file: {file_name}")
             try:
-                self.box_client.download_file(file_id, file_name, self.sud_folder)
+                self.source_client.download_file(file_id, file_name, self.sud_folder)
                 self.file_logger.log_file_event(file_id, file_name, "success", "download")
             except Exception as e:
                 self.file_logger.log_file_event(file_id, file_name, str(e), "download")
@@ -217,9 +247,9 @@ class ProcessingPipeline:
         """Process all files in chunks."""
         chunks = self._chunk_files(files_mapping, self.box_chunk_size)
 
-        for chunk in tqdm(chunks, desc="Processing BOX file chunks"):
+        for chunk in tqdm(chunks, desc="Processing file chunks"):
             self._download_files(chunk)
-            self.logger.info("Finished downloading BOX chunk")
+            self.logger.info("Finished downloading chunk")
 
             files_chunks = self._chunk_files(chunk, self.chunk_size)
             for files_chunk in tqdm(files_chunks, desc="Extracting SUD files"):
@@ -229,7 +259,7 @@ class ProcessingPipeline:
                     self._clean_directory(self.wav_folder, files_to_postprocess)
                 else:
                     self._move_directory(self.wav_folder, self.wav_backup_folder, files_to_postprocess)
-            self.logger.info("Finished processing box chunk")
+            self.logger.info("Finished processing chunk")
 
     def run_predictions(self, files_mapping, outputs_path) -> None:
         """Run predictions on all files in chunks."""
@@ -255,9 +285,9 @@ class ProcessingPipeline:
         if not process_files:
             self.run_predictions(files_mapping, outputs_path)
         else:
-            for chunk in tqdm(chunks, desc="Processing BOX chunks"):
+            for chunk in tqdm(chunks, desc="Processing chunks"):
                 self._download_files(chunk)
-                self.logger.info("Finished downloading BOX chunk")
+                self.logger.info("Finished downloading chunk")
                 files_chunks = self._chunk_files(chunk, self.chunk_size)
                 for files_chunk in tqdm(files_chunks, desc="Processing and predicting files"):
                     self._process_files_chunk(files_chunk, files_mapping)
@@ -276,16 +306,23 @@ def main(cfg: DictConfig) -> None:
     wav_folder.mkdir(parents=True, exist_ok=True)
     wav_backup_folder.mkdir(parents=True, exist_ok=True)
 
-    box_client = BoxLocalClient(**cfg.box)
+    # Initialize the appropriate source client based on configuration
+    if cfg.pipeline.source == "box":
+        source_client = BoxLocalClient(**cfg.box)
+    elif cfg.pipeline.source == "s3":
+        source_client = S3Client(cfg.pipeline.s3_bucket, cfg.pipeline.s3_prefix)
+    else:
+        raise ValueError(f"Unknown source: {cfg.pipeline.source}")
+
     file_logger = FileLogger(cfg.pipeline.log_folder, cfg.pipeline.log_filename, cfg.pipeline.s3_bucket)
     converter = Sud2WavConverter(sud_folder, wav_folder, wav_backup_folder, cfg.pipeline.sud2wav_path, cfg.pipeline.s3_bucket)
-    pipeline = ProcessingPipeline(box_client=box_client, converter=converter, file_logger=file_logger, cfg=cfg)
+    pipeline = ProcessingPipeline(source_client=source_client, converter=converter, file_logger=file_logger, cfg=cfg)
 
     if cfg.pipeline.files_path is not None:
         files_list = pd.read_csv(cfg.pipeline.files_path)['files'].unique().tolist()
     else:
         files_list = None
-    files_mapping = box_client.get_files_map(cfg.box.folder_id, files_list)
+    files_mapping = source_client.get_files_map(files_list)
 
     if cfg.pipeline.mode == "wav":
         pipeline.process_files(files_mapping)
@@ -298,6 +335,6 @@ def main(cfg: DictConfig) -> None:
 if __name__ == "__main__":
     """
     from cli run:
-        python scripts/sud_files_pipelines.py pipeline.mode=<predictions or wav> pipline.files_path=<path to csv file containing a "files" column>
+        python scripts/sud_files_pipelines.py pipeline.mode=<predictions or wav> pipeline.source=<box or s3> pipeline.files_path=<path to csv file containing a "files" column>
     """
     main()

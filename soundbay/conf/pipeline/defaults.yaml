@@ -1,12 +1,15 @@
 # @package _global_
 pipeline:
   mode: 'wav'
+  source: 'box'  # Can be 'box' or 's3'
   sud_folder: null
   wav_folder: null
+  wav_backup_folder: null
   chunk_size: 2 # Number of files to process at a time
   box_chunk_size: 10 # Number of files to download from Box at a time
   sud2wav_path: null  # Will default to ~/SUD2WAV
   s3_bucket: null # e.g. 'deepvoice-datasets/test-pipeline'
+  s3_prefix: "" # Prefix for S3 bucket path
   delete_wav_files: true
   s3_save: true
   files_path: null
