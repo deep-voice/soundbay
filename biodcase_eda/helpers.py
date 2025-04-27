@@ -7,7 +7,7 @@ import seaborn as sns
 from typing import List
 
 
-def load_csvs(annotations_dir: pathlib.Path, split_type: str) -> List[pd.DataFrame]:
+def load_csvs(annotations_dir: pathlib.Path, split_type: str, max_duration: float) -> List[pd.DataFrame]:
     """Process all annotation files and create a DataFrame with relative timestamps."""
     annotation_files = list(annotations_dir.glob("*.csv"))
 
@@ -29,9 +29,9 @@ def load_csvs(annotations_dir: pathlib.Path, split_type: str) -> List[pd.DataFra
         df['begin_time'] = (df['start_datetime'] - df['file_start']).dt.total_seconds()
         df['end_time'] = (df['end_datetime'] - df['file_start']).dt.total_seconds()
 
-        # # Ensure times are within 0-3600 seconds
-        # df['begin_time'] = df['begin_time'].clip(0, 3600)
-        # df['end_time'] = df['end_time'].clip(0, 3600)
+        # Ensure times are within the legit range: [0, max_duration]
+        df['begin_time'] = df['begin_time'].clip(0, max_duration)
+        df['end_time'] = df['end_time'].clip(0, max_duration)
 
         df['call_length'] = df['end_time'] - df['begin_time']
         df['source'] = split_type
