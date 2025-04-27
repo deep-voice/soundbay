@@ -20,10 +20,14 @@ def perform_inference(wav_paths):
         else:
             wav.unlink()  # delete after successful inference
 
-# ——— gather all .wav files ———
-all_wavs = sorted(folder_path.glob("*.wav"))
+# ——— gather all .wav/.WAV files ———
+all_wavs = sorted(
+    p for p in folder_path.iterdir()
+    if p.is_file() and p.suffix.lower() == ".wav"
+)
+
 if not all_wavs:
-    print(f"No .wav files found in {folder_path}")
+    print(f"No WAV files found in {folder_path}")
     exit(0)
 
 # ——— process in batches ———
