@@ -3,6 +3,8 @@ import sys
 import pandas as pd
 from tqdm import tqdm
 import pathlib
+from pytz import UTC
+from datetime import datetime
 
 joining_dict = {'bma': 'bmabz',
                 'bmb': 'bmabz',
@@ -87,7 +89,11 @@ def run(predictions_path, ground_truth_path, iou_threshold=0.3):
     if type(ground_truth_path) is str:
         ground_truth_path = pathlib.Path(ground_truth_path)
     ground_truth = join_annotations_if_dir(ground_truth_path)
-    predictions = join_annotations_if_dir(predictions_path)
+    predictions = pd.read_csv(predictions_path)
+
+    predictions = refactor_dv_predictions(ground_truth, predictions)
+
+    # predictions = join_annotations_if_dir(predictions_path)
 
     ground_truth = ground_truth.replace(joining_dict)
     predictions = predictions.replace(joining_dict)
@@ -125,6 +131,54 @@ def run(predictions_path, ground_truth_path, iou_threshold=0.3):
     conf_matrix = compute_confusion_matrix(ground_truth, predictions, all_classes)
     print('Final results')
     print(conf_matrix)
+
+def refactor_dv_predictions(ground_truth, predictions, mock=True):
+    if mock:
+        predictions['dataset'] = ground_truth['dataset'].iloc[0]
+        predictions['filename'] = ground_truth['filename']
+        predictions = predictions.dropna()
+        predictions = predictions.drop(columns=['Downsweeps', 'Tones', 'Squeaks', 'Clicks'])
+        predictions['Upsweeps'] = predictions['Upsweeps'] > 0.5
+        indices_true = predictions['Upsweeps'].index[predictions['Upsweeps'] == True].tolist()
+        predictions['annotation'] = np.where(predictions['Upsweeps'] == True, 'bma', 'bmb')
+
+
+
+
+    # The format of the filenmae is 2015-04-19T06-00-00_000.wav
+    predictions['start_date'] = predictions['filename'].str.split('_').str[0].apply(
+        lambda x: datetime.strptime(x, '%Y-%m-%dT%H-%M-%S').replace(tzinfo=UTC)
+    )
+
+    # Find sequences of consecutive indices
+    sequences = []
+    current_sequence = [indices_true[0]]
+    for i in range(1, len(indices_true)):
+        if indices_true[i] == indices_true[i - 1] + 1:
+            current_sequence.append(indices_true[i])
+        else:
+            sequences.append(current_sequence)
+            current_sequence = [indices_true[i]]
+    sequences.append(current_sequence)
+    tuples_of_begin_and_end = [(i[0], i[-1]) for i in sequences]
+
+
+    # Create a new DataFrame with the start and end times
+    new_data = []
+    for start, end in tuples_of_begin_and_end:
+        start_time = predictions['begin_time'].iloc[start]
+        end_time = predictions['end_time'].iloc[end]
+        start_date = predictions['start_date'].iloc[start]
+        end_date = start_date
+        start_time = pd.to_datetime(start_date) + pd.to_timedelta(start_time, unit='s')
+        end_time = pd.to_datetime(end_date) + pd.to_timedelta(end_time, unit='s')
+        new_data.append({'start_datetime': start_time, 'end_datetime': end_time, 'annotation': predictions['annotation'].iloc[start]})
+    temp_df = pd.DataFrame(new_data)
+    predictions['start_datetime'] = temp_df['start_datetime']
+    predictions['end_datetime'] = temp_df['end_datetime']
+    predictions = predictions.dropna()
+    predictions = predictions
+    return predictions
 
 def get_args(args):
     import argparse
