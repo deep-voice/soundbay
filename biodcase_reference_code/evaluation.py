@@ -134,6 +134,7 @@ def run(predictions_path, ground_truth_path, iou_threshold=0.3):
 
 def refactor_dv_predictions(ground_truth, predictions, mock=True):
     if mock:
+        # This is a mockup of the predictions for the sake of format compliance with soundbay repo output
         predictions['dataset'] = ground_truth['dataset'].iloc[0]
         predictions['filename'] = ground_truth['filename']
         predictions = predictions.dropna()
