@@ -24,7 +24,10 @@ datasets_dict = {'soundbay.data.ClassifierDataset': ClassifierDataset,
 
 optim_dict = {'torch.optim.Adam': torch.optim.Adam, 'torch.optim.SGD': torch.optim.SGD}
 
-scheduler_dict = {'torch.optim.lr_scheduler.ExponentialLR': torch.optim.lr_scheduler.ExponentialLR}
+scheduler_dict = {
+    'torch.optim.lr_scheduler.ExponentialLR': torch.optim.lr_scheduler.ExponentialLR,
+    'torch.optim.lr_scheduler.CosineAnnealingWarmRestarts' : torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+    }
 
 criterion_dict = {'torch.nn.CrossEntropyLoss': torch.nn.CrossEntropyLoss(),
                   'torch.nn.MSELoss': torch.nn.MSELoss(),

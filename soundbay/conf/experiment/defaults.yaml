@@ -3,6 +3,7 @@ experiment:
   debug: False
   manual_seed: 1234
   name: null
+  project: 'finding_willy'
   run_id: null
   group_name: null
   bucket_name: deepvoice-experiments

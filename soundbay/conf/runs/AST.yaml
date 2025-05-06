@@ -2,7 +2,7 @@
 defaults:
   - ../data: defaults
   - ../augmentations: _augmentations
-  - ../preprocessors: wav2vec2
+  - ../preprocessors: _ast
   - ../model: AST
   - ../optim: defaults
   - ../experiment: defaults
