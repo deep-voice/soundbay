@@ -295,7 +295,7 @@ def inference_main(args) -> None:
     output_dirpath = working_dirpath.parent.absolute() / "outputs"
     output_dirpath.mkdir(exist_ok=True)
 
-    ckpt_dict = torch.load(args.experiment.checkpoint.path, map_location=torch.device('cpu'))
+    ckpt_dict = torch.load(args.experiment.checkpoint.path, map_location=torch.device('cpu'), weights_only=False)
     ckpt_args = ckpt_dict['args']
     args = merge_with_checkpoint(args, ckpt_args)
     ckpt = ckpt_dict['model']

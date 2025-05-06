@@ -14,7 +14,6 @@ from soundbay.utils.files_handler import load_config
 from transformers import AutoProcessor, ASTModel
 
 
-
 class ResNet1Channel(ResNet):
     """ resnet model for 1 channel ("grayscale") """
     def __init__(self, block, *args, **kwargs):
@@ -49,32 +48,46 @@ class ResNet1Channel(ResNet):
             param.requires_grad = True
 
 
+
+class ASTPreprocessorWrapper():
+    def __init__(self, sample_rate, huggingface_path):
+        self.processor = AutoProcessor.from_pretrained(huggingface_path, max_length=1024)
+        self.sample_rate = sample_rate
+
+    def __call__(self, orig_wav):
+        mel_spectogram = self.processor(orig_wav.numpy(), sampling_rate=self.sample_rate, return_tensors="pt")
+
+        return mel_spectogram['input_values'].squeeze()
+
 class AST(nn.Module):
-    def __init__(self, weight_path, num_classes):
+    def __init__(self, weight_path=None, num_classes=1, huggingface_path="MIT/ast-finetuned-audioset-10-10-0.4593"):
         super(AST, self).__init__()
-        self.processor = AutoProcessor.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593", max_length=1024)
 
-        self.model = ASTModel.from_pretrained("MIT/ast-finetuned-audioset-10-10-0.4593")
-        state_dict = torch.load(weight_path)
+        self.model = ASTModel.from_pretrained(huggingface_path)
+        if weight_path != None:
+            state_dict = torch.load(weight_path, weights_only=False)
+            self.model.load_state_dict(state_dict)
 
-        self.model.load_state_dict(state_dict)
         self.num_classes = num_classes
 
         self.fc = nn.Linear(self.model.config.hidden_size, self.num_classes)
 
     def forward(self, x):
-        # Assuming x is the input that needs to be processed before passing to the model
-        import ipdb;
-        sampling_rate = 16000 #TODO: add sample rate from config --> only takes this!  
-        mel_spectogram = self.processor(x.squeeze(1).cpu().numpy(), sampling_rate = sampling_rate, return_tensors="pt")
-        
-        inputs = {key: val.to(x.device) for key, val in mel_spectogram.items()}  # Move to device
-
-        embedding  = self.model(**inputs) # TODO: if we want to freeze...
+        embedding  = self.model(input_values=x)
 
         output = self.fc(embedding.pooler_output)
 
         return output
+
+    def extract_embedding(self, x):
+        embedding  = self.model(input_values=x)
+        
+        return embedding
+
+    
+    def freeze_layers(self, ):
+        self.model.requires_grad_(False)
+
 
 
 class SqueezeNet1D(squeezenet.SqueezeNet):
@@ -399,6 +412,14 @@ class ResNet182D(nn.Module):
     def forward(self, x):
         x = x.repeat(1, 3, 1, 1)
         return self.resnet(x)
+    
+    def freeze_layers(self):
+        for param in self.resnet.parameters():
+            param.requires_grad = False
+
+        for param in self.resnet.fc.parameters():
+            param.requires_grad = True
+
 
 
 class EfficientNet2D(nn.Module):
