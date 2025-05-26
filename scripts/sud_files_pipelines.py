@@ -1,7 +1,11 @@
 import os
 import subprocess
 import logging
+import soundfile as sf
+from pathlib import Path
 from typing import List, Optional, Generator, Dict, Iterable, Union
+
+import librosa
 import pandas as pd
 import boto3
 from box_sdk_gen import BoxClient, BoxCCGAuth, CCGConfig
@@ -25,7 +29,7 @@ class S3Client:
 
     def get_files_map(self, files_list: List[str] = None) -> dict:
         """Get files from S3 bucket."""
-        self.logger.info("Getting files from S3")
+        self.logger.info(f"Getting files from S3, num of files {len(files_list)}")
         files_map = {}
         
         # List objects in the bucket with the given prefix
@@ -69,12 +73,12 @@ class BoxLocalClient:
 
         return BoxClient(auth=auth)
 
-    def get_files_map(self, folder_id: str, files_list: List[str]) -> dict:
+    def get_files_map(self, files_list: List[str]) -> dict:
         """Get files ids from Box folder."""
         self.logger.info("Getting files ids from Box")
-        total_count = self.client.folders.get_folder_items(folder_id).to_dict()['total_count']
+        total_count = self.client.folders.get_folder_items(self.folder_id).to_dict()['total_count']
         files_map = {item['name']: item['id'] for i in range(0, total_count, min(total_count, 100)) for item in
-                self.client.folders.get_folder_items(folder_id, offset=i).to_dict()['entries']
+                self.client.folders.get_folder_items(self.folder_id, offset=i).to_dict()['entries']
                  }
         if files_list is not None:
             files_map = {k:v for k,v in files_map.items() if k in files_list}
@@ -183,11 +187,12 @@ class ProcessingPipeline:
     def _convert_files(self, files_chunk: dict) -> None:
         """Convert a single chunk of files from .sud to .wav."""
         try:
+            files_to_clean = [f.name for f in list(self.converter.sud_folder.iterdir())]
             self.converter.convert_to_wav(self.cfg.pipeline.s3_save)
             for file_name, file_id in files_chunk.items():
                 self.file_logger.log_file_event(file_id, file_name, "success", "conversion")
             self.logger.info("Finished converting current file chunk")
-            self._clean_directory(self.converter.sud_folder, files_chunk.keys())
+            self._clean_directory(self.converter.sud_folder, files_to_clean)
         except Exception as e:
             self.logger.error(f"Error converting files: {e}")
             for file_name, file_id in files_chunk.items():
@@ -228,11 +233,28 @@ class ProcessingPipeline:
         )
         self.logger.info("Finished uploading files to s3")
 
+    def _move_files_by_extension(self, files: list, sud_dest: Path, wav_dest: Path) -> None:
+        """Move .sud files to sud_dest and .wav files to wav_dest from source_dir."""
+        self.converter.sud_folder = sud_dest
+        self.converter.sud_folder.mkdir(parents=True, exist_ok=True)
+
+        for file in files:
+            file = Path(self.sud_folder) / file
+            if file.is_file():
+                if file.name.endswith('.sud'):
+                    target =  self.converter.sud_folder / file.name
+                    file.rename(target)
+                elif file.name.endswith('.wav'):
+                    target = wav_dest / file.name
+                    wav_dest.mkdir(parents=True, exist_ok=True)
+                    file.rename(target)
+
     def _process_files_chunk(self, files_chunk: dict, files_mapping: dict):
         """
         Process a chunk of files.
         """
-        self._move_chunk_files(files_chunk.keys(), self.sud_folder / "chunk")
+        # Move .sud and .wav files to their respective folders
+        self._move_files_by_extension(files_chunk.keys(), self.sud_folder / "chunk", self.converter.wav_folder)
         self._convert_files(files_chunk)
 
         if self.resample_rate is not None:
@@ -310,7 +332,7 @@ def main(cfg: DictConfig) -> None:
     if cfg.pipeline.source == "box":
         source_client = BoxLocalClient(**cfg.box)
     elif cfg.pipeline.source == "s3":
-        source_client = S3Client(cfg.pipeline.s3_bucket, cfg.pipeline.s3_prefix)
+        source_client = S3Client(cfg.pipeline.s3_source_bucket, cfg.pipeline.s3_source_prefix)
     else:
         raise ValueError(f"Unknown source: {cfg.pipeline.source}")
 

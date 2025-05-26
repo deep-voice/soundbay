@@ -9,8 +9,10 @@ pipeline:
   box_chunk_size: 10 # Number of files to download from Box at a time
   sud2wav_path: null  # Will default to ~/SUD2WAV
   s3_bucket: null # e.g. 'deepvoice-datasets/test-pipeline'
-  s3_prefix: "" # Prefix for S3 bucket path
+  s3_source_bucket: null # deepvoice-user-uploads
+  s3_source_prefix: "" # "email/dropbox/folder" 
   delete_wav_files: true
+  delete_sud_files: true
   s3_save: true
   files_path: null
   process_files: true
