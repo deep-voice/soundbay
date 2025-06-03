@@ -5,6 +5,8 @@ from tqdm import tqdm
 import pathlib
 from pytz import UTC
 from datetime import datetime
+pandas_version = pd.__version__
+assert pandas_version == '2.0.3', f'Pandas version {pandas_version} is not supported, please change to 2.0.3'
 
 joining_dict = {'bma': 'bmabz',
                 'bmb': 'bmabz',
@@ -89,11 +91,11 @@ def run(predictions_path, ground_truth_path, iou_threshold=0.3):
     if type(ground_truth_path) is str:
         ground_truth_path = pathlib.Path(ground_truth_path)
     ground_truth = join_annotations_if_dir(ground_truth_path)
-    predictions = pd.read_csv(predictions_path)
+    # predictions = pd.read_csv(predictions_path)
 
-    predictions = refactor_dv_predictions(ground_truth, predictions)
+    # predictions = refactor_dv_predictions(ground_truth, predictions)
 
-    # predictions = join_annotations_if_dir(predictions_path)
+    predictions = join_annotations_if_dir(predictions_path)
 
     ground_truth = ground_truth.replace(joining_dict)
     predictions = predictions.replace(joining_dict)
@@ -106,6 +108,7 @@ def run(predictions_path, ground_truth_path, iou_threshold=0.3):
         for class_id, class_predictions in wav_predictions.groupby('annotation'):
             ground_truth_wav_class = ground_truth_wav.loc[ground_truth_wav['annotation'] == class_id]
             ground_truth_not_detected = ground_truth_wav_class.loc[ground_truth_wav_class.detected == 0]
+
             if ground_truth_not_detected.empty:
                 continue
             for i, row in class_predictions.iterrows():
