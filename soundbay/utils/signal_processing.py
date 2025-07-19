@@ -67,6 +67,10 @@ class LibrosaPcen:
 
         return torch.from_numpy(pcen_librosa).float()
 
+class DuplicateChannels(object):
+    # this method takes the 2D spectrogram of size (b,H,W) and duplicates the channels to make it 3D of size (b,3,H,W)
+    def __call__(self, spectrogram):
+        return spectrogram.repeat(1, 3, 1, 1)
 
 class RGBSpectrogram(object):
         # this method takes the 2D spectrogram of size (b,H,W) and converts it to 3D of size (b,3,H,W) with RGB values from colormap
