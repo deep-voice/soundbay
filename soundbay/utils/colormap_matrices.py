@@ -70,7 +70,7 @@ _parula_data = [[0.2081, 0.1663, 0.5292],
                 [0.9763, 0.9831, 0.0538]]
 
 cmaps = {}
-for (name, data) in (('parula', _parula_data)):
+for (name, data) in (('parula', _parula_data),):
     cmaps[name] = ListedColormap(data, name=name)
 
 parula = cmaps['parula']

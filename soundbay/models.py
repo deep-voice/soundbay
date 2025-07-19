@@ -321,6 +321,34 @@ class PCENTransform(nn.Module):
         x = x.unsqueeze(dim=1).permute((0, 1, 3, 2))
         return x
 
+class GoogLeNet_2classes(nn.Module):
+    def __init__(self, num_classes=2, use_pretrained=True):
+        super().__init__()
+        self.model_urls = {'googlenet': 'https://download.pytorch.org/models/googlenet-1378be20.pth'}
+        # self.model = googlenet(pretrained=use_pretrained, num_classes=num_classes)
+        self.model = self.my_googlenet(pretrained=use_pretrained, num_classes=num_classes)
+        self.model.fc = nn.Linear(1024, num_classes)
+   
+    def forward(self, x):
+        return self.model(x)
+
+    def my_googlenet(self, pretrained=False, progress=True, num_classes=1000, **kwargs):
+        model = GoogLeNet(num_classes=num_classes, aux_logits=False, **kwargs)
+
+        if pretrained:
+            state_dict = load_state_dict_from_url(self.model_urls['googlenet'], progress=progress)
+            # remove the aux logits and fc layer
+            del state_dict['aux1.fc2.weight']
+            del state_dict['aux1.fc2.bias']
+            del state_dict['aux2.fc2.weight']
+            del state_dict['aux2.fc2.bias']
+            del state_dict['fc.weight']
+            del state_dict['fc.bias']
+
+            model.load_state_dict(state_dict, strict=False)
+
+        return model
+
 
 class Squeezenet2D(nn.Module):
     def __init__(self, num_classes=2, pretrained=True):
