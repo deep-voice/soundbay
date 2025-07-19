@@ -6,7 +6,7 @@ from torchvision.models.resnet import ResNet, BasicBlock, conv3x3, Bottleneck
 from torchvision.models.vgg import VGG
 from torchvision.models import squeezenet
 from torchvision.models import GoogLeNet  #googlenet
-from torchvision.models.utils import load_state_dict_from_url
+from torch.hub import load_state_dict_from_url
 import torch.nn.init as init
 
 

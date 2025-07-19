@@ -2,7 +2,7 @@
 defaults:
   - data: Manatees
   - augmentations: _augmentations
-  - preprocessors: _preprocessors_googlenet
-  - model: googlenet_22
+  - preprocessors: _preprocessors
+  - model: defaults
   - optim: googlenet_22
   - experiment: defaults
