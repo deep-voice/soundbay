@@ -1,6 +1,7 @@
 import librosa
 import numpy as np
 import torch
+from utils.colormap_matrices import cmaps
 
 
 class LibrosaMelSpectrogram:
