@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch import Tensor
 from torchvision.models.resnet import ResNet, BasicBlock, conv3x3, Bottleneck
 from torchvision.models.vgg import VGG
-from torchvision.models import squeezenet
+from torchvision.models import squeezenet, GoogLeNet
 import torchvision.models as models
 
 
