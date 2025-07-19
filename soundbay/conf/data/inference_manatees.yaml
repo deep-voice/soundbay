@@ -3,14 +3,16 @@ data:
   batch_size: 32
   num_workers: 4
   data_sample_rate: 96000
+  min_freq_filtering: 0
   max_freq: 44100
   n_fft: 1024
   hop_length: 256
   test_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/Manatees/wav/Acoustic_recordings/'
+    data_path: '../datasets/Manatees/train_data/wav/'
+    path_hierarchy: 0
     mode: test
-    metadata_path: '../datasets/Manatees/manatee_update_sample_0.8_each_day_no_outliers_testonly.csv'
+    metadata_path: '../datasets/Manatees/manatee_update_sample_0.8_each_day_no_outliers.csv'
     augmentations_p: 0
     seq_length: 0.2
     augmentations: null

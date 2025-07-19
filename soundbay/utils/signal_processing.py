@@ -66,3 +66,21 @@ class LibrosaPcen:
 
 
         return torch.from_numpy(pcen_librosa).float()
+
+
+class RGBSpectrogram(object):
+        # this method takes the 2D spectrogram of size (b,H,W) and converts it to 3D of size (b,3,H,W) with RGB values from colormap
+    def __call__(self, spectrogram):
+    parula = cmaps['parula']
+    #convert colormap to torch tensor
+    parula_tensor = torch.from_numpy(parula(np.arange(256))).float()[:,:3]
+    #normalize spectrogram tensor
+    spectrogram = spectrogram - spectrogram.min()
+    spectrogram = spectrogram / spectrogram.max()
+    spectrogram = spectrogram * 255
+    spectrogram = spectrogram.long()
+    #convert spectrogram to RGB values according to parula colormap
+    spectrogram_rgb = parula_tensor[spectrogram]
+    #get rid of the redundant dimension and set channel dimension to be first
+    spectrogram_rgb = spectrogram_rgb.squeeze(0).permute(2,0,1)
+    return spectrogram_rgb
