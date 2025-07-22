@@ -1,0 +1,44 @@
+# @package _global_
+
+# @package _global_
+data:
+  label_names: ['Noise', 'ant_blue', 'mad_blue']
+  batch_size: 64
+  num_workers: 10
+  sample_rate: 256
+  data_sample_rate: 1000
+  min_freq: 0
+  max_freq: 128
+  n_fft: 256
+  hop_length: 64
+  label_type: 'multi_label'
+  proba_threshold: 0.5
+  train_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: './datasets/fannie_project/'
+    path_hierarchy: 0
+    mode: train
+    metadata_path: './datasets/fannie_project/train.csv'
+    augmentations_p: 0.8
+    augmentations: ${_augmentations}
+    preprocessors: ${_preprocessors}
+    seq_length: 1
+    margin_ratio: 0.5
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: false
+    split_metadata_by_label: yes
+  val_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: './datasets/fannie_project/'
+    path_hierarchy: 0
+    mode: val
+    metadata_path: './datasets/fannie_project/val.csv'
+    augmentations_p: 0
+    augmentations: null
+    preprocessors: ${_preprocessors}
+    seq_length: 1
+    margin_ratio: 0
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: true
