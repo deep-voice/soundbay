@@ -1,10 +1,34 @@
 import pandas as pd
 import os
-import sys
-import numpy as np
 from tqdm import tqdm
 from soundbay.utils.metadata_processing import bg_from_non_overlap_calls
 import boto3
+from urllib.parse import urlparse
+
+
+
+#download files
+def download_files(df2, local_folder):
+    # Set your local download folder
+
+
+    # Make sure the folder exists
+    os.makedirs(local_folder, exist_ok=True)
+
+    # Initialize S3 client
+    s3 = boto3.client('s3')
+
+    # Loop through the full_s3_path column
+    for s3_path in df2['full_s3_path']:
+        parsed = urlparse(s3_path)
+        bucket = parsed.netloc
+        key = parsed.path.lstrip('/')
+        filename = os.path.basename(key)
+        local_path = os.path.join(local_folder, filename)
+
+        print(f"Downloading {s3_path} to {local_path}...")
+        s3.download_file(bucket, key, local_path)
+
 
 # Function to get files from a directory
 def get_files(main_dir):
@@ -90,19 +114,34 @@ def process_annotations_files(get_files, process_df, get_folders, check_file_exi
     all_edited_dfs.to_csv('shaye_annotations_added_new.csv', index=False)
 
 if __name__ == "__main__":
-    main_dir = '/Users/tomernahshon/Documents/soundbay/shaye_data/all_txt_19.7.25'
-    # process_annotations_files(get_files, process_df, get_folders, check_file_exists, main_dir)
-    #load the saved csv file
-    df = pd.read_csv('shaye_annotations_added_new.csv')
-    print(df.shape)
-    print(f'Unique values in annotations_filename: {df["annotations_filename"].unique()}')
-    df2 = df.dropna()
-    print(f'Number of rows after dropping NaN: {df2.shape[0]}')
-    # df2 = df2[df2['call_length'] < 10]
-    # find the diff in annotations_filename between the original and the processed
-    original_annotations_filenames = set(df['annotations_filename'].unique())
-    processed_annotations_filenames = set(df2['annotations_filename'].unique())
-    diff_annotations_filenames = original_annotations_filenames - processed_annotations_filenames
+    df2_path = '/home/ubuntu/soundbay/datasets/shaye_data/shaye_annotations_added_nan_removed.csv'
+    download_to_folder = '/home/ubuntu/soundbay/datasets/shaye_data'
+    df2 = pd.read_csv(df2_path, index=False)
+    download_files(df2, download_to_folder)
 
-    print(f'Number of rows after filtering by call length: {df2.shape[0]}')
+
+
+
+
+    # main_dir = '/Users/tomernahshon/Documents/soundbay/shaye_data/all_txt_19.7.25'
+    # # process_annotations_files(get_files, process_df, get_folders, check_file_exists, main_dir)
+    # #load the saved csv file
+    # df = pd.read_csv('shaye_annotations_added_new.csv')
+    # print(df.shape)
+    # print(f'Unique values in annotations_filename: {df["annotations_filename"].unique()}')
+    # df2 = df.dropna()
+    # print(f'Number of rows after dropping NaN: {df2.shape[0]}')
+    # # df2 = df2[df2['call_length'] < 10]
+    # # find the diff in annotations_filename between the original and the processed
+    # original_annotations_filenames = set(df['annotations_filename'].unique())
+    # processed_annotations_filenames = set(df2['annotations_filename'].unique())
+    # diff_annotations_filenames = original_annotations_filenames - processed_annotations_filenames
+
+    # df2.loc[:, 'full_s3_path'] = df2['s3_path'].str.rstrip('/') + '/' + df2['filename']
+
+    # print(f'Number of rows after filtering by call length: {df2.shape[0]}')
+    # # save the df2
+    # df2.to_csv('shaye_annotations_added_nan_removed.csv', index=False)
+
+        
 
