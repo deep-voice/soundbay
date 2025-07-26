@@ -116,7 +116,7 @@ def process_annotations_files(get_files, process_df, get_folders, check_file_exi
 if __name__ == "__main__":
     df2_path = '/home/ubuntu/soundbay/datasets/shaye_data/shaye_annotations_added_nan_removed.csv'
     download_to_folder = '/home/ubuntu/soundbay/datasets/shaye_data'
-    df2 = pd.read_csv(df2_path, index=False)
+    df2 = pd.read_csv(df2_path)
     download_files(df2, download_to_folder)
 
 
