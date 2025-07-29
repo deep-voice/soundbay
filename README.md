@@ -6,6 +6,7 @@ Soundbay is an intuitive and comprehensive Python-based framework for training d
 ## Installation
 Before installing, please verify you have a working Python environment, with pytorch, torchvision and torchaudio installed according to your local hardware.<br>
 More info on installing pytorch, torchaudio and torchvision can be found in the [guide](https://pytorch.org/get-started/locally/).
+Make sure to use python 3.8-3.12 (as of mid-2025 python 3.13 can cause dependency issues)
 
 ```sh
 git clone https://github.com/deep-voice/soundbay
