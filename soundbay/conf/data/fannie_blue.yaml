@@ -11,7 +11,7 @@ data:
   max_freq: 128
   n_fft: 256
   hop_length: 64
-  label_type: 'multi_label'
+  label_type: 'single_label'
   proba_threshold: 0.5
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
