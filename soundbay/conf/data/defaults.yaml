@@ -6,7 +6,6 @@ data:
   sample_rate: 16000
   data_sample_rate: 44100
   min_freq: 0
-  max_freq: 8000
   n_fft: 1024
   hop_length: 256
   label_type: 'single_label'

@@ -5,7 +5,6 @@ data:
   num_workers: 6
   sample_rate: 2000
   data_sample_rate: 2000
-  max_freq: 1000
   min_freq_filtering: 0
   n_fft: 256
   hop_length: 64
