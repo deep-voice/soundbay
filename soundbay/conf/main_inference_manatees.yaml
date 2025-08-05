@@ -1,0 +1,4 @@
+# @package _global_
+defaults:
+  - data: inference_manatees
+  - experiment: inference

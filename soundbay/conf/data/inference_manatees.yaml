@@ -9,10 +9,10 @@ data:
   hop_length: 256
   test_dataset:
     _target_: soundbay.data.ClassifierDataset
-    data_path: '../datasets/Manatees/train_data/wav/'
+    data_path: '../datasets/Manatees/train_data/wav2017/'
     path_hierarchy: 0
     mode: test
-    metadata_path: '../datasets/Manatees/manatee_update_sample_0.8_each_day_no_outliers.csv'
+    metadata_path: '../datasets/Manatees/Manatee_train_val_splits.csv'
     augmentations_p: 0
     seq_length: 0.2
     augmentations: null
