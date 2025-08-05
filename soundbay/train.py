@@ -256,9 +256,6 @@ def main(validate_args) -> None:
     random.seed(args.experiment.manual_seed)
     torch.manual_seed(args.experiment.manual_seed)
 
-    # for backward compatibility
-    args.data.max_freq = args.data.sample_rate // 2
-
     # Finetune
     if args.optim.freeze_layers_for_finetune is None:
         args.optim.freeze_layers_for_finetune = False
