@@ -1,0 +1,18 @@
+# @package _global_
+data:
+  batch_size: 64
+  num_workers: 10
+  data_sample_rate: 1000
+  sample_rate: 128
+  proba_norm_func: 'softmax'
+  test_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: './datasets/fannie_project/'
+    mode: test
+    path_hierarchy: 0
+    metadata_path: './datasets/fannie_project/test.csv'
+    augmentations_p: 0
+    augmentations: null
+    data_sample_rate: ${data.data_sample_rate}
+    sample_rate: ${data.sample_rate}
+    slice_flag: true

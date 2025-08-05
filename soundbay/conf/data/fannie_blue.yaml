@@ -5,12 +5,12 @@ data:
   label_names: ['Noise', 'ant_blue', 'mad_blue']
   batch_size: 64
   num_workers: 10
-  sample_rate: 256
+  sample_rate: 128
   data_sample_rate: 1000
   min_freq: 0
-  max_freq: 128
-  n_fft: 256
-  hop_length: 64
+  max_freq: 64
+  n_fft: 128
+  hop_length: 32
   label_type: 'single_label'
   proba_threshold: 0.5
   train_dataset:
@@ -22,7 +22,7 @@ data:
     augmentations_p: 0.8
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
-    seq_length: 1
+    seq_length: 3
     margin_ratio: 0.5
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
@@ -37,7 +37,7 @@ data:
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
-    seq_length: 1
+    seq_length: 3
     margin_ratio: 0
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}

@@ -4,5 +4,5 @@ defaults:
   - ../augmentations: _augmentations
   - ../preprocessors: _preprocessors
   - ../model: defaults # check in future after first run
-  - ../optim: defaults
-  - ../experiment: defaults
+  - ../optim: fannie_blue
+  - ../experiment: fannie_blue

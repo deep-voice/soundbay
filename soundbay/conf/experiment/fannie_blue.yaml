@@ -1,0 +1,14 @@
+# @package _global_
+experiment:
+  debug: True
+  manual_seed: 1234
+  name: Blue_Whale_Fannie
+  run_id: ResNet1Channel_spec_128__3_sec
+  group_name: blue_train
+  bucket_name: deepvoice-experiments
+  artifacts_upload_limit: 64
+  equalize_data: True
+  checkpoint:
+    path: null
+    resume: 'allow'
+    load_optimizer_state: False

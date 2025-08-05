@@ -1,7 +1,7 @@
 # @package _global_
 experiment:
   checkpoint:
-    path: ???
+    path: '/mnt/d/DeepVoice/checkpoints/ResNet1Channel_spec_128_lr_-3/best.pth' #???
     load_optimizer_state: False
   save_raven: False
   threshold: 0.5
