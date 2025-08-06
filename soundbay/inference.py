@@ -19,6 +19,8 @@ from soundbay.utils.logging import Logger
 from soundbay.utils.checkpoint_utils import merge_with_checkpoint
 from soundbay.conf_dict import models_dict, datasets_dict
 
+from soundbay.utils.metrics import MetricsCalculator
+
 
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
                   device: torch.device = torch.device('cpu'),
@@ -121,9 +123,11 @@ def infer_with_metadata(
     if hasattr(test_dataset, 'metadata'):
         concat_dataset = pandas.concat([test_dataset.metadata, results_df],
                                        axis=1)  # TODO: make sure metadata column order matches the prediction df order
-        metrics_dict = Logger.get_metrics_dict(concat_dataset["label"].values.tolist(),
-                                               np.argmax(predict_prob, axis=1).tolist(),
-                                               results_df.values)
+        metrics_dict = MetricsCalculator(
+                label_list=concat_dataset["label"].values.tolist(),
+                pred_list=np.argmax(predict_prob, axis=1).tolist(),
+                pred_proba_list=predict_prob,
+                label_type=label_type).calc_all_metrics()
         print(metrics_dict)
     else:
         concat_dataset = results_df

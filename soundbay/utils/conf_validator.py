@@ -7,7 +7,7 @@ class Dataset(BaseModel):
     num_workers: int
     sample_rate: int
     data_sample_rate: int
-    max_freq: int
+    # max_freq: int
     label_type: str
     min_freq: int
     n_fft: int

@@ -16,9 +16,14 @@ class MetricsCalculator:
             pred_proba_list: Prediction probabilities array
         """
         self.label_type = label_type
-        self.label_list = np.array(label_list)
-        self.pred_list = np.array(pred_list)
-        self.pred_proba_array = np.array(np.concatenate(pred_proba_list))
+        self.label_list = np.asarray(label_list)
+        self.pred_list = np.asarray(pred_list)
+        if isinstance(pred_proba_list, list): # if pred_proba is already a numpy array, we don't need to convert it twice
+            self.pred_proba_array = np.asarray(np.concatenate(pred_proba_list))
+        elif isinstance(pred_proba_list, np.ndarray):
+            self.pred_proba_array = pred_proba_list
+        else:
+            raise ValueError("pred_proba_list must be a list or numpy array")
         self.num_classes = self.pred_proba_array.shape[1]
         self.metrics_dict = {
             'global': {},

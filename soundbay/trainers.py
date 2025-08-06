@@ -133,8 +133,7 @@ class Trainer:
             self.logger.update_predictions(predicted_label, predicted_proba, label.cpu().numpy())
 
         # logging
-        if not app.args.experiment.debug:
-            self.logger.calc_metrics(epoch, self.label_type,'train', self.label_names)
+        self.logger.calc_metrics(epoch, self.label_type,'train', self.label_names)
 
         self.logger.log(epoch, 'train')
         if self.scheduler is not None:

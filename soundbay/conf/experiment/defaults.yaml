@@ -1,6 +1,6 @@
 # @package _global_
 experiment:
-  debug: False
+  debug: True
   manual_seed: 1234
   name: null
   project: 'finding_willy'
