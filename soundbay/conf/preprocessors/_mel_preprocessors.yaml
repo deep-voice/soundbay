@@ -9,7 +9,7 @@ _preprocessors:
     pad_mode: 'constant'
     n_mels: 64
     f_min: ${data.min_freq}
-    f_max: ${data.max_freq}
+#    f_max: ${data.sample_rate / 2}
   amplitude_2_db:
     _target_: torchaudio.transforms.AmplitudeToDB
   peak_norm:
