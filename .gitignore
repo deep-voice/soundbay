@@ -34,6 +34,7 @@ outputs/
 /soundbay/.null/inference.log
 /soundbay/wandb/
 
-# datasets
+#datasets
 datasets/fannie_project/
+
 wandb/

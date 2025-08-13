@@ -203,7 +203,7 @@ class Trainer:
         if checkpoint_path is None:
             return
         print('Loading checkpoint')
-        state_dict = torch.load(checkpoint_path, map_location='cpu')
+        state_dict = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
         self.model.load_state_dict(state_dict["model"])
         if load_optimizer_state:
             self.epochs_trained = state_dict["epochs"]

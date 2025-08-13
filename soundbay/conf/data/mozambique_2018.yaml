@@ -1,17 +1,20 @@
 # @package _global_
 data:
   label_names: ['Noise', 'Call']
-  batch_size: 64
+  batch_size: 16
   num_workers: 6
   sample_rate: 16000
   data_sample_rate: 44100
-  max_freq: 1500
+  max_freq: 8000
+  min_freq: 0
   min_freq_filtering: 0
   n_fft: 1024
   hop_length: 256
+  label_type: 'single_label'
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
     data_path: '../datasets/mozambique_2018'
+    path_hierarchy: 0
     mode: train 
     metadata_path: '../datasets/mozambique_2018/combined_annotations_filtered_train.csv'
     augmentations_p: 0.8
@@ -28,6 +31,7 @@ data:
     data_path: '../datasets/mozambique_2018'
     mode: val 
     metadata_path: '../datasets/mozambique_2018/combined_annotations_filtered_val.csv'
+    path_hierarchy: 0
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
