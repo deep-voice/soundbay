@@ -2,7 +2,7 @@ import ast
 import random
 from itertools import starmap, repeat
 from pathlib import Path
-from typing import Union
+from typing import Union, Optional, Dict, Any
 
 import numpy as np
 import pandas as pd
@@ -15,6 +15,14 @@ from omegaconf import DictConfig
 from torch.utils.data import Dataset
 from torchvision import transforms
 from audiomentations import Compose
+
+# AudioSample import for streaming from URLs
+try:
+    from audiosample import AudioSample
+    AUDIOSAMPLE_AVAILABLE = True
+except ImportError:
+    AUDIOSAMPLE_AVAILABLE = False
+    print("Warning: AudioSample not available. Install audiosample to use streaming audio loading.")
 
 
 class BaseDataset(Dataset):
@@ -645,4 +653,303 @@ class InferenceDataset(Dataset):
         return audio
 
     def __len__(self):
+        return len(self.metadata)
+
+
+class GoogleCloudStorageDataset(BaseDataset):
+    """
+    Dataset class for loading audio files from Google Cloud Storage.
+    This class inherits from BaseDataset and handles classification tasks.
+    """
+    
+    def __init__(self, metadata_path: str, bucket_name: str = "noaa-passive-bioacoustic",
+                 augmentations=None, augmentations_p=0.5, preprocessors=None, label_type="single_label",
+                 seq_length=1, data_sample_rate=44100, sample_rate=44100, mode="train",
+                 slice_flag=False, margin_ratio=0, split_metadata_by_label=False):
+        """
+        Initialize Google Cloud Storage Dataset.
+        
+        Args:
+            metadata_path: Path to CSV metadata file
+            bucket_name: Google Cloud Storage bucket name
+            augmentations: Audio augmentation configurations
+            augmentations_p: Probability of applying augmentations
+            preprocessors: Audio preprocessing configurations
+            label_type: Type of labels ("single_label" or "multi_label")
+            seq_length: Length of audio sequences in seconds
+            data_sample_rate: Original sample rate of audio files
+            sample_rate: Target sample rate for processing
+            mode: Dataset mode ("train", "val", "test")
+            slice_flag: Whether to slice sequences
+            margin_ratio: Margin ratio for audio extraction
+            split_metadata_by_label: Whether to split metadata by label
+        """
+        self.bucket_name = bucket_name
+        
+        # Initialize metadata
+        self.metadata_path = metadata_path
+        self.dtype_dict = {'Soundfile': 'str', 'KW': 'int'}
+        self.label_type = label_type
+        metadata = pd.read_csv(self.metadata_path, dtype=self.dtype_dict)
+        self.metadata = self._update_metadata_by_mode(metadata, mode, split_metadata_by_label)
+        
+        # Set other attributes
+        self.mode = mode
+        self.seq_length = seq_length
+        self.sample_rate = sample_rate
+        self.data_sample_rate = data_sample_rate
+        self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
+        
+        # Preprocess metadata
+        self._preprocess_metadata(slice_flag)
+        
+        # Set augmentations and preprocessors
+        self.augmenter = self._set_augmentations(augmentations, augmentations_p)
+        self.preprocessor = self.set_preprocessor(preprocessors)
+        
+        assert (0 <= margin_ratio) and (1 >= margin_ratio)
+        self.margin_ratio = margin_ratio
+        self.num_classes = self._get_num_classes()
+        self.samples_weight = self._get_samples_weight()
+
+    def _preprocess_metadata(self, slice_flag=False):
+        """
+        Preprocess metadata for GCS dataset.
+        """
+        # Create label column from KW column
+        self.metadata['label'] = self.metadata['KW'].values
+        
+        # Calculate begin_time and end_time from FileBeginSec and FileEndSec
+        self.metadata['begin_time'] = self.metadata['FileBeginSec'].values
+        self.metadata['end_time'] = self.metadata['FileEndSec'].values
+        self.metadata['call_length'] = self.metadata['end_time'] - self.metadata['begin_time']
+        
+        # Filter based on sequence length
+        is_noise = self.metadata['label'].apply(self._is_noise)
+        self.metadata = self.metadata[((self.metadata['call_length'] >= self.seq_length) & is_noise) | (~is_noise)]
+        
+        if slice_flag:
+            self._slice_sequence()
+        
+        self.metadata.reset_index(drop=True, inplace=True)
+
+    def _grab_fields(self, idx):
+        """
+        Extract fields from metadata for GCS dataset.
+        """
+        row = self.metadata.iloc[idx]
+        soundfile = row['Soundfile']
+        provider = row['Provider'].lower()
+        dataset = row['Dataset'].lower()
+        
+        # Construct GCS path
+        gcs_path = f"dclde/2026/dclde_2026_killer_whales/{provider}/audio/{dataset}/{soundfile}"
+        
+        begin_time = row['begin_time']
+        end_time = row['end_time']
+        label = row['label']
+        
+        return gcs_path, begin_time, end_time, label, None
+
+    def _get_audio(self, gcs_path, begin_time, end_time, label, channel=None):
+        """
+        Load audio from Google Cloud Storage using AudioSample for streaming.
+        """
+        if not AUDIOSAMPLE_AVAILABLE:
+            raise ImportError("AudioSample not available. Install audiosample to use streaming audio loading.")
+        
+        try:
+            # Construct the full GCS URL
+            gcs_url = f"https://storage.googleapis.com/{self.bucket_name}/{gcs_path}"
+            
+            # Use AudioSample for streaming (most efficient)
+            audio = AudioSample(gcs_url)[begin_time:end_time].as_tensor()
+            
+            # # Handle channel selection
+            # if channel is not None and audio.shape[0] > 1:
+            #     assert channel > 0, f"channel has to be a positive integer, got {channel}"
+            #     audio = audio[channel-1:channel]
+            # elif channel is None and audio.shape[0] > 1:
+            #     audio = audio[0:1]  # Take first channel by default
+            
+            # Ensure correct shape
+            if audio.dim() == 1:
+                audio = audio.unsqueeze(0)  # Add channel dimension
+            elif audio.dim() > 2:
+                audio = audio.squeeze()  # Remove extra dimensions
+            
+            return audio
+            
+        except Exception as e:
+            raise RuntimeError(f"Error loading audio from GCS {gcs_path}: {str(e)}")
+
+    def __getitem__(self, idx):
+        """
+        Get item from GCS dataset.
+        """
+        gcs_path, begin_time, end_time, label, channel = self._grab_fields(idx)
+        audio = self._get_audio(gcs_path, begin_time, end_time, label, channel)
+        audio_raw = self.sampler(audio)
+        audio_augmented = self.augment(audio_raw)
+        audio_processed = self.preprocessor(audio_augmented)
+
+        if self.mode == "train" or self.mode == "val":
+            return audio_processed, label, audio_raw, {"idx": idx, "begin_time": begin_time, "gcs_path": gcs_path}
+        elif self.mode == "test":
+            return audio_processed
+
+
+class GoogleCloudStorageDetectionDataset(Dataset):
+    """
+    Dataset class for detection tasks using Google Cloud Storage audio files.
+    This class provides bounding box information for detected calls.
+    """
+    
+    def __init__(self, metadata_path: str, bucket_name: str = "noaa-passive-bioacoustic",
+                 preprocessors=None, seq_length=10, data_sample_rate=44100, sample_rate=44100, 
+                 mode="train", overlap=0.5):
+        """
+        Initialize Google Cloud Storage Detection Dataset.
+        
+        Args:
+            metadata_path: Path to CSV metadata file
+            bucket_name: Google Cloud Storage bucket name
+            preprocessors: Audio preprocessing configurations
+            seq_length: Length of audio sequences in seconds
+            data_sample_rate: Original sample rate of audio files
+            sample_rate: Target sample rate for processing
+            mode: Dataset mode ("train", "val", "test")
+            overlap: Overlap between consecutive sequences
+        """
+        self.bucket_name = bucket_name
+        
+        # Initialize parameters
+        self.metadata_path = metadata_path
+        self.seq_length = seq_length
+        self.sample_rate = sample_rate
+        self.data_sample_rate = data_sample_rate
+        self.overlap = overlap
+        self.mode = mode
+        
+        # Set up audio processing
+        self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
+        self.preprocessor = self.set_preprocessor(preprocessors)
+        
+        # Load and preprocess metadata
+        self.metadata = self._load_and_preprocess_metadata()
+
+    def _load_and_preprocess_metadata(self) -> pd.DataFrame:
+        """
+        Load and preprocess metadata for detection dataset.
+        """
+        # Load metadata
+        metadata = pd.read_csv(self.metadata_path, dtype={'Soundfile': 'str', 'KW': 'int'})
+        
+        # Filter to only include actual calls (KW == 1)
+        metadata = metadata[metadata['KW'] == 1].copy()
+        
+        # Vectorized operations to create detection metadata
+        detection_metadata = metadata.assign(
+            # Create GCS path using vectorized string operations
+            gcs_path=lambda df: f"dclde/2026/dclde_2026_killer_whales/{df['Provider'].str.lower()}/audio/{df['Dataset'].str.lower()}/{df['Soundfile']}",
+            # Rename columns for consistency
+            begin_time=lambda df: df['FileBeginSec'],
+            end_time=lambda df: df['FileEndSec'],
+            low_freq=lambda df: df['LowFreqHz'],
+            high_freq=lambda df: df['HighFreqHz'],
+            duration=lambda df: df['FileEndSec'] - df['FileBeginSec'],
+            provider=lambda df: df['Provider'],
+            dataset=lambda df: df['Dataset'],
+            species=lambda df: df['ClassSpecies'],
+            ecotype=lambda df: df['Ecotype'],
+            annotation_level=lambda df: df['AnnotationLevel']
+        )
+        
+        # Select only the columns we need
+        columns_to_keep = ['gcs_path', 'begin_time', 'end_time', 'low_freq', 'high_freq', 
+                          'duration', 'provider', 'dataset', 'species', 'ecotype', 'annotation_level']
+        
+        return detection_metadata[columns_to_keep]
+
+    def _get_audio_segment(self, gcs_path: str, start_time: float, duration: float) -> torch.Tensor:
+        """
+        Load audio segment from Google Cloud Storage using AudioSample for streaming.
+        """
+        if not AUDIOSAMPLE_AVAILABLE:
+            raise ImportError("AudioSample not available. Install audiosample to use streaming audio loading.")
+        
+        try:
+            # Construct the full GCS URL
+            gcs_url = f"https://storage.googleapis.com/{self.bucket_name}/{gcs_path}"
+            
+            # Use AudioSample for streaming (most efficient)
+            audio = AudioSample(gcs_url)[start_time:start_time + duration].as_tensor()
+            
+            # Ensure correct shape (AudioSample might return different format)
+            if audio.dim() == 1:
+                audio = audio.unsqueeze(0)  # Add channel dimension
+            elif audio.dim() > 2:
+                audio = audio.squeeze()  # Remove extra dimensions
+            
+            return audio
+            
+        except Exception as e:
+            raise RuntimeError(f"Error loading audio from GCS {gcs_path}: {str(e)}")
+
+    @staticmethod
+    def set_preprocessor(preprocessors_args):
+        """
+        Set up audio preprocessor.
+        """
+        if preprocessors_args and len(preprocessors_args) > 0:
+            processors_list = [instantiate(args) for args in preprocessors_args.values()]
+            preprocessor = transforms.Compose(processors_list)
+        else:
+            preprocessor = torch.nn.Identity()
+        return preprocessor
+
+    def __getitem__(self, idx: int) -> Dict[str, Any]:
+        """
+        Get detection item from dataset.
+        
+        Returns:
+            Dictionary containing:
+            - audio: Processed audio tensor
+            - detections: List of detection bounding boxes
+            - metadata: Additional metadata
+        """
+        row = self.metadata.iloc[idx]
+        gcs_path = row['gcs_path']
+        
+        # Load audio segment
+        audio = self._get_audio_segment(gcs_path, row['begin_time'], self.seq_length)
+        audio = self.sampler(audio)
+        audio = self.preprocessor(audio)
+        
+        # Create detection bounding box
+        detection = {
+            'begin_time': row['begin_time'],
+            'end_time': row['end_time'],
+            'low_freq': row['low_freq'],
+            'high_freq': row['high_freq'],
+            'duration': row['duration']
+        }
+        
+        # Create metadata
+        metadata = {
+            'gcs_path': gcs_path,
+            'provider': row['provider'],
+            'dataset': row['dataset'],
+            'species': row['species'],
+            'ecotype': row['ecotype'],
+            'annotation_level': row['annotation_level']
+        }
+        
+        return {
+            'audio': audio,
+            'detection': detection,
+            'metadata': metadata
+        }
+
+    def __len__(self) -> int:
         return len(self.metadata)
