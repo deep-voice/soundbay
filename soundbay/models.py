@@ -52,7 +52,7 @@ class ResNet1Channel(ResNet):
 class ASTPreprocessorWrapper():
     def __init__(self, sample_rate, huggingface_path):
         self.sample_rate = sample_rate
-        self.processor = AutoProcessor.from_pretrained(huggingface_path, max_length=1024, sampling_rate=self.sample_rate))
+        self.processor = AutoProcessor.from_pretrained(huggingface_path, max_length=1024, sampling_rate=self.sample_rate)
 
     def __call__(self, orig_wav):
         mel_spectogram = self.processor(orig_wav.numpy(), sampling_rate=self.sample_rate, return_tensors="pt")
