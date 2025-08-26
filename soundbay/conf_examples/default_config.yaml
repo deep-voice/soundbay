@@ -1,0 +1,76 @@
+# Example configuration file for the new dataclass-based system
+# This replaces the Hydra configuration format
+
+data:
+  label_names: ['Noise', 'Call']
+  batch_size: 64
+  num_workers: 10
+  sample_rate: 16000
+  data_sample_rate: 44100
+  min_freq: 0
+  n_fft: 1024
+  hop_length: 256
+  label_type: 'single_label'
+  proba_threshold: 0.5
+  train_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: './tests/assets/data/'
+    path_hierarchy: 0
+    mode: train
+    metadata_path: './tests/assets/annotations/sample_annotations.csv'
+    augmentations_p: 0.8
+    augmentations: null
+    preprocessors: null
+    seq_length: 1
+    margin_ratio: 0.5
+    data_sample_rate: 44100
+    sample_rate: 16000
+    slice_flag: false
+  val_dataset:
+    _target_: soundbay.data.ClassifierDataset
+    data_path: './tests/assets/data'
+    path_hierarchy: 0
+    mode: val
+    metadata_path: './tests/assets/annotations/sample_annotations.csv'
+    augmentations_p: 0
+    augmentations: null
+    preprocessors: null
+    seq_length: 1
+    margin_ratio: 0
+    data_sample_rate: 44100
+    sample_rate: 16000
+    slice_flag: true
+
+experiment:
+  debug: true
+  manual_seed: 1234
+  name: null
+  project: 'finding_willy'
+  run_id: null
+  group_name: null
+  bucket_name: deepvoice-experiments
+  artifacts_upload_limit: 64
+  equalize_data: true
+  checkpoint:
+    path: null
+    resume: 'allow'
+    load_optimizer_state: false
+
+model:
+  criterion:
+    _target_: torch.nn.CrossEntropyLoss
+  model:
+    _target_: models.ResNet1Channel
+    layers: [3, 4, 6, 3]
+    block: torchvision.models.resnet.Bottleneck
+    num_classes: 2
+
+optim:
+  epochs: 100
+  optimizer:
+    _target_: torch.optim.Adam
+    lr: 5e-4
+  scheduler:
+    _target_: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+    T_0: 5
+  freeze_layers_for_finetune: true
