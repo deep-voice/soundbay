@@ -16,7 +16,8 @@ def test_dataloader() -> None:
         dataset = ClassifierDataset(cfg.data.train_dataset.data_path, cfg.data.train_dataset.metadata_path,
                                         augmentations=cfg.data.train_dataset.augmentations,
                                         augmentations_p=cfg.data.train_dataset.augmentations_p,
-                                        preprocessors=cfg.data.train_dataset.preprocessors)
+                                        preprocessors=cfg.data.train_dataset.preprocessors,
+                                        label_type=cfg.data.label_type)
         assert dataset.metadata.shape[1] in (5, 6)  # make sure metadata has 5/6 columns (account for channel)
         assert dataset.metadata.shape[0] > 0  # make sure metadata is not empty
         data_size = dataset.metadata.shape[0]

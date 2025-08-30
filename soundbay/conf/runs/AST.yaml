@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - ../data: defaults
+  - ../augmentations: _augmentations
+  - ../preprocessors: wav2vec2
+  - ../model: AST
+  - ../optim: defaults
+  - ../experiment: defaults

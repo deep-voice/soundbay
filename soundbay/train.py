@@ -47,7 +47,8 @@ def modeling(
     model_args,
     logger,
     freeze_layers_for_finetune,
-    equalize_data
+    equalize_data,
+    label_type
 ):
     """
     modeling function takes all the variables and parameters defined in the main script
@@ -77,7 +78,8 @@ def modeling(
     seq_length=train_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
     sample_rate=train_dataset_args['sample_rate'], margin_ratio=train_dataset_args['margin_ratio'],
     slice_flag=train_dataset_args['slice_flag'], mode=train_dataset_args['mode'],
-    path_hierarchy=train_dataset_args['path_hierarchy']
+    path_hierarchy=train_dataset_args['path_hierarchy'],
+    label_type=label_type
     )
 
     # train data which is handled as validation data
@@ -88,7 +90,8 @@ def modeling(
     seq_length=val_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
     sample_rate=train_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
     slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode'],
-    path_hierarchy=val_dataset_args['path_hierarchy']
+    path_hierarchy=val_dataset_args['path_hierarchy'],
+    label_type=label_type
     )
 
     val_dataset = datasets_dict[val_dataset_args['_target_']](data_path = val_dataset_args['data_path'],
@@ -98,7 +101,8 @@ def modeling(
     seq_length=val_dataset_args['seq_length'], data_sample_rate=val_dataset_args['data_sample_rate'],
     sample_rate=val_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
     slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode'],
-    path_hierarchy=train_dataset_args['path_hierarchy']
+    path_hierarchy=train_dataset_args['path_hierarchy'],
+    label_type=label_type
     )
 
     # Define model and device for training
@@ -222,7 +226,7 @@ def main(validate_args) -> None:
 
     # Define criterion
     # criterion = instantiate(args.model.criterion)
-    if args.model.criterion._target_ == 'torch.nn.CrossEntropyLoss':
+    if args.model.criterion._target_ in ['torch.nn.CrossEntropyLoss', 'torch.nn.BCEWithLogitsLoss']:
         criterion = criterion_dict[args.model.criterion._target_]
     
         # criterion = torch.nn.CrossEntropyLoss()
@@ -243,6 +247,12 @@ def main(validate_args) -> None:
     if args.optim.freeze_layers_for_finetune:
         print('The model is in finetune mode!')
 
+    # proba threshold (for multi-label classification, using "get" for backward compatibility)
+    classification_proba_threshold = args.data.get('proba_threshold', 0.5)
+
+    # label type, using "get" for backward compatibility
+    label_type = args.data.get('label_type', 'single_label')
+
     # instantiate Trainer class with parameters "meta" parameters
     trainer_partial = partial(
         Trainer,
@@ -254,6 +264,8 @@ def main(validate_args) -> None:
         output_path=output_dirpath,
         load_optimizer_state=args.experiment.checkpoint.load_optimizer_state,
         label_names=args.data.label_names,
+        label_type=label_type,
+        proba_threshold=classification_proba_threshold,
     )
     # modeling function for training
     modeling(
@@ -268,7 +280,8 @@ def main(validate_args) -> None:
         model_args=args.model.model,
         logger=logger,
         freeze_layers_for_finetune=args.optim.freeze_layers_for_finetune,
-        equalize_data=args.experiment.equalize_data
+        equalize_data=args.experiment.equalize_data,
+        label_type=label_type
     )
 
     if args.experiment.bucket_name and not args.experiment.debug:

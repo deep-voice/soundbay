@@ -1,0 +1,8 @@
+# @package _global_
+model:
+  criterion:
+    _target_: torch.nn.CrossEntropyLoss
+  model:
+    _target_: models.AST
+    num_classes: 2
+    weight_path: ???

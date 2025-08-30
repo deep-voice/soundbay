@@ -1,0 +1,9 @@
+# @package _global_
+model:
+  criterion:
+    _target_: torch.nn.BCEWithLogitsLoss
+  model:
+    _target_: models.ResNet1Channel
+    layers: [3, 4, 6, 3]
+    block: torchvision.models.resnet.Bottleneck
+    num_classes: 2
