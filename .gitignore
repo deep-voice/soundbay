@@ -31,11 +31,19 @@ outputs/*
 
 # outputs
 outputs/
+models/
 /soundbay/.null/inference.log
 /soundbay/wandb/
 
 # datasets
 datasets/fannie_project
+datasets/*
+
+# wav files
+*.wav
 
 # wandb
 wandb/*
+
+# mac stuff
+**/.DS_Store
