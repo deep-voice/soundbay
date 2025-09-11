@@ -1,6 +1,6 @@
 """
-Configuration system using dataclasses to replace Hydra
------------------------------------------------------
+Configuration system using dataclasses
+--------------------------------------
 This module provides a dataclass-based configuration system that supports:
 - Hierarchical configuration with nested dataclasses
 - Override priority: cmdline > config > checkpoint > defaults
@@ -8,32 +8,40 @@ This module provides a dataclass-based configuration system that supports:
 - Nested value overrides using dot notation
 """
 
-import os
-import json
 import yaml
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Union
-from dataclasses import dataclass, field, asdict
+from typing import Optional, List, Dict, Any, Union, Literal
+from dataclasses import field, asdict
 import argparse
 from copy import deepcopy
+from pydantic.dataclasses import dataclass
+from pydantic import field_validator
 
 
 @dataclass
 class DatasetConfig:
     """Configuration for dataset settings"""
-    _target_: str = "soundbay.data.ClassifierDataset"
+    module_name: Literal["classifier_dataset", "no_background_dataset", "inference_dataset"] = "classifier_dataset"
     data_path: str = "./tests/assets/data/"
     path_hierarchy: int = 0
-    mode: str = "train"
+    mode: Literal["train", "val"] = "train"
     metadata_path: str = "./tests/assets/annotations/sample_annotations.csv"
     augmentations_p: float = 0.8
     augmentations: Optional[List[str]] = None
-    preprocessors: Optional[List[str]] = None
-    seq_length: int = 1
     margin_ratio: float = 0.5
-    data_sample_rate: int = 44100
-    sample_rate: int = 16000
     slice_flag: bool = False
+
+    @field_validator("augmentations_p")
+    def validate_augmentations_p(cls, v: float) -> float:
+        if v < 0 or v > 1:
+            raise ValueError("augmentations_p must be between 0 and 1")
+        return v
+    
+    @field_validator("margin_ratio")
+    def validate_margin_ratio(cls, v: float) -> float:
+        if v < 0 or v > 1:
+            raise ValueError("margin_ratio must be between 0 and 1")
+        return v
 
 
 @dataclass
@@ -47,8 +55,10 @@ class DataConfig:
     min_freq: int = 0
     n_fft: int = 1024
     hop_length: int = 256
-    label_type: str = 'single_label'
+    label_type: Literal["single_label", "multi_label"] = 'single_label'
     proba_threshold: float = 0.5
+    preprocessors: Optional[List[str]] = None
+    seq_length: int = 1
     train_dataset: DatasetConfig = field(default_factory=DatasetConfig)
     val_dataset: DatasetConfig = field(default_factory=lambda: DatasetConfig(
         mode="val",
@@ -85,9 +95,9 @@ class ExperimentConfig:
 @dataclass
 class ModelConfig:
     """Configuration for model settings"""
-    criterion: Dict[str, str] = field(default_factory=lambda: {"_target_": "torch.nn.CrossEntropyLoss"})
-    model: Dict[str, Any] = field(default_factory=lambda: {
-        "_target_": "models.ResNet1Channel",
+    criterion: str = "cross_entropy"
+    module_name: str = "resnet1channel"
+    model_params: Dict[str, Any] = field(default_factory=lambda: {
         "layers": [3, 4, 6, 3],
         "block": "torchvision.models.resnet.Bottleneck",
         "num_classes": 2
@@ -97,15 +107,15 @@ class ModelConfig:
 @dataclass
 class OptimizerConfig:
     """Configuration for optimizer settings"""
-    _target_: str = "torch.optim.Adam"
+    module_name: str = "torch.optim.Adamw"
     lr: float = 5e-4
 
 
 @dataclass
 class SchedulerConfig:
     """Configuration for scheduler settings"""
-    _target_: str = "torch.optim.lr_scheduler.CosineAnnealingWarmRestarts"
-    T_0: int = 5
+    module_name: str = "cosine_annealing_warm_restarts"
+    scheduler_params: Dict[str, Any] = field(default_factory=lambda: {"T_0": 5})
 
 
 @dataclass
