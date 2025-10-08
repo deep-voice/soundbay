@@ -11,11 +11,13 @@ This module provides a dataclass-based configuration system that supports:
 import yaml
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Union, Literal
-from dataclasses import field, asdict
+from dataclasses import field, asdict, fields
 import argparse
 from copy import deepcopy
 from pydantic.dataclasses import dataclass
 from pydantic import field_validator
+
+from soundbay.models import models_cfg_dict
 
 
 @dataclass
@@ -76,6 +78,12 @@ class CheckpointConfig:
     resume: str = 'allow'
     load_optimizer_state: bool = False
 
+    @field_validator("path")
+    def validate_path(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and not Path(v).exists():
+            raise ValueError(f"Checkpoint path does not exist: {v}")
+        return v
+
 
 @dataclass
 class ExperimentConfig:
@@ -95,13 +103,23 @@ class ExperimentConfig:
 @dataclass
 class ModelConfig:
     """Configuration for model settings"""
-    criterion: str = "cross_entropy"
-    module_name: str = "resnet1channel"
-    model_params: Dict[str, Any] = field(default_factory=lambda: {
-        "layers": [3, 4, 6, 3],
-        "block": "torchvision.models.resnet.Bottleneck",
-        "num_classes": 2
-    })
+    num_classes: int = 2  # can we allow required here?
+    criterion: str = Literal["cross_entropy", "bce_with_logits"]
+    module_name: Literal[list(models_cfg_dict.keys())] = "ResNet1Channel"
+    model_params: Optional[Dict[str, Any]] = None
+
+    def __post_init__(self):
+        # Get dataclass type
+        module_cls = models_cfg_dict[self.module_name]
+        valid_fields = {f.name for f in fields(module_cls)}
+
+        # Validate provided model_params
+        invalid_keys = set(self.model_params or {}) - valid_fields
+        if invalid_keys:
+            raise ValueError(
+                f"Invalid parameters for {self.module_name}: {invalid_keys}. "
+                f"Valid fields are: {sorted(valid_fields)}"
+            )
 
 
 @dataclass
@@ -134,17 +152,6 @@ class Config:
     experiment: ExperimentConfig = field(default_factory=ExperimentConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     optim: OptimConfig = field(default_factory=OptimConfig)
-    
-    def __post_init__(self):
-        """Ensure nested dataclasses are properly initialized"""
-        if isinstance(self.data, dict):
-            self.data = DataConfig(**self.data)
-        if isinstance(self.experiment, dict):
-            self.experiment = ExperimentConfig(**self.experiment)
-        if isinstance(self.model, dict):
-            self.model = ModelConfig(**self.model)
-        if isinstance(self.optim, dict):
-            self.optim = OptimConfig(**self.optim)
 
 
 class ConfigManager:

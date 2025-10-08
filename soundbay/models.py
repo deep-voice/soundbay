@@ -1,6 +1,7 @@
 import importlib
-from typing import Union
+from typing import Union, List, Optional
 
+from pydandic.dataclasses import dataclass
 import torch
 import torchaudio
 import torch.nn as nn
@@ -12,6 +13,67 @@ import torchvision.models as models
 
 from soundbay.utils.files_handler import load_config
 from transformers import AutoProcessor, ASTModel
+
+
+@dataclass
+class ResNet1ChannelCfg:
+    num_classes: int = 2
+    layers: List[int] = [3, 4, 6, 3]
+    block: str = "torchvision.models.resnet.Bottleneck"
+
+@dataclass
+class GoogleResNet50withPCENCfg:
+    num_classes: int = 2
+    eps: float = 1E-6
+    s: float = 0.025
+    alpha: float = 0.98
+    delta: float = 2
+    r: float = 0.5
+    trainable: bool = True
+
+@dataclass
+class ChristophCNNCfg:
+    num_classes: int = 2
+
+@dataclass
+class ResNet182DCfg:
+    num_classes: int = 2
+    pretrained: bool = True
+
+@dataclass
+class EfficientNet2DCfg:
+    num_classes: int = 2
+    pretrained: bool = True
+    dropout: float = 0.5
+    hidden_dim: int = 256
+    version: str = "b7"
+
+
+@dataclass
+class WAV2VEC2Cfg:
+    num_classes: int = 2
+    config: str = torchaudio.pipelines.WAV2VEC2_BASE._params
+    path: str = f'https://download.pytorch.org/torchaudio/models/{torchaudio.pipelines.WAV2VEC2_BASE._path}'
+    pretrained: bool = True
+    freeze_encoder: bool = False
+
+
+@dataclass
+class ASTCfg:
+    weight_path: Optional[str] = None
+    num_classes: int = 2
+    huggingface_path: str = "MIT/ast-finetuned-audioset-10-10-0.4593"
+
+
+models_cfg_dict = {
+    "ResNet1Channel": ResNet1ChannelCfg,
+    "GoogleResNet50withPCEN": GoogleResNet50withPCENCfg,
+    "ChristophCNN": ChristophCNNCfg,
+    "ResNet182D": ResNet182DCfg,
+    "EfficientNet2D": EfficientNet2DCfg,
+    "WAV2VEC2": WAV2VEC2Cfg,
+    "AST": ASTCfg
+}
 
 
 class ResNet1Channel(ResNet):
