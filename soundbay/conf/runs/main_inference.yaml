@@ -1,4 +1,4 @@
 # @package _global_
 defaults:
-  - ../data: fannie_test #defaults_inference
+  - ../data: fannie_file_test #defaults_inference
   - ../experiment: inference

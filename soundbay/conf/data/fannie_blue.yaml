@@ -37,7 +37,7 @@ data:
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
-    seq_length: 3
+    seq_length: 7
     margin_ratio: 0
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
