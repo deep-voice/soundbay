@@ -130,7 +130,7 @@ def infer_with_metadata(
         print("Notice: The dataset has no ground truth labels")
 
     # save file
-    dataset_name = Path(test_dataset.metadata_path).stem
+    dataset_name = Path(test_dataset.metadata_path).name
     filename = f"Inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.csv"
     output_file = output_path / filename
     concat_dataset.to_csv(index=False, path_or_buf=output_file)
@@ -292,13 +292,15 @@ def inference_main(args) -> None:
 
     working_dirpath = Path(hydra.utils.get_original_cwd())
     os.chdir(working_dirpath)
-    output_dirpath = working_dirpath.parent.absolute() / "outputs"
-    output_dirpath.mkdir(exist_ok=True)
+    # output_dirpath = working_dirpath.parent.absolute() / "outputs"
+    # output_dirpath.mkdir(exist_ok=True)
 
     ckpt_dict = torch.load(args.experiment.checkpoint.path, map_location=torch.device('cpu'), weights_only=False)
     ckpt_args = ckpt_dict['args']
     args = merge_with_checkpoint(args, ckpt_args)
     ckpt = ckpt_dict['model']
+    output_dirpath = working_dirpath.parent.absolute() / "outputs_ast" / Path(args.data.test_dataset.file_path).name
+    output_dirpath.mkdir(exist_ok=True)
 
     default_norm_func = 'softmax' if args.data.label_type == 'single_label' else 'sigmoid'
 
