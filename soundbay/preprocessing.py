@@ -133,10 +133,10 @@ class SlidingWindowNormalize:
 class Preprocessor:
     def __init__(self, audio_representation: str, normalization: str, resize: bool, 
                        size: tuple[int, int], sample_rate: int, min_freq: int, n_fft: int, 
-                       hop_length: int, n_mels: int, amplitude_2_db: bool):
+                       hop_length: int, n_mels: int):
         self.audio_processor = self.set_audio_processor(audio_representation, min_freq, n_fft, 
                                                         hop_length, sample_rate, n_mels)
-        self.amplitude_2_db = self.set_amplitude_2_db(amplitude_2_db)
+        self.amplitude_2_db = self.set_amplitude_2_db(audio_representation in ["mel_spectrogram", "spectrogram"])
         self.normalization = self.set_normalization(normalization)
         self.resize = self.set_resize(resize, size)
         
@@ -159,9 +159,11 @@ class Preprocessor:
         elif audio_representation == "mel_spectrogram":
             return MelSpectrogram(sample_rate=sample_rate, n_fft=n_fft, hop_length=hop_length, f_min=min_freq,
                                   win_length=n_fft, pad_mode='constant', n_mels=n_mels)
-        elif audio_representation == "sliding_window":
+        elif audio_representation == "sliding_window_spectrogram":
             spec =  Spectrogram(n_fft=256, hop_length=64)
             return Compose([spec, SlidingWindowNormalize(sr=sample_rate, n_fft=n_fft)])
+        elif audio_representation is None:
+            return torch.nn.Identity()
         else:
             raise ValueError(f"Invalid audio representation: {audio_representation}")
 
@@ -170,7 +172,7 @@ class Preprocessor:
             return PeakNormalize()
         elif normalization == "unit":
             return UnitNormalize()
-        elif normalization == None:
+        elif normalization is None:
             return torch.nn.Identity()
         else:
             raise ValueError(f"Invalid normalization: {normalization}")

@@ -59,7 +59,11 @@ class DataConfig:
     hop_length: int = 256
     label_type: Literal["single_label", "multi_label"] = 'single_label'
     proba_threshold: float = 0.5
-    preprocessors: Optional[List[str]] = None
+    audio_representation: Optional[Literal["spectrogram", "mel_spectrogram", "sliding_window_spectrogram"]] = "spectrogram"
+    normalization: Optional[Literal["peak", "unit"]] = "peak"
+    resize: bool = False
+    size: tuple[int, int] = (224, 224)
+    n_mels: int = 64
     seq_length: int = 1
     train_dataset: DatasetConfig = field(default_factory=DatasetConfig)
     val_dataset: DatasetConfig = field(default_factory=lambda: DatasetConfig(
