@@ -14,6 +14,7 @@ import hydra
 from omegaconf import DictConfig
 import glob
 from pathlib import Path
+import json
 
 from soundbay.inference import inference_main
 from file_logger import FileLogger
@@ -28,11 +29,11 @@ class S3Client:
         self.logger = logging.getLogger(__name__)
 
     def get_files_map(self, files_list: List[str] = None) -> dict:
-        """Get files from S3 bucket."""
-        self.logger.info(f"Getting files from S3, num of files {len(files_list)}")
+        """Get files from S3 bucket, including all subdirectories."""
+        self.logger.info(f"Getting files from S3, num of files {len(files_list) if files_list else 'all'}")
         files_map = {}
         
-        # List objects in the bucket with the given prefix
+        # List objects in the bucket with the given prefix (recursively searches all subdirectories)
         paginator = self.s3_client.get_paginator('list_objects_v2')
         for page in paginator.paginate(Bucket=self.bucket, Prefix=self.prefix):
             if 'Contents' not in page:
@@ -40,11 +41,13 @@ class S3Client:
                 
             for obj in page['Contents']:
                 file_name = os.path.basename(obj['Key'])
-                if file_name.endswith('.sud'):  # Only include .sud files
+                if file_name.endswith(('.sud', '.wav')):  # Include both .sud and .wav files
                     files_map[file_name] = obj['Key']
         
         if files_list is not None:
             files_map = {k: v for k, v in files_map.items() if k in files_list}
+        
+        self.logger.info(f"Found {len(files_map)} audio files (.sud/.wav) in S3 bucket")
         return files_map
 
     def download_file(self, file_key: str, file_name: str, output_dir: Path) -> None:
@@ -315,6 +318,97 @@ class ProcessingPipeline:
                     self._process_files_chunk(files_chunk, files_mapping)
                     self.run_predictions(files_mapping, outputs_path)
 
+    def calculate_durations(self, files_mapping: dict, output_csv_path: str) -> None:
+        """Calculate durations by processing files in chunks and calculating durations on .wav files."""
+        self.logger.info("Starting duration calculation")
+        chunks = self._chunk_files(files_mapping, self.box_chunk_size)
+        durations = []
+
+        for chunk in tqdm(chunks, desc="Processing chunks for duration calculation"):
+            self._download_files(chunk)
+            self.logger.info("Finished downloading chunk")
+            
+            files_chunks = self._chunk_files(chunk, self.chunk_size)
+            for files_chunk in tqdm(files_chunks, desc="Processing files and calculating durations"):
+                self._process_files_chunk(files_chunk, files_mapping)
+                self._calculate_chunk_durations(files_chunk, files_mapping, durations)
+            
+            self.logger.info("Finished processing chunk")
+
+        # Save to CSV
+        df = pd.DataFrame(durations)
+        df.to_csv(output_csv_path, index=False)
+        self.logger.info(f"Duration calculation complete. Results saved to {output_csv_path}")
+        
+        # Upload to S3 if configured
+        if self.s3_bucket:
+            # Extract bucket name and path from s3_bucket
+            if '/' in self.s3_bucket:
+                bucket_name, bucket_path = self.s3_bucket.split('/', 1)
+                s3_key = f"{bucket_path}/duration_results/{Path(output_csv_path).name}"
+            else:
+                bucket_name = self.s3_bucket
+                s3_key = f"duration_results/{Path(output_csv_path).name}"
+            
+            boto3.client('s3').upload_file(output_csv_path, bucket_name, s3_key)
+
+    def _calculate_chunk_durations(self, files_chunk: dict, files_mapping: dict, durations: list) -> None:
+        """Calculate durations for a chunk of processed .wav files."""
+        self.logger.info(f"Calculating durations for chunk with {len(files_chunk)} files")
+        
+        # Use glob to find all WAV files in the folder (like run_predictions)
+        wav_files = glob.glob(f"{self.wav_folder}/*.wav")
+        self.logger.info(f"Found {len(wav_files)} WAV files in {self.wav_folder}")
+        
+        processed_count = 0
+        for wav_file in wav_files:
+            wav_file_path = Path(wav_file)
+            # Extract just the timestamp part (before any spaces or .sud suffix)
+            timestamp_part = wav_file_path.stem.split()[0]  # Take only the first part before any space
+            
+            self.logger.info(f"Processing WAV file: {wav_file} -> timestamp: {timestamp_part}")
+            
+            if wav_file_path.stat().st_size > 0:
+                try:
+                    duration = self._get_audio_duration_simple(wav_file_path)
+                    durations.append({
+                        'filename': timestamp_part,
+                        'duration_seconds': duration
+                    })
+                    self.logger.info(f"Successfully calculated duration for {timestamp_part}: {duration:.2f}s")
+                    self.file_logger.log_file_event(files_chunk.get(timestamp_part, "unknown"), timestamp_part, "success", "duration_calculation")
+                except Exception as e:
+                    self.logger.error(f"Failed to calculate duration for {timestamp_part}: {e}")
+                    durations.append({
+                        'filename': timestamp_part,
+                        'duration_seconds': None
+                    })
+                    self.file_logger.log_file_event(files_chunk.get(timestamp_part, "unknown"), timestamp_part, f"failed: {e}", "duration_calculation")
+            else:
+                self.logger.warning(f"Empty WAV file: {wav_file}")
+                durations.append({
+                    'filename': timestamp_part,
+                    'duration_seconds': None
+                })
+                self.file_logger.log_file_event(files_chunk.get(timestamp_part, "unknown"), timestamp_part, "empty_wav_file", "duration_calculation")
+            
+            processed_count += 1
+            # Clean up the processed WAV file (like run_predictions)
+            self._clean_directory(self.wav_folder, [wav_file.split('/')[-1]])
+        
+        self.logger.info(f"Processed {processed_count} files from chunk")
+    
+    def _get_audio_duration_simple(self, file_path: Path) -> float:
+        """Get exact audio duration using ffprobe only."""
+        cmd = [
+            'ffprobe', '-v', 'quiet', '-print_format', 'json', 
+            '-show_format', str(file_path)
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        data = json.loads(result.stdout)
+        duration = float(data['format']['duration'])
+        return duration
+
 
 @hydra.main(version_base="1.2", config_path="../soundbay/conf", config_name="runs/main_pipeline")
 def main(cfg: DictConfig) -> None:
@@ -350,13 +444,19 @@ def main(cfg: DictConfig) -> None:
         pipeline.process_files(files_mapping)
     elif cfg.pipeline.mode == "predictions":
         pipeline.process_and_run_predictions(files_mapping, process_files=cfg.pipeline.process_files)
+    elif cfg.pipeline.mode == "durations":
+        output_csv_path = getattr(cfg.pipeline, 'duration_output_csv', None) or "audio_durations.csv"
+        pipeline.calculate_durations(files_mapping, output_csv_path)
     else:
-        raise ValueError(f"Unknown mode: {cfg.mode}")
+        raise ValueError(f"Unknown mode: {cfg.pipeline.mode}")
 
 
 if __name__ == "__main__":
     """
     from cli run:
-        python scripts/sud_files_pipelines.py pipeline.mode=<predictions or wav> pipeline.source=<box or s3> pipeline.files_path=<path to csv file containing a "files" column>
+        python scripts/sud_files_pipelines.py pipeline.mode=<predictions|wav|durations> pipeline.source=<box or s3> pipeline.files_path=<path to csv file containing a "files" column>
+        
+    For duration mode, optionally specify:
+        pipeline.duration_output_csv=<path to output csv file>
     """
     main()
