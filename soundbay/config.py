@@ -8,15 +8,14 @@ This module provides a dataclass-based configuration system that supports:
 - Nested value overrides using dot notation
 """
 
-import yaml
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Union
 from dataclasses import field, asdict, fields
-import argparse
 from copy import deepcopy
 from pydantic.dataclasses import dataclass
 from pydantic import field_validator
-
+from omegaconf import OmegaConf
+from omegaconf.dictconfig import DictConfig
 from soundbay.models import models_cfg_dict
 
 
@@ -232,216 +231,10 @@ class Config:
     optim: OptimConfig = field(default_factory=OptimConfig)
 
 
-class ConfigManager:
-    """Manages configuration loading, merging, and overrides"""
-    
-    def __init__(self, base_config: Optional[Config] = None):
-        self.config = base_config or Config()
-    
-    @classmethod
-    def from_yaml(cls, yaml_path: Union[str, Path]) -> 'ConfigManager':
-        """Load configuration from YAML file"""
-        yaml_path = Path(yaml_path)
-        if not yaml_path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {yaml_path}")
-        
-        with open(yaml_path, 'r') as f:
-            config_dict = yaml.safe_load(f)
-        
-        # Remove Hydra-specific keys
-        config_dict.pop('defaults', None)
-        config_dict.pop('# @package _global_', None)
-        
-        return cls(Config(**config_dict))
-    
-    @classmethod
-    def from_checkpoint(cls, checkpoint_path: Union[str, Path]) -> 'ConfigManager':
-        """Load configuration from checkpoint directory"""
-        checkpoint_path = Path(checkpoint_path)
-        args_path = checkpoint_path / 'args.yaml'
-        
-        if not args_path.exists():
-            raise FileNotFoundError(f"Checkpoint args file not found: {args_path}")
-        
-        return cls.from_yaml(args_path)
-    
-    def merge_config(self, other_config: Union[Config, Dict[str, Any]]) -> 'ConfigManager':
-        """Merge another configuration with current one"""
-        if isinstance(other_config, dict):
-            other_config = Config(**other_config)
-        
-        # Deep merge the configurations
-        current_dict = asdict(self.config)
-        other_dict = asdict(other_config)
-        
-        merged_dict = self._deep_merge(current_dict, other_dict)
-        self.config = Config(**merged_dict)
-        
-        return self
-    
-    def _deep_merge(self, base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
-        """Deep merge two dictionaries"""
-        result = deepcopy(base)
-        
-        for key, value in override.items():
-            if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                result[key] = self._deep_merge(result[key], value)
-            else:
-                result[key] = value
-        
-        return result
-    
-    def override_from_dict(self, overrides: Dict[str, Any]) -> 'ConfigManager':
-        """Override configuration values using nested dictionary keys"""
-        config_dict = asdict(self.config)
-        
-        for key_path, value in overrides.items():
-            keys = key_path.split('.')
-            current = config_dict
-            
-            # Navigate to the nested location
-            for key in keys[:-1]:
-                if key not in current:
-                    current[key] = {}
-                current = current[key]
-            
-            # Set the value
-            current[keys[-1]] = value
-        
-        self.config = Config(**config_dict)
-        return self
-    
-    def override_from_args(self, args: List[str]) -> 'ConfigManager':
-        """Override configuration from command line arguments"""
-        parser = argparse.ArgumentParser()
-        
-        # Add arguments for all configuration paths
-        config_dict = asdict(self.config)
-        self._add_config_args(parser, config_dict)
-        
-        # Parse known args to avoid conflicts with other arguments
-        parsed_args, _ = parser.parse_known_args(args)
-        
-        # Convert parsed args to override dictionary
-        overrides = {}
-        for key, value in parsed_args.__dict__.items():
-            if value is not None:
-                overrides[key] = value
-        
-        return self.override_from_dict(overrides)
-    
-    def _add_config_args(self, parser: argparse.ArgumentParser, config_dict: Dict[str, Any], prefix: str = ""):
-        """Recursively add configuration arguments to parser"""
-        for key, value in config_dict.items():
-            arg_name = f"{prefix}.{key}" if prefix else key
-            
-            if isinstance(value, dict):
-                self._add_config_args(parser, value, arg_name)
-            else:
-                # Determine argument type
-                if isinstance(value, bool):
-                    parser.add_argument(f"--{arg_name}", type=str2bool, default=value)
-                elif isinstance(value, int):
-                    parser.add_argument(f"--{arg_name}", type=int, default=value)
-                elif isinstance(value, float):
-                    parser.add_argument(f"--{arg_name}", type=float, default=value)
-                elif isinstance(value, list):
-                    parser.add_argument(f"--{arg_name}", type=str, default=str(value))
-                else:
-                    parser.add_argument(f"--{arg_name}", type=str, default=str(value))
-    
-    def save(self, path: Union[str, Path]) -> None:
-        """Save configuration to YAML file"""
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        
-        config_dict = asdict(self.config)
-        with open(path, 'w') as f:
-            yaml.dump(config_dict, f, default_flow_style=False, indent=2)
-    
-    def get(self, key_path: str, default: Any = None) -> Any:
-        """Get configuration value using dot notation"""
-        keys = key_path.split('.')
-        current = self.config
-        
-        try:
-            for key in keys:
-                current = getattr(current, key)
-            return current
-        except AttributeError:
-            return default
-    
-    def set(self, key_path: str, value: Any) -> None:
-        """Set configuration value using dot notation"""
-        keys = key_path.split('.')
-        current = self.config
-        
-        # Navigate to the parent of the target
-        for key in keys[:-1]:
-            current = getattr(current, key)
-        
-        # Set the value
-        setattr(current, keys[-1], value)
+def merge_configs(base_config: Config, override_config: Config) -> Config:
+    """Merge two configs into a single config"""
+    return OmegaConf.to_object(OmegaConf.merge(OmegaConf.structured(base_config), OmegaConf.structured(override_config)))
 
-
-def str2bool(v: str) -> bool:
-    """Convert string to boolean for argparse"""
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ('yes', 'true', 't', 'y', '1'):
-        return True
-    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-        return False
-    else:
-        raise argparse.ArgumentTypeError('Boolean value expected.')
-
-
-def load_config(
-    config_path: Optional[Union[str, Path]] = None,
-    checkpoint_path: Optional[Union[str, Path]] = None,
-    overrides: Optional[Dict[str, Any]] = None,
-    cmdline_args: Optional[List[str]] = None
-) -> Config:
-    """
-    Load and merge configuration with the specified priority:
-    1. Script defaults (lowest priority)
-    2. Checkpoint configuration
-    3. Config file overrides
-    4. Command line overrides (highest priority)
-    
-    Args:
-        config_path: Path to YAML configuration file
-        checkpoint_path: Path to checkpoint directory containing args.yaml
-        overrides: Dictionary of configuration overrides
-        cmdline_args: Command line arguments for overrides
-    
-    Returns:
-        Merged configuration object
-    """
-    manager = ConfigManager()
-    
-    # Load checkpoint configuration if provided
-    if checkpoint_path:
-        try:
-            checkpoint_manager = ConfigManager.from_checkpoint(checkpoint_path)
-            manager.merge_config(checkpoint_manager.config)
-        except FileNotFoundError:
-            print(f"Warning: Checkpoint configuration not found at {checkpoint_path}")
-    
-    # Load config file if provided
-    if config_path:
-        try:
-            config_manager = ConfigManager.from_yaml(config_path)
-            manager.merge_config(config_manager.config)
-        except FileNotFoundError:
-            print(f"Warning: Configuration file not found at {config_path}")
-    
-    # Apply dictionary overrides
-    if overrides:
-        manager.override_from_dict(overrides)
-    
-    # Apply command line overrides
-    if cmdline_args:
-        manager.override_from_args(cmdline_args)
-    
-    return manager.config
+def merge_config_with_overrides(base_config: Config, overrides: DictConfig) -> Config:
+    """Merge a config with overrides"""
+    return OmegaConf.to_object(OmegaConf.merge(OmegaConf.structured(base_config), overrides))
