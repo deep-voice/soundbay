@@ -21,6 +21,27 @@ from soundbay.models import models_cfg_dict
 
 
 @dataclass
+class AugmentationsConfig:
+    """Configuration for augmentations settings"""
+    pitch_shift_p: float = 0.0
+    time_stretch_p: float = 0.5
+    time_masking_p: float = 0.5
+    frequency_masking_p: float = 0.5
+    min_semitones: int = -4
+    max_semitones: int = 4
+    min_rate: float = 0.9
+    max_rate: float = 1.1
+    min_band_part: float = 0.05
+    max_band_part: float = 0.2
+    min_bandwidth_fraction: float = 0.05
+    max_bandwidth_fraction: float = 0.2
+    add_multichannel_background_noise_p: float = 0
+    min_snr_in_db: int = 3
+    max_snr_in_db: int = 30
+    lru_cache_size: int = 100
+    sounds_path: Optional[str] = None
+
+@dataclass
 class DatasetConfig:
     """Configuration for dataset settings"""
     module_name: Literal["classifier_dataset", "no_background_dataset", "inference_dataset"] = "classifier_dataset"
@@ -29,7 +50,7 @@ class DatasetConfig:
     mode: Literal["train", "val"] = "train"
     metadata_path: str = "./tests/assets/annotations/sample_annotations.csv"
     augmentations_p: float = 0.8
-    augmentations: Optional[List[str]] = None
+    augmentations_config: AugmentationsConfig = field(default_factory=AugmentationsConfig)
     margin_ratio: float = 0.5
     slice_flag: bool = False
 
@@ -69,7 +90,7 @@ class DataConfig:
     val_dataset: DatasetConfig = field(default_factory=lambda: DatasetConfig(
         mode="val",
         augmentations_p=0.0,
-        augmentations=None,
+        augmentations_config=AugmentationsConfig(),
         margin_ratio=0.0,
         slice_flag=True
     ))
@@ -136,7 +157,7 @@ class OptimizerConfig:
 @dataclass
 class SchedulerConfig:
     """Configuration for scheduler settings"""
-    module_name: str = "cosine_annealing_warm_restarts"
+    module_name: str = "torch.optim.lr_scheduler.CosineAnnealingWarmRestarts"
     scheduler_params: Dict[str, Any] = field(default_factory=lambda: {"T_0": 5})
 
 
