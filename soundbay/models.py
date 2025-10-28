@@ -1,7 +1,8 @@
 import importlib
 from typing import Union, List, Optional
 
-from pydandic.dataclasses import dataclass
+from pydantic.dataclasses import dataclass
+from dataclasses import field
 import torch
 import torchaudio
 import torch.nn as nn
@@ -18,7 +19,7 @@ from transformers import AutoProcessor, ASTModel
 @dataclass
 class ResNet1ChannelCfg:
     num_classes: int = 2
-    layers: List[int] = [3, 4, 6, 3]
+    layers: List[int] = field(default_factory=lambda: [3, 4, 6, 3])
     block: str = "torchvision.models.resnet.Bottleneck"
 
 @dataclass
@@ -52,8 +53,6 @@ class EfficientNet2DCfg:
 @dataclass
 class WAV2VEC2Cfg:
     num_classes: int = 2
-    config: str = torchaudio.pipelines.WAV2VEC2_BASE._params
-    path: str = f'https://download.pytorch.org/torchaudio/models/{torchaudio.pipelines.WAV2VEC2_BASE._path}'
     pretrained: bool = True
     freeze_encoder: bool = False
 
