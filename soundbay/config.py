@@ -10,7 +10,7 @@ This module provides a dataclass-based configuration system that supports:
 
 import yaml
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Union, Literal
+from typing import Optional, List, Dict, Any, Union
 from dataclasses import field, asdict, fields
 import argparse
 from copy import deepcopy
@@ -44,10 +44,10 @@ class AugmentationsConfig:
 @dataclass
 class DatasetConfig:
     """Configuration for dataset settings"""
-    module_name: Literal["classifier_dataset", "no_background_dataset", "inference_dataset"] = "classifier_dataset"
+    module_name: str = "classifier_dataset"
     data_path: str = "./tests/assets/data/"
     path_hierarchy: int = 0
-    mode: Literal["train", "val"] = "train"
+    mode: str = "train"
     metadata_path: str = "./tests/assets/annotations/sample_annotations.csv"
     augmentations_p: float = 0.8
     augmentations_config: AugmentationsConfig = field(default_factory=AugmentationsConfig)
@@ -65,6 +65,20 @@ class DatasetConfig:
         if v < 0 or v > 1:
             raise ValueError("margin_ratio must be between 0 and 1")
         return v
+    
+    @field_validator("module_name")
+    def validate_module_name(cls, v: str) -> str:
+        allowed_values = ["classifier_dataset", "no_background_dataset", "inference_dataset"]
+        if v not in allowed_values:
+            raise ValueError(f"module_name must be one of {allowed_values}, got {v}")
+        return v
+    
+    @field_validator("mode")
+    def validate_mode(cls, v: str) -> str:
+        allowed_values = ["train", "val"]
+        if v not in allowed_values:
+            raise ValueError(f"mode must be one of {allowed_values}, got {v}")
+        return v
 
 
 @dataclass
@@ -78,10 +92,10 @@ class DataConfig:
     min_freq: int = 0
     n_fft: int = 1024
     hop_length: int = 256
-    label_type: Literal["single_label", "multi_label"] = 'single_label'
+    label_type: str = 'single_label'
     proba_threshold: float = 0.5
-    audio_representation: Optional[Literal["spectrogram", "mel_spectrogram", "sliding_window_spectrogram"]] = "spectrogram"
-    normalization: Optional[Literal["peak", "unit"]] = "peak"
+    audio_representation: Optional[str] = "spectrogram"
+    normalization: Optional[str] = "peak"
     resize: bool = False
     size: tuple[int, int] = (224, 224)
     n_mels: int = 64
@@ -94,6 +108,31 @@ class DataConfig:
         margin_ratio=0.0,
         slice_flag=True
     ))
+    
+    @field_validator("label_type")
+    def validate_label_type(cls, v: str) -> str:
+        allowed_values = ["single_label", "multi_label"]
+        if v not in allowed_values:
+            raise ValueError(f"label_type must be one of {allowed_values}, got {v}")
+        return v
+    
+    @field_validator("audio_representation")
+    def validate_audio_representation(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        allowed_values = ["spectrogram", "mel_spectrogram", "sliding_window_spectrogram"]
+        if v not in allowed_values:
+            raise ValueError(f"audio_representation must be one of {allowed_values}, got {v}")
+        return v
+    
+    @field_validator("normalization")
+    def validate_normalization(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        allowed_values = ["peak", "unit"]
+        if v not in allowed_values:
+            raise ValueError(f"normalization must be one of {allowed_values}, got {v}")
+        return v
 
 
 @dataclass
@@ -129,9 +168,23 @@ class ExperimentConfig:
 class ModelConfig:
     """Configuration for model settings"""
     num_classes: int = 2  # can we allow required here?
-    criterion: str = Literal["cross_entropy", "bce_with_logits"]
-    module_name: Literal[list(models_cfg_dict.keys())] = "ResNet1Channel"
+    criterion: str = "cross_entropy"
+    module_name: str = "ResNet1Channel"
     model_params: Optional[Dict[str, Any]] = None
+
+    @field_validator("criterion")
+    def validate_criterion(cls, v: str) -> str:
+        allowed_values = ["cross_entropy", "bce_with_logits"]
+        if v not in allowed_values:
+            raise ValueError(f"criterion must be one of {allowed_values}, got {v}")
+        return v
+    
+    @field_validator("module_name")
+    def validate_module_name(cls, v: str) -> str:
+        allowed_values = list(models_cfg_dict.keys())
+        if v not in allowed_values:
+            raise ValueError(f"module_name must be one of {allowed_values}, got {v}")
+        return v
 
     def __post_init__(self):
         # Get dataclass type
