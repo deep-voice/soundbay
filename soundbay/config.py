@@ -223,7 +223,7 @@ class OptimConfig:
 
 
 @dataclass
-class Config:
+class TrainingConfig:
     """Main configuration class that combines all sub-configurations"""
     data: DataConfig = field(default_factory=DataConfig)
     experiment: ExperimentConfig = field(default_factory=ExperimentConfig)
@@ -231,10 +231,21 @@ class Config:
     optim: OptimConfig = field(default_factory=OptimConfig)
 
 
-def merge_configs(base_config: Config, override_config: Config) -> Config:
+def merge_configs(base_config: TrainingConfig, override_config: TrainingConfig) -> TrainingConfig:
     """Merge two configs into a single config"""
     return OmegaConf.to_object(OmegaConf.merge(OmegaConf.structured(base_config), OmegaConf.structured(override_config)))
 
-def merge_config_with_overrides(base_config: Config, overrides: DictConfig) -> Config:
+
+def merge_config_with_overrides(base_config: TrainingConfig, overrides: DictConfig) -> TrainingConfig:
     """Merge a config with overrides"""
     return OmegaConf.to_object(OmegaConf.merge(OmegaConf.structured(base_config), overrides))
+
+
+def create_training_config(config_path: Optional[str] = None, overrides: Optional[list[str]] = None) -> TrainingConfig:
+    """Create a training config"""
+    base_config = TrainingConfig()
+    if config_path is not None:
+        base_config = merge_config_with_overrides(base_config, OmegaConf.load(config_path))
+    if overrides:
+        base_config = merge_config_with_overrides(base_config, OmegaConf.from_dotlist(overrides))
+    return base_config

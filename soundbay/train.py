@@ -28,11 +28,15 @@ import random
 from unittest.mock import Mock
 from copy import deepcopy
 from soundbay.utils.app import App
-from soundbay.utils.logging import Logger, flatten, get_experiment_name
+from soundbay.utils.logging import Logger, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
 from soundbay.trainers import Trainer
 from soundbay.conf_dict import models_dict, criterion_dict, datasets_dict, optim_dict, scheduler_dict
 import string
+import click
+from typing import Optional
+from soundbay.config import create_training_config
+from dataclasses import asdict
 
 
 def modeling(
@@ -192,13 +196,13 @@ def modeling(
     return
 
 
-# TODO check how to use hydra without path override
-@hydra.main(config_name="/runs/main", config_path="conf", version_base='1.2')
-def main(validate_args) -> None:
-
-    args = deepcopy(validate_args)
-    OmegaConf.resolve(validate_args)
-    Config(**validate_args)
+@click.command()
+@click.option("--config", type=Optional[str], help="Path to configuration file")
+@click.argument("overrides", nargs=-1, help="Overrides to the configuration")
+def train(config: Optional[str], overrides: list[str]) -> None:
+    
+    args = create_training_config(config_path=config, overrides=overrides)
+    App().init(args)
     # Set logger
     if args.experiment.debug:
         _logger = Mock()
@@ -224,13 +228,10 @@ def main(validate_args) -> None:
         device = torch.device("cuda")
 
     # Convert filepaths, convenient if you wish to use relative paths
-    hydra_dirpath = Path(hydra.utils.get_original_cwd())
-    working_dirpath = Path.cwd()
-    assert working_dirpath == hydra_dirpath, "hydra is doing funky stuff with the paths again, check it out"
-    output_dirpath = working_dirpath / f'../checkpoints/{_logger.run.id}'
+    working_dirpath = Path(__file__).parent.parent
+    output_dirpath = working_dirpath / 'checkpoints' / f'{_logger.run.id}'
     output_dirpath.mkdir(parents=True)
     OmegaConf.save(args, output_dirpath / 'args.yaml', resolve=False)  # we prefer to save the referenced version,
-    # we can always resolve once we load the conf again
 
     # Define checkpoint
     if args.experiment.checkpoint.path:
@@ -241,29 +242,13 @@ def main(validate_args) -> None:
 
     # Logging
     logger = Logger(_logger, debug_mode=args.experiment.debug, artifacts_upload_limit=args.experiment.artifacts_upload_limit)
-    flattenArgs = flatten(args)
-    logger.log_writer.config.update(flattenArgs)
-    App.init(args)
+    logger.log_writer.config.update(asdict(args))
 
-    # Define criterion
-    # criterion = instantiate(args.model.criterion)
-    if args.model.criterion._target_ in ['torch.nn.CrossEntropyLoss', 'torch.nn.BCEWithLogitsLoss']:
-        criterion = criterion_dict[args.model.criterion._target_]
-    
     # Seed script
     if args.experiment.manual_seed is None:
         args.experiment.manual_seed = random.randint(1, 10000)
     random.seed(args.experiment.manual_seed)
     torch.manual_seed(args.experiment.manual_seed)
-
-    # Finetune
-    if args.optim.freeze_layers_for_finetune is None:
-        args.optim.freeze_layers_for_finetune = False
-    if args.optim.freeze_layers_for_finetune:
-        print('The model is in finetune mode!')
-
-    # proba threshold (for multi-label classification, using "get" for backward compatibility)
-    classification_proba_threshold = args.data.get('proba_threshold', 0.5)
 
     # label type, using "get" for backward compatibility
     label_type = args.data.get('label_type', 'single_label')
@@ -274,13 +259,11 @@ def main(validate_args) -> None:
         device=device,
         epochs=args.optim.epochs,
         debug=args.experiment.debug,
-        criterion=criterion,
         checkpoint=checkpoint,
         output_path=output_dirpath,
         load_optimizer_state=args.experiment.checkpoint.load_optimizer_state,
         label_names=args.data.label_names,
         label_type=label_type,
-        proba_threshold=classification_proba_threshold,
     )
     # modeling function for training
     modeling(
@@ -305,4 +288,4 @@ def main(validate_args) -> None:
         
 
 if __name__ == "__main__":
-    main()
+    train()
