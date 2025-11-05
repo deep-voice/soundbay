@@ -193,7 +193,7 @@ def modeling(
 
 
 # TODO check how to use hydra without path override
-@hydra.main(config_name="/runs/fannie_training", config_path="conf", version_base='1.2')
+@hydra.main(config_name="/runs/fannie_training_multi_label", config_path="conf", version_base='1.2')
 def main(validate_args) -> None:
 
     args = deepcopy(validate_args)
