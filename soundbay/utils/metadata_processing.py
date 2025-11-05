@@ -7,17 +7,18 @@ import re
 from tqdm import tqdm
 import soundfile as sf
 from typing import List
+import datetime
 
 
 # TODO add tests to the utils in this file
 
 def load_n_adapt_raven_annotation_table_to_dv_dataset_requirements(annotation_file_path: str,
-                                                                   annotation_filename_dict: dict = None,
+                                                                   annotation_filename_dict: dict = {},
                                                                    filename_suffix: str = ".Table.1.selections.txt"
                                                                    ) -> pd.DataFrame:
     # todo: decide whether to add annotation treatment
     df_annotations = pd.read_csv(annotation_file_path, sep="\t")
-    if annotation_filename_dict is not None:
+    if annotation_filename_dict:
         try:
             df_annotations['filename'] = annotation_filename_dict[os.path.basename(annotation_file_path)].replace('.txt', '')
         except KeyError:
@@ -25,12 +26,18 @@ def load_n_adapt_raven_annotation_table_to_dv_dataset_requirements(annotation_fi
             df_annotations['filename'] = os.path.basename(annotation_file_path).replace(filename_suffix, '')
     else:
         df_annotations['filename'] = os.path.basename(annotation_file_path).replace(filename_suffix, '')
-    df_annotations = df_annotations.rename(columns={'Begin Time (s)': 'begin_time', 'End Time (s)': 'end_time'})
+
+    # replace column names to be easily accesable in pandas:
+    # i.e. lower case, replace space with '_', and remove ()
+    df_annotations.columns = df_annotations.columns.str.lower()
+    df_annotations.columns = df_annotations.columns.str.replace('\([^)]*\)', '', regex=True)
+    df_annotations.columns = df_annotations.columns.str.rstrip()
+    df_annotations.columns = df_annotations.columns.str.replace(' ', '_')
+    
+
     df_annotations['call_length'] = df_annotations['end_time'] - df_annotations['begin_time']
     return df_annotations
 
-
-# <<<<<<< feature/EDA_script
 def raven_to_df_annotations(annotations_path: str,
                             recording_path: str,
                             positive_tag_names: list = ['w', 'sc']):
@@ -350,126 +357,64 @@ def multi_target_from_time_intervals_df(
 
     return pd.Series(overlaps, name='label')
 
-# def get_wav_files_metadata(file_list: list) -> pd.DataFrame:
-#     """
-#     Args:
-#         file_list: a list of wav files paths
+def get_wav_files_metadata(file_list: list) -> pd.DataFrame:
+    """
+    Args:
+        file_list: a list of wav files paths
 
-#     Returns: a DataFrame with the columns: 'file_name', 'file_path', 'duration', 'sample_rate'.
-#     """
-#     metadata = []
-#     for file in file_list:
-#         duration = sf.info(file).duration
-#         sample_rate = sf.info(file).samplerate
-#         metadata.append({'file_name': Path(file).stem, 'file_path': file, 'duration': duration, 'sample_rate': sample_rate})
-#     return pd.DataFrame(metadata)
+    Returns: a DataFrame with the columns: 'file_name', 'file_path', 'duration', 'sample_rate'.
+    """
+    metadata = []
+    for file in file_list:
+        duration = sf.info(file).duration
+        sample_rate = sf.info(file).samplerate
+        metadata.append({'file_name': Path(file).stem, 'file_path': file, 'duration': duration, 'sample_rate': sample_rate})
+    return pd.DataFrame(metadata)
 
-# def get_year_from_fannie_file_name(file_name: str, milenia = 2000) -> int:
-#     """
-#     Args:
-#         file_name: a string with the file name, e.g. '<rec_id>.<2d_year><2d_month><day><hr><min><sec>.WAV'
+def get_year_from_fannie_file_name(file_name: str, milenia = 2000) -> int:
+    """
+    Args:
+        file_name: a string with the file name, e.g. '<rec_id>.<2d_year><2d_month><day><hr><min><sec>.WAV'
 
-#     Returns: an integer with the year, e.g. 2018
-#     """
-#     return milenia + int(file_name.split('.')[1][:2])
+    Returns: an integer with the year, e.g. 2018
+    """
+    return milenia + int(file_name.split('.')[1][:2])
 
-# def get_month_from_fannie_file_name(file_name: str) -> int:
-#     """
-#     Args:
-#         file_name: a string with the file name, e.g. '<rec_id>.<2d_year><2d_month><day><hr><min><sec>.WAV'
+def get_month_from_fannie_file_name(file_name: str) -> int:
+    """
+    Args:
+        file_name: a string with the file name, e.g. '<rec_id>.<2d_year><2d_month><day><hr><min><sec>.WAV'
 
-#     Returns: an integer with the month, e.g. 5
-#     """
-#     return int(file_name.split('.')[1][2:4])
+    Returns: an integer with the month, e.g. 5
+    """
+    return int(file_name.split('.')[1][2:4])
 
-# def get_day_from_fannie_file_name(file_name: str, milenia = 2000) -> int:
-#     """
-#     Args:
-#         file_name: a string with the file name, e.g. '<rec_id>.<2d_year><2d_month><day><hr><min><sec>.WAV'
+def get_day_from_fannie_file_name(file_name: str, milenia = 2000) -> int:
+    """
+    Args:
+        file_name: a string with the file name, e.g. '<rec_id>.<2d_year><2d_month><day><hr><min><sec>.WAV'
 
-#     Returns: an integer with the year, e.g. 2018
-#     """
-#     return milenia + int(file_name.split('.')[1][4:6])
+    Returns: an integer with the year, e.g. 2018
+    """
+    return milenia + int(file_name.split('.')[1][4:6])
 
-# # def get_date_time_from_fannie_file_name(file_name: str, milenia = 2000) -> int:
-# #     """
-# #     Args:
-# #         file_name: a string with the file name, e.g. '<rec_id>.<2d_year><2d_month><day><hr><min><sec>.WAV'
+def create_wav_info_df(wav_files: list, wav_files_names_format="fannie") -> pd.DataFrame:
+    """
+    Creates a DataFrame with the metadata of the wav files.
+    Args:
+        wav_files: a list of wav files paths
 
-# #     Returns: an integer with the year, e.g. 2018
-# #     """
-# #     date_time = date_time.fromisoformat(file_name.split('.')[1])
-# #     return milenia + int(file_name.split('.')[1][:2])
-
-# def create_wav_info_df(wav_files: list, wav_files_names_format="fannie") -> pd.DataFrame:
-#     """
-#     Creates a DataFrame with the metadata of the wav files.
-#     Args:
-#         wav_files: a list of wav files paths
-
-#     Returns: a DataFrame with the columns: 'file_name', 'file_path', 'duration', 'sample_rate', year, month. - can add rec_if, min, sec
-#     """
-#     wav_df = get_wav_files_metadata(wav_files)
+    Returns: a DataFrame with the columns: 'file_name', 'file_path', 'duration', 'sample_rate', year, month. - can add rec_if, min, sec
+    """
+    wav_df = get_wav_files_metadata(wav_files)
     
-#     if wav_files_names_format == "fannie":
-#         wav_df["year"] = wav_df["file_name"].apply(get_year_from_fannie_file_name)
-#         wav_df["month"] = wav_df["file_name"].apply(get_month_from_fannie_file_name)
-#     else:
-#         raise ValueError(f"Unknown wav files names format: {wav_files_names_format}")
+    if wav_files_names_format == "fannie":
+        wav_df["year"] = wav_df["file_name"].apply(get_year_from_fannie_file_name)
+        wav_df["month"] = wav_df["file_name"].apply(get_month_from_fannie_file_name)
+    else:
+        raise ValueError(f"Unknown wav files names format: {wav_files_names_format}")
     
-#     return wav_df
-
-# def convert_month_annotation_to_file_anotation(annotation_df: pd.DataFrame, wav_info_df: list) -> pd.DataFrame:
-#     """
-#     Converts annotation file with monthly times to annotation file with file related times.
-#     assuming only one month is given in the annotation_df! # TODO: add support for multiple months
-#     Args:
-#         df: a DataFrame with the columns: 'year', 'month', 'day', 'hr', 'min', 'sec'.
-
-#     Returns: a DataFrame with the columns: 'file_start_time', 'file_end_time'.
-#     """      
-#     wav_info_df['accumulated_duration'] = wav_info_df.groupby(["year", "month"])["duration"].cumsum()
-#     # remove the value of the recording itself:
-#     wav_info_df['accumulated_duration'] -= wav_info_df['duration']
-
-#     wanted_month = get_month_from_fannie_file_name(annotation_df['Begin File'].iloc[0])
-    
-#     # filter the wav_info_df to contain only the wanted month
-#     wav_info_df = wav_info_df[wav_info_df['month'] == wanted_month]
-
-#     # add the wav file name to the annotation_df
-#     annotation_df['wav_file'] = annotation_df['Begin Time (s)'].apply(lambda x: wav_info_df.iloc[np.searchsorted(wav_info_df['accumulated_duration'].values, x, side = "right") - 1]['file_name'])
-
-#     annotation_df['file_start_time'] = annotation_df.apply(
-#         lambda row: row['Begin Time (s)'] - wav_info_df[wav_info_df['file_name'] == row['wav_file']].iloc[0]['accumulated_duration'], axis=1
-#     )
-
-#     annotation_df['file_end_time'] = annotation_df.apply(
-#         lambda row: row['End Time (s)'] - wav_info_df[wav_info_df['file_name'] == row['wav_file']].iloc[0]['accumulated_duration'], axis=1
-#     )
-    
-#     # replace Begin Time (s) and End Time (s) with file_start_time and file_end_time
-#     annotation_df = annotation_df.drop(columns=['Begin Time (s)', 'End Time (s)', 'Begin File'])
-#     annotation_df = annotation_df.rename(columns={'file_start_time': 'Begin Time (s)',
-#                                                 'file_end_time': 'End Time (s)'})
-#     return annotation_df
-
-# def create_annotation_df_with_file_times(annotation_dir, wav_info_df):
-#     """
-#     Create a DataFrame with annotations and their corresponding file times.
-#     """
-#     annotation_files = list(annotation_dir.rglob("*.txt"))
-#     annotation_dfs = [pd.read_csv(file, sep="\t") for file in annotation_files]
-    
-#     # Convert month-based annotations to file-based annotations
-#     fixed_annotation_dfs = []
-#     for df in annotation_dfs:
-#         df = convert_month_annotation_to_file_anotation(df, wav_info_df)
-#         fixed_annotation_dfs.append(df)
-    
-#     return pd.concat(fixed_annotation_dfs, ignore_index=True)
-    
-import datetime
+    return wav_df
 
 def get_rec_id_from_fannie_file_name(file_name: str) -> str:
     """
@@ -543,49 +488,161 @@ def add_month_acc_duration(df: pd.DataFrame) -> pd.DataFrame:
     df['accumulated_duration'] = df.groupby('month_year')['duration'].cumsum() - df['duration']
     return df
 
-def load_corrected_annotation_df(annotation_dir: Path, wav_info_df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Load and correct the annotation DataFrame with file times.
-    
-    Args:
-        annotation_dir: Directory containing annotation files.
-        wav_info_df: DataFrame with wav file information.
+def get_start_file_from_ann_name(ann_path: Path, 
+                                 filename_suffix: str = ".Table.1.selections.txt",
+                                 filename_prefix: str = '') -> str:
+    file_name = ann_path.name
+    if filename_suffix:
+        file_name = str(file_name).removesuffix(filename_suffix)
+    if filename_prefix:
+        file_name = file_name.removeprefix(filename_prefix)
+    file_name = file_name + ".wav"
+
+    return file_name
+
+def get_dir_wav_info(wav_dir: Path, first_file: str='', meta_file_name: str = "wav_meta_info.csv", save: bool=True) -> pd.DataFrame:
+    # check if metadata file already_exist
+    if (wav_dir / meta_file_name).exists():
+        meta_df = pd.read_csv(wav_dir / meta_file_name)
         
-    Returns:
-        Corrected DataFrame with annotations.
+        # make sure the columns are at the right format
+        meta_df['wav_file'] = meta_df['wav_file'].astype(str)
+        meta_df['date_time'] = meta_df.date_time.apply(lambda x: datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S'))
+
+    else:
+        print("Build wav folder meta-data file ...")
+        meta_df = get_wav_info_df(wav_dir)
+        if save:
+            meta_df.to_csv(wav_dir / meta_file_name, index=False)
+
+    # check if the metadata file starts at the wanted file:
+    if first_file:
+        # Find the index of the first file
+        start_idx_series = meta_df[meta_df['wav_file'].str.endswith(first_file)].index
+        
+        if not start_idx_series.empty:
+            start_idx = start_idx_series[0]
+            
+            # If the file is not the first one, slice the DataFrame
+            if start_idx > 0:
+                meta_df = meta_df.iloc[start_idx:].reset_index(drop=True)
+        else:
+            print(f"Warning: {first_file} not found in metadata. Using full metadata file.")
+
+    # recalculate the accumulation time, as might have sliced the dataframe
+    meta_df['month'] = meta_df.date_time.apply(lambda x: x.month)
+    meta_df = add_month_acc_duration(meta_df)
+
+    return meta_df
+
+
+def load_annotation_correct_file_time(ann_file: Path, wav_dir: Path, filename_prefix: str = "LF_", filename_suffix: str = ".Table.1.selections.txt") -> pd.DataFrame:
     """
-    annotation_files = list(annotation_dir.rglob("*.txt"))
-    annotation_dfs = [pd.read_csv(file, sep="\t", on_bad_lines='skip') for file in annotation_files]
-    annotation_df = pd.concat(annotation_dfs, ignore_index=True)
-    # remove LR_ at the beginning of the file names
-    annotation_df['Begin File'] = annotation_df['Begin File'].apply(lambda x: x[3:])
+    """
+    first_month_file = get_start_file_from_ann_name(ann_file, filename_prefix=filename_prefix, filename_suffix=filename_suffix)
+
+    wav_info_df = get_dir_wav_info(wav_dir, first_file=first_month_file)
+
+    ann_df = load_n_adapt_raven_annotation_table_to_dv_dataset_requirements(ann_file)
+
+    # remove "LF_" from begining of file name:
+    if filename_prefix and ann_df['begin_file'].str.startswith(filename_prefix).any():
+        ann_df['begin_file'] = ann_df['begin_file'].str.removeprefix(filename_prefix)
+
+    # replace names for marge
+    ann_df.rename(columns={'begin_file': 'wav_file'}, inplace=True)
+
     file_df = wav_info_df[['wav_file', 'date_time', 'duration', 'accumulated_duration']].copy()
-    file_df['wav_file'] = file_df['wav_file'].apply(lambda x: str(x).split('/')[-1])
+
+    file_df.wav_file = file_df.wav_file.apply(lambda x: Path(x).name)
     
-    annotation_df.rename(columns={'Begin File': 'wav_file'}, inplace=True)
-    annotation_df = pd.merge(annotation_df, file_df, on='wav_file', how='left')
-
-    annotation_df.rename(columns={
-        'Begin Time (s)': 'begin_time',
-        'End Time (s)': 'end_time'
-    }, inplace=True)
-
-    # make sure the formats are in floats:
-    annotation_df['begin_time'] = annotation_df['begin_time'].astype(float)
-    annotation_df['end_time'] = annotation_df['end_time'].astype(float)
+    ann_df = pd.merge(ann_df, file_df, on='wav_file', how='left')
 
     # correct the begin_time and end_time based on the accumulated duration
-    annotation_df['begin_time'] = annotation_df['begin_time'] - annotation_df['accumulated_duration']
-    annotation_df['end_time'] = annotation_df['end_time'] - annotation_df['accumulated_duration']
-    return annotation_df
+    ann_df.begin_time = ann_df.begin_time - ann_df.accumulated_duration
+    ann_df.end_time = ann_df.end_time - ann_df.accumulated_duration
     
-# if __name__ == "__main__":
-#     ## To test:
-#     BASE_PATH = Path(os.getcwd())
-#     DATASET_PATH = BASE_PATH / "datasets/fannie_project"
-#     mad_may_df = pd.read_csv(DATASET_PATH / "MAD_BLUE" / "LF_5756.210501002958.Table.1.selections.txt", sep="\t", on_bad_lines='skip')
-#     wav_files = DATASET_PATH.rglob("*.wav")
-#     wav_files = list(wav_files)
-#     wav_info_df = create_wav_info_df(wav_files, wav_files_names_format="fannie")
-#     may_annotation_df = convert_month_annotation_to_file_anotation(mad_may_df, wav_info_df)
-#     print(may_annotation_df.head())
+    # remove helper columns
+    # ann_df.drop(columns=['duration', 'accumulated_duration'], inplace=True)
+    
+    return ann_df
+
+
+def load_dir_annotation_with_file_time(annotation_dir: Path, wav_info_dir: Path, filename_prefix: str = "LF_", filename_suffix: str | list[str] = ".Table.1.selections.txt") -> pd.DataFrame:
+    """
+    Load all annotations in the directory of annotation dir and fix the time of the annotation from time since begining of month to time since begining of file.
+    """
+    annotation_files = list(annotation_dir.rglob("*.selections.txt"))
+    filename_suffixs = filename_suffix if isinstance(filename_suffix, list) else [filename_suffix]
+    annotation_dfs = []
+    for suffix in filename_suffixs:
+        annotation_df = [load_annotation_correct_file_time(file_name, wav_info_dir, filename_prefix=filename_prefix, filename_suffix=suffix) for file_name in annotation_files]
+        annotation_dfs.extend(annotation_df)
+
+    return pd.concat(annotation_dfs)
+
+# for test:
+def convert_ann_df_to_raven_format(df: pd.DataFrame) -> pd.DataFrame:
+    raven_df = df.copy()
+    raven_df.rename(columns={
+        'begin_time': 'Begin Time (s)',
+        'end_time': 'End Time (s)',
+        'selection': 'Selection',
+        'low_freq': 'Low Frequency (Hz)',
+        'high_freq': 'High Frequency (Hz)',
+        }, inplace=True)
+    # keep only raven relevant columns
+    raven_df = raven_df[['Selection', 'Begin Time (s)', 'End Time (s)', 'Low Frequency (Hz)', 'High Frequency (Hz)']]
+    return raven_df
+
+if __name__ == "__main__":
+    import datetime
+    import time
+    import pprint
+
+    ## To test:
+    BASE_PATH = Path(os.getcwd())
+    DATASET_PATH = BASE_PATH / "datasets/fannie_project"
+    file = DATASET_PATH / "MAD_BLUE" / "LF_5756.210501002958.Table.1.selections.txt"
+
+    # test wav_df generator
+    start_time = time.time()
+    wav_df = get_dir_wav_info(DATASET_PATH)
+    end_time = time.time()
+    print(f"get_dir_wav_info took {end_time - start_time:.2f} seconds")
+    pprint.pp(wav_df)
+
+    # test time of retrival
+    start_time = time.time()
+    wanted_file = str(wav_df.wav_file[4]).split("/")[-1]
+    print(wanted_file)
+    wav_df = get_dir_wav_info(DATASET_PATH, first_file=wanted_file)
+    end_time = time.time()
+    print(f"get_dir_wav_info took {end_time - start_time:.2f} seconds")
+    pprint.pp(wav_df)
+
+    # # check annotation loading with time correction
+    # start_time = time.time()
+    # ann_df = load_annotation_correct_file_time(file, DATASET_PATH)
+    # end_time = time.time()
+    # print(f"load_annotation_correct_file_time took {end_time - start_time:.2f} seconds")
+    # pprint.pp(ann_df)
+
+    # # create a raven test annotation for sampled files from the annotation dataframe:
+    # num_unique_files = len(ann_df.wav_file.unique())
+    # print(f"Number of unique files in the annotation: {num_unique_files}")
+    # sampled_files = ann_df.wav_file.unique()[np.random.choice(num_unique_files, size=min(5, num_unique_files), replace=False)]
+    # results_dir = BASE_PATH.parent / "test_results"
+    # for file in sampled_files:
+    #     file_ann_df = ann_df[ann_df.wav_file == file]
+    #     file_ann_df = convert_ann_df_to_raven_format(file_ann_df)
+    #     file_ann_df.to_csv(results_dir / f"test_raven_annotation_{file}.selections.txt", sep="\t", index=False)
+
+    # test loading all annotations in a directory
+    start_time = time.time()
+    all_ann_df = load_dir_annotation_with_file_time(DATASET_PATH / "MAD_BLUE", DATASET_PATH)
+    end_time = time.time()
+    print(f"load_dir_annotation_with_file_time took {end_time - start_time:.2f} seconds")
+    pprint.pp(all_ann_df)
+    print(f"Number of unique files in the full annotation: {len(all_ann_df.wav_file.unique())}")
+
