@@ -3,7 +3,7 @@ from soundbay.custom_audiomentations import AddMultichannelBackgroundNoise
 from typing import Optional
 
 
-class Augmentations:
+class Augmentor:
     def __init__(self, pitch_shift_p: float, time_stretch_p: float, time_masking_p: float, frequency_masking_p: float,
                        min_semitones: int, max_semitones: int, min_rate: float, max_rate: float, min_band_part: float, 
                        max_band_part: float, min_center_freq: int, min_bandwidth_fraction: float, max_bandwidth_fraction: float,

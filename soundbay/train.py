@@ -29,6 +29,8 @@ from soundbay.utils.logging import Logger, get_experiment_name
 from soundbay.utils.checkpoint_utils import upload_experiment_to_s3
 from soundbay.trainers import Trainer
 from soundbay.conf_dict import models_dict, criterion_dict, datasets_dict
+from soundbay.preprocessing import Preprocessor
+from soundbay.augmentations import Augmentor
 import string
 import click
 from typing import Optional
@@ -53,12 +55,46 @@ def modeling(
     batch_size = app.args.data.batch_size
     num_workers = app.args.data.num_workers
 
+    # create preprocessors
+    preprocessor = Preprocessor(
+        audio_representation=app.args.data.audio_representation,
+        normalization=app.args.data.normalization,
+        resize=app.args.data.resize,
+        size=app.args.data.size,
+        sample_rate=app.args.data.sample_rate,
+        min_freq=app.args.data.min_freq,
+        n_fft=app.args.data.n_fft,
+        hop_length=app.args.data.hop_length,
+        n_mels=app.args.data.n_mels
+    )
+
+    # create augmentor
+    augmentor = Augmentor(
+        pitch_shift_p=train_dataset_args.augmentations_config.pitch_shift_p,
+        time_stretch_p=train_dataset_args.augmentations_config.time_stretch_p,
+        time_masking_p=train_dataset_args.augmentations_config.time_masking_p,
+        frequency_masking_p=train_dataset_args.augmentations_config.frequency_masking_p,
+        min_semitones=train_dataset_args.augmentations_config.min_semitones,
+        max_semitones=train_dataset_args.augmentations_config.max_semitones,
+        min_rate=train_dataset_args.augmentations_config.min_rate,
+        max_rate=train_dataset_args.augmentations_config.max_rate,
+        min_band_part=train_dataset_args.augmentations_config.min_band_part,
+        max_band_part=train_dataset_args.augmentations_config.max_band_part,
+        min_bandwidth_fraction=train_dataset_args.augmentations_config.min_bandwidth_fraction,
+        max_bandwidth_fraction=train_dataset_args.augmentations_config.max_bandwidth_fraction,
+        add_multichannel_background_noise_p=train_dataset_args.augmentations_config.add_multichannel_background_noise_p,
+        min_snr_in_db=train_dataset_args.augmentations_config.min_snr_in_db,
+        max_snr_in_db=train_dataset_args.augmentations_config.max_snr_in_db,
+        lru_cache_size=train_dataset_args.augmentations_config.lru_cache_size,
+        sounds_path=train_dataset_args.augmentations_config.sounds_path
+    )
+
     train_dataset = datasets_dict[train_dataset_args.module_name](
         data_path = train_dataset_args.data_path,
         metadata_path=train_dataset_args.metadata_path, 
-        augmentations=train_dataset_args.augmentations,
+        augmentor=augmentor,
         augmentations_p=train_dataset_args.augmentations_p,
-        preprocessors=train_dataset_args.preprocessors,
+        preprocessor=preprocessor,
         seq_length=train_dataset_args.seq_length, 
         data_sample_rate=train_dataset_args.data_sample_rate,
         sample_rate=train_dataset_args.sample_rate, 
@@ -67,16 +103,16 @@ def modeling(
         mode=train_dataset_args.mode,
         path_hierarchy=train_dataset_args.path_hierarchy,
         label_type=app.args.data.label_type,
-        augmentations_config=train_dataset_args.augmentations_config
+        augmentations_config=train_dataset_args.augmentations_config,
     )
 
     # train data which is handled as validation data
     train_as_val_dataset = datasets_dict[train_dataset_args.module_name](
         data_path=train_dataset_args.data_path,
         metadata_path=train_dataset_args.metadata_path, 
-        augmentations=val_dataset_args.augmentations,
+        augmentor=augmentor,
         augmentations_p=val_dataset_args.augmentations_p,
-        preprocessors=val_dataset_args.preprocessors,
+        preprocessor=preprocessor,
         seq_length=val_dataset_args.seq_length, 
         data_sample_rate=train_dataset_args.data_sample_rate,
         sample_rate=train_dataset_args.sample_rate, 
@@ -91,9 +127,9 @@ def modeling(
     val_dataset = datasets_dict[val_dataset_args.module_name](
         data_path = val_dataset_args.data_path,
         metadata_path=val_dataset_args.metadata_path, 
-        augmentations=val_dataset_args.augmentations,
+        augmentor=None,
         augmentations_p=val_dataset_args.augmentations_p,
-        preprocessors=val_dataset_args.preprocessors,
+        preprocessor=preprocessor,
         seq_length=val_dataset_args.seq_length, 
         data_sample_rate=val_dataset_args.data_sample_rate,
         sample_rate=val_dataset_args.sample_rate, 

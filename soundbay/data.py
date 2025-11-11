@@ -9,19 +9,15 @@ import pandas as pd
 import soundfile as sf
 import torch
 import torchaudio
-import torchvision
-from hydra.utils import instantiate
 from omegaconf import DictConfig
 from torch.utils.data import Dataset
-from torchvision import transforms
-from audiomentations import Compose
 
 
 class BaseDataset(Dataset):
     """
     class for storing and loading data.
     """
-    def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors, label_type,
+    def __init__(self, data_path, metadata_path, augmentor, augmentations_p, preprocessor, label_type,
                  seq_length=1, data_sample_rate=44100, sample_rate=44100, mode="train",
                  slice_flag=False, margin_ratio=0, split_metadata_by_label=False, path_hierarchy: int = 0):
         """
@@ -29,9 +25,9 @@ class BaseDataset(Dataset):
         Input:
         data_path - string
         metadata_path - string
-        augmentations - list of classes audiogemtations
+        augmentor - Augmentor object
         augmentations_p - array of probabilities (float64)
-        preprocessors - list of classes from preprocessors (TBD function)
+        preprocessor - Preprocessor object
         path_hierarchy - enables working with data that is organized in a hierarchy of folders. The default value is 0,
         which means all the audio files are flattened in the same folder. If the value is 1, the audio files are
         organized in one folder per class, and so on. The annotations in the metadata has to be aligned with the path
@@ -56,6 +52,8 @@ class BaseDataset(Dataset):
         Output:
         ClassifierDataset Object - inherits from Dataset object in PyTorch package
         """
+        if mode == "val":
+            assert augmentations_p == 0, "augmentations_p must be 0 for validation mode"
         self.audio_dict = self._create_audio_dict(Path(data_path), path_hierarchy=path_hierarchy)
         self.metadata_path = metadata_path
         self.dtype_dict = {'filename': 'str'}
@@ -68,8 +66,9 @@ class BaseDataset(Dataset):
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
         self._preprocess_metadata(slice_flag)
-        self.augmenter = self._set_augmentations(augmentations, augmentations_p)
-        self.preprocessor = self.set_preprocessor(preprocessors)
+        self.augmentations_p = augmentations_p
+        self.augmentor = augmentor
+        self.preprocessor = preprocessor
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
         self.num_classes = self._get_num_classes()
@@ -202,41 +201,14 @@ class BaseDataset(Dataset):
     def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
         raise NotImplementedError
 
-    def _set_augmentations(self, augmentations_dict, augmentations_p):
-        """
-        get augmentations list and instantiate - TBD
-        """
-        if augmentations_dict is not None:
-            augmentations_list = [instantiate(args) for args in augmentations_dict.values()]
-        else:
-            augmentations_list = []
-        self._train_augmenter = Compose(augmentations_list, p=augmentations_p, shuffle=True)
-        self._val_augmenter = torch.nn.Identity()
-
     def augment(self, x):
         if self.mode == 'train':
-            return torch.tensor(self._train_augmenter(x.numpy(), self.sample_rate), dtype=torch.float32)
+            if random.random() < self.augmentations_p:
+                return torch.tensor(self.augmentor(x.numpy(), self.sample_rate), dtype=torch.float32)
+            else:
+                return x
         else:
-            return self._val_augmenter(x)
-
-    @staticmethod
-    def set_preprocessor(preprocessors_args):
-        """
-        function set_preprocessor takes preprocessors_args as an argument and creates a preprocessor object
-        to be applied later on the audio segment
-
-        input:
-        preprocessors_args - list of classes from torchvision
-
-        output:
-        preprocessor - Composes several transforms together (transforms object)
-        """
-        if len(preprocessors_args) > 0:
-            processors_list = [instantiate(args) for args in preprocessors_args.values()]
-            preprocessor = transforms.Compose(processors_list)
-        else:
-            preprocessor = torch.nn.Identity()
-        return preprocessor
+            return x
 
     def _get_num_classes(self) -> int:
         """
@@ -285,7 +257,10 @@ class BaseDataset(Dataset):
         path_to_file, begin_time, end_time, label, channel = self._grab_fields(idx)
         audio = self._get_audio(path_to_file, begin_time, end_time, label, channel)
         audio_raw = self.sampler(audio)
-        audio_augmented = self.augment(audio_raw)
+        if self.mode == "train":
+            audio_augmented = self.augment(audio_raw)
+        else:
+            audio_augmented = audio_raw
         audio_processed = self.preprocessor(audio_augmented)
 
         if self.mode == "train" or self.mode == "val":
