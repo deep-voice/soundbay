@@ -1,3 +1,4 @@
+from soundbay.config import TrainingConfig
 class App:
     _instance = None
 
@@ -8,13 +9,13 @@ class App:
             cls._instance.states = {}
         return cls._instance
 
-    def init(self, args):
+    def init(self, args: TrainingConfig):
         if self._args is not None:
             raise RuntimeError("App already initialized — args are immutable")
         self._args = args
 
     @property
-    def args(self):
+    def args(self) -> TrainingConfig:
         if self._args is None:
             raise RuntimeError("App not initialized. Call app.init(args) first.")
         return self._args

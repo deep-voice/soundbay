@@ -32,6 +32,7 @@ outputs/*
 # outputs
 outputs/
 models/
+checkpoints/
 /soundbay/.null/inference.log
 /soundbay/wandb/
 

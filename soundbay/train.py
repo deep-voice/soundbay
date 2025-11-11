@@ -49,7 +49,7 @@ def modeling(
     # Set paths and create dataset
     train_dataset_args = app.args.data.train_dataset
     val_dataset_args = app.args.data.val_dataset
-    model_args = app.args.model.model
+    model_args = app.args.model
     optimizer_args = app.args.optim.optimizer
     scheduler_args = app.args.optim.scheduler
     batch_size = app.args.data.batch_size
@@ -86,7 +86,8 @@ def modeling(
         min_snr_in_db=train_dataset_args.augmentations_config.min_snr_in_db,
         max_snr_in_db=train_dataset_args.augmentations_config.max_snr_in_db,
         lru_cache_size=train_dataset_args.augmentations_config.lru_cache_size,
-        sounds_path=train_dataset_args.augmentations_config.sounds_path
+        sounds_path=train_dataset_args.augmentations_config.sounds_path,
+        min_center_freq=app.args.data.min_freq
     )
 
     train_dataset = datasets_dict[train_dataset_args.module_name](
@@ -95,15 +96,14 @@ def modeling(
         augmentor=augmentor,
         augmentations_p=train_dataset_args.augmentations_p,
         preprocessor=preprocessor,
-        seq_length=train_dataset_args.seq_length, 
-        data_sample_rate=train_dataset_args.data_sample_rate,
-        sample_rate=train_dataset_args.sample_rate, 
+        seq_length=app.args.data.seq_length, 
+        data_sample_rate=app.args.data.data_sample_rate,
+        sample_rate=app.args.data.sample_rate, 
         margin_ratio=train_dataset_args.margin_ratio,
         slice_flag=train_dataset_args.slice_flag, 
         mode=train_dataset_args.mode,
         path_hierarchy=train_dataset_args.path_hierarchy,
         label_type=app.args.data.label_type,
-        augmentations_config=train_dataset_args.augmentations_config,
     )
 
     # train data which is handled as validation data
@@ -113,15 +113,14 @@ def modeling(
         augmentor=augmentor,
         augmentations_p=val_dataset_args.augmentations_p,
         preprocessor=preprocessor,
-        seq_length=val_dataset_args.seq_length, 
-        data_sample_rate=train_dataset_args.data_sample_rate,
-        sample_rate=train_dataset_args.sample_rate, 
+        seq_length=app.args.data.seq_length, 
+        data_sample_rate=app.args.data.data_sample_rate,
+        sample_rate=app.args.data.sample_rate, 
         margin_ratio=val_dataset_args.margin_ratio,
         slice_flag=val_dataset_args.slice_flag, 
         mode=val_dataset_args.mode,
         path_hierarchy=val_dataset_args.path_hierarchy,
         label_type=app.args.data.label_type,
-        augmentations_config=val_dataset_args.augmentations_config
     )
 
     val_dataset = datasets_dict[val_dataset_args.module_name](
@@ -130,9 +129,9 @@ def modeling(
         augmentor=None,
         augmentations_p=val_dataset_args.augmentations_p,
         preprocessor=preprocessor,
-        seq_length=val_dataset_args.seq_length, 
-        data_sample_rate=val_dataset_args.data_sample_rate,
-        sample_rate=val_dataset_args.sample_rate, 
+        seq_length=app.args.data.seq_length, 
+        data_sample_rate=app.args.data.data_sample_rate,
+        sample_rate=app.args.data.sample_rate, 
         margin_ratio=val_dataset_args.margin_ratio,
         slice_flag=val_dataset_args.slice_flag, 
         mode=val_dataset_args.mode,
@@ -218,7 +217,7 @@ def modeling(
 
 @click.command()
 @click.option("--config", type=Optional[str], help="Path to configuration file")
-@click.argument("overrides", nargs=-1, help="Overrides to the configuration")
+@click.argument("overrides", nargs=-1)
 def train(config: Optional[str], overrides: list[str]) -> None:
     
     args = create_training_config(config_path=config, overrides=overrides)

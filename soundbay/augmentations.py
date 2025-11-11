@@ -25,11 +25,11 @@ class Augmentor:
                                                 max_bandwidth_fraction=max_bandwidth_fraction, 
                                                 p=frequency_masking_p)
                                                 
-    def __call__(self, x):
+    def __call__(self, x, sample_rate: int):
         if self.add_multichannel_background_noise is not None:
-            x = self.add_multichannel_background_noise(x)
-        x = self.pitch_shift(x)
-        x = self.time_stretch(x)
-        x = self.time_masking(x)
-        x = self.frequency_masking(x)
+            x = self.add_multichannel_background_noise(x, sample_rate)
+        x = self.pitch_shift(x, sample_rate)
+        x = self.time_stretch(x, sample_rate)
+        x = self.time_masking(x, sample_rate)
+        x = self.frequency_masking(x, sample_rate)
         return x

@@ -169,7 +169,7 @@ class ModelConfig:
     num_classes: int = 2  # can we allow required here?
     criterion: str = "cross_entropy"
     module_name: str = "ResNet1Channel"
-    model_params: Optional[Dict[str, Any]] = None
+    model_params: Dict[str, Any] = field(default_factory=lambda: {"layers": [3, 4, 6, 3], "block": "torchvision.models.resnet.Bottleneck"})
 
     @field_validator("criterion")
     def validate_criterion(cls, v: str) -> str:
@@ -202,7 +202,7 @@ class ModelConfig:
 @dataclass
 class OptimizerConfig:
     """Configuration for optimizer settings"""
-    module_name: str = "torch.optim.Adamw"
+    module_name: str = "torch.optim.AdamW"
     params: Dict[str, Any] = field(default_factory=lambda: {"lr": 5e-4})
 
 
@@ -210,7 +210,7 @@ class OptimizerConfig:
 class SchedulerConfig:
     """Configuration for scheduler settings"""
     module_name: str = "torch.optim.lr_scheduler.CosineAnnealingWarmRestarts"
-    scheduler_params: Dict[str, Any] = field(default_factory=lambda: {"T_0": 5})
+    params: Dict[str, Any] = field(default_factory=lambda: {"T_0": 5})
 
 
 @dataclass
