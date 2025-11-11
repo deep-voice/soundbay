@@ -21,3 +21,5 @@ class App:
 
     def __repr__(self):
         return f"<App args={self._args} states={self.states}>"
+
+app = App()

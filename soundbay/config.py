@@ -43,7 +43,7 @@ class AugmentationsConfig:
 @dataclass
 class DatasetConfig:
     """Configuration for dataset settings"""
-    module_name: str = "classifier_dataset"
+    module_name: str = "ClassifierDataset"
     data_path: str = "./tests/assets/data/"
     path_hierarchy: int = 0
     mode: str = "train"
@@ -67,7 +67,7 @@ class DatasetConfig:
     
     @field_validator("module_name")
     def validate_module_name(cls, v: str) -> str:
-        allowed_values = ["classifier_dataset", "no_background_dataset", "inference_dataset"]
+        allowed_values = ["ClassifierDataset", "NoBackGroundDataset", "InferenceDataset"]
         if v not in allowed_values:
             raise ValueError(f"module_name must be one of {allowed_values}, got {v}")
         return v
@@ -203,7 +203,7 @@ class ModelConfig:
 class OptimizerConfig:
     """Configuration for optimizer settings"""
     module_name: str = "torch.optim.Adamw"
-    lr: float = 5e-4
+    params: Dict[str, Any] = field(default_factory=lambda: {"lr": 5e-4})
 
 
 @dataclass
