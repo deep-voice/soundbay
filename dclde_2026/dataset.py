@@ -435,8 +435,45 @@ def create_full_annotation_df():
         df_ann = df_ann[df_ann['SampleRate'] >= config.MIN_REQUIRED_SAMPLE_RATE]
         print(f"Filtered {before - len(df_ann)} files with sample rate < {config.MIN_REQUIRED_SAMPLE_RATE}Hz")
     
-    df_ann['gcs_path'] = df_ann.apply(utils.map_filepath_to_gcs, axis=1)
+    # Vectorized GCS path mapping (much faster than apply(axis=1))
+    print("Mapping file paths to GCS...")
+    gcs_base = f"gs://{config.GCS_AUDIO_BUCKET_NAME}/dclde/2026/dclde_2026_killer_whales"
+    
+    def get_gcs_path_vectorized(filepath_series, provider_series):
+        """Vectorized version of map_filepath_to_gcs"""
+        csv_paths = filepath_series.astype(str)
+        providers = provider_series.astype(str)
+        
+        # Initialize result array
+        gcs_paths = pd.Series(index=csv_paths.index, dtype=object)
+        
+        # DFO_CRP pattern
+        mask_dfo = csv_paths.str.contains('DFO_CRP', na=False)
+        if mask_dfo.any():
+            path_frags = csv_paths[mask_dfo].str.split('DFO_CRP/').str[-1]
+            gcs_paths[mask_dfo] = (gcs_base + '/dfo_crp/' + path_frags).str.replace('\\', '/')
+        
+        # UAF_NGOS pattern
+        mask_uaf = csv_paths.str.contains('UAF_NGOS', na=False)
+        if mask_uaf.any():
+            path_frags = csv_paths[mask_uaf].str.split('UAF/').str[-1]
+            gcs_paths[mask_uaf] = (gcs_base + '/uaf_ngos/' + path_frags).str.replace('\\', '/')
+        
+        # Default pattern
+        mask_default = ~(mask_dfo | mask_uaf)
+        if mask_default.any():
+            path_frags = csv_paths[mask_default].str.split('Audio/').str[-1]
+            prov_lower = providers[mask_default].str.lower()
+            gcs_paths[mask_default] = (gcs_base + '/' + prov_lower + '/audio/' + path_frags).str.replace('\\', '/')
+            # Set to None where provider is invalid
+            gcs_paths[mask_default & (providers.isna() | (providers == 'nan'))] = None
+        
+        return gcs_paths
+    
+    df_ann['gcs_path'] = get_gcs_path_vectorized(df_ann['FilePath'], df_ann['Provider'])
     df_ann = df_ann.dropna(subset=['gcs_path'])
+    
+    print(f"Loaded {len(df_ann)} annotations after filtering")
     return df_ann
 
 

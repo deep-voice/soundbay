@@ -10,6 +10,7 @@ import argparse
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+import yaml
 from sklearn.model_selection import GroupKFold
 
 from dclde_2026 import config, dataset, models, losses, utils
@@ -292,46 +293,103 @@ def main():
         use_gcs = args.use_gcs or not os.path.exists(args.data_yaml)
         
         if use_gcs:
-            # Load from GCS on-the-fly
+            # For YOLO with GCS: create temporary dataset and use YOLO's native API
             print("\nLoading YOLO data from GCS on-the-fly...")
-            df_ann = dataset.create_full_annotation_df()
-            df_chips = dataset.create_chip_list(df_ann)
+            print("Note: YOLO requires preprocessed data. Creating temporary dataset from GCS...")
             
-            train_loader, val_loader, test_loader = dataset.get_dataloaders(
-                df_ann, df_chips,
-                fold_id=args.fold,
-                use_beats=False,  # YOLO uses spectrograms
-                model_type='yolo'  # Enable YOLO-specific processing
-            )
+            import tempfile
+            import shutil
+            from dclde_2026.preprocess_for_yolo import save_yolo_data
             
-            print(f"Train batches: {len(train_loader)}, Val batches: {len(val_loader)}, Test batches: {len(test_loader)}")
+            # Create temporary directory for YOLO dataset
+            temp_dir = tempfile.mkdtemp(prefix='yolo_gcs_temp_')
+            print(f"Temporary dataset directory: {temp_dir}")
             
-            model = models.get_model(model_type='yolo').to(config.DEVICE)
-            criterion = losses.DetectionLoss(
-                box_loss_weight=1.0,
-                obj_loss_weight=1.0,
-                cls_loss_weight=1.0
-            )
-            
-            optimizer = optim.AdamW(
-                model.parameters(),
-                lr=config.LEARNING_RATE,
-                weight_decay=config.WEIGHT_DECAY
-            )
-            
-            scheduler = CosineAnnealingLR(optimizer, T_max=config.EPOCHS)
-            
-            print("\nStarting training...")
-            for epoch in range(config.EPOCHS):
-                train_metrics = train_epoch_beats(model, train_loader, optimizer, criterion, config.DEVICE, epoch)
-                val_metrics = validate_beats(model, val_loader, criterion, config.DEVICE)
-                scheduler.step()
+            try:
+                # Load annotations and create chips
+                df_ann = dataset.create_full_annotation_df()
+                df_chips = dataset.create_chip_list(df_ann)
                 
-                print(f"\nEpoch {epoch+1}/{config.EPOCHS}")
-                print(f"Train - Loss: {train_metrics['total_loss']:.4f}")
-                print(f"Val   - Loss: {val_metrics['total_loss']:.4f}")
+                # Create splits
+                gkf = GroupKFold(n_splits=config.N_SPLITS)
+                splits = list(gkf.split(df_chips, groups=df_chips['group']))
+                val_idx = splits[args.fold][1]
+                test_idx = splits[(args.fold + 1) % config.N_SPLITS][1]
+                train_idx = list(set(range(len(df_chips))) - set(val_idx) - set(test_idx))
+                
+                df_train = df_chips.iloc[train_idx].reset_index(drop=True)
+                df_val = df_chips.iloc[val_idx].reset_index(drop=True)
+                df_test = df_chips.iloc[test_idx].reset_index(drop=True)
+                
+                # Debug mode: limit dataset size
+                if config.DEBUG:
+                    print(f"DEBUG MODE: Limiting to {config.DEBUG_MAX_SAMPLES} samples per split")
+                    df_train = df_train.head(config.DEBUG_MAX_SAMPLES).reset_index(drop=True)
+                    df_val = df_val.head(config.DEBUG_MAX_SAMPLES).reset_index(drop=True)
+                    df_test = df_test.head(config.DEBUG_MAX_SAMPLES).reset_index(drop=True)
+                
+                # Create audio loader
+                audio_loader = dataset.GCSAudioLoader(
+                    bucket_name=config.GCS_AUDIO_BUCKET_NAME,
+                    cache_dir=config.LOCAL_AUDIO_CACHE_DIR if config.ENABLE_AUDIO_CACHE else None,
+                    enable_cache=config.ENABLE_AUDIO_CACHE
+                )
+                
+                # Save data in YOLO format
+                print("\nPreprocessing train split...")
+                save_yolo_data(df_train, df_ann, audio_loader, 'train')
+                
+                print("Preprocessing val split...")
+                save_yolo_data(df_val, df_ann, audio_loader, 'val')
+                
+                # Create temporary data.yaml
+                temp_data_yaml = os.path.join(temp_dir, 'data.yaml')
+                class_names = list(config.ID_TO_CLASS.values())
+                
+                yaml_content = {
+                    'path': os.path.abspath(config.YOLO_PREPROC_DIR),
+                    'train': 'train/images',
+                    'val': 'val/images',
+                    'nc': config.NUM_CLASSES,
+                    'names': class_names
+                }
+                
+                with open(temp_data_yaml, 'w') as f:
+                    yaml.dump(yaml_content, f, default_flow_style=False)
+                
+                print(f"\nTemporary YOLO dataset created at: {config.YOLO_PREPROC_DIR}")
+                print(f"Temporary data.yaml: {temp_data_yaml}")
+                
+                # Train using YOLO's native API
+                model = models.get_model(model_type='yolo')
+                train_yolo(
+                    model=model,
+                    data_yaml=temp_data_yaml,
+                    epochs=config.EPOCHS,
+                    imgsz=config.YOLO_IMG_SIZE,
+                    batch_size=config.BATCH_SIZE
+                )
+                
+                print("\nYOLO training complete!")
+                
+                # Cleanup: ask user if they want to keep the temp dataset
+                if not config.DEBUG:
+                    print(f"\nTemporary dataset saved at: {config.YOLO_PREPROC_DIR}")
+                    print(f"To reuse this dataset, run without --use-gcs and set --data-yaml to: {temp_data_yaml}")
+                else:
+                    print("\nDEBUG MODE: Cleaning up temporary files...")
+                    if os.path.exists(temp_dir):
+                        shutil.rmtree(temp_dir)
+                
+            except Exception as e:
+                print(f"\nERROR during YOLO GCS training: {e}")
+                import traceback
+                traceback.print_exc()
+                if os.path.exists(temp_dir):
+                    print(f"Cleaning up temporary directory: {temp_dir}")
+                    shutil.rmtree(temp_dir)
+                raise
             
-            print("\nYOLO training complete!")
             return
         else:
             # Use preprocessed data from disk with YOLO's native API

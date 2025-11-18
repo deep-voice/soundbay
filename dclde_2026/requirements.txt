@@ -1,8 +1,10 @@
+numpy<2.0  # PyTorch compatibility: modules compiled with NumPy 1.x don't work with NumPy 2.x
 torch
 torchvision
 torchaudio
 ultralytics
 transformers
+soxr  # Required by transformers for audio processing (resampling)
 librosa
 pandas
 gcsfs
@@ -17,4 +19,5 @@ opencv-python
 scipy
 audiomentations
 wandb
+matplotlib
 
