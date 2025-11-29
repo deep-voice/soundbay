@@ -438,6 +438,19 @@ def create_full_annotation_df():
     print("Mapping file paths to GCS...")
     gcs_base = f"gs://{config.GCS_AUDIO_BUCKET_NAME}/dclde/2026/dclde_2026_killer_whales"
     
+    def lowercase_dirs_only(path_series):
+        """Lowercase directory components but preserve filename case"""
+        def process_path(path):
+            if pd.isna(path) or not path:
+                return path
+            parts = path.replace('\\', '/').split('/')
+            if len(parts) == 1:
+                return path  # Just filename, no change
+            # Lowercase all parts except the last (filename)
+            dirs_lower = [p.lower() for p in parts[:-1]]
+            return '/'.join(dirs_lower + [parts[-1]])
+        return path_series.apply(process_path)
+    
     def get_gcs_path_vectorized(filepath_series, provider_series):
         """Vectorized version of map_filepath_to_gcs"""
         csv_paths = filepath_series.astype(str)
@@ -449,19 +462,22 @@ def create_full_annotation_df():
         # DFO_CRP pattern
         mask_dfo = csv_paths.str.contains('DFO_CRP', na=False)
         if mask_dfo.any():
-            path_frags = csv_paths[mask_dfo].str.split('DFO_CRP/').str[-1].str.lower()
+            path_frags = csv_paths[mask_dfo].str.split('DFO_CRP/').str[-1]
+            path_frags = lowercase_dirs_only(path_frags)
             gcs_paths[mask_dfo] = (gcs_base + '/dfo_crp/' + path_frags).str.replace('\\', '/')
         
         # UAF_NGOS pattern
         mask_uaf = csv_paths.str.contains('UAF_NGOS', na=False)
         if mask_uaf.any():
-            path_frags = csv_paths[mask_uaf].str.split('UAF/').str[-1].str.lower()
+            path_frags = csv_paths[mask_uaf].str.split('UAF/').str[-1]
+            path_frags = lowercase_dirs_only(path_frags)
             gcs_paths[mask_uaf] = (gcs_base + '/uaf_ngos/' + path_frags).str.replace('\\', '/')
         
         # Default pattern
         mask_default = ~(mask_dfo | mask_uaf)
         if mask_default.any():
-            path_frags = csv_paths[mask_default].str.split('Audio/').str[-1].str.lower()
+            path_frags = csv_paths[mask_default].str.split('Audio/').str[-1]
+            path_frags = lowercase_dirs_only(path_frags)
             prov_lower = providers[mask_default].str.lower()
             gcs_paths[mask_default] = (gcs_base + '/' + prov_lower + '/audio/' + path_frags).str.replace('\\', '/')
             # Set to None where provider is invalid
