@@ -33,14 +33,17 @@ def linear_freq_to_normalized_y(freq_hz):
     return 1.0 - (clipped_freq / max_hz)
 
 
-def convert_labels_to_yolo(df_labels, chip_start_sec, chip_duration_sec):
+def convert_labels_to_yolo(df_labels, chip_start_sec, chip_duration_sec, class_column=None):
+    if class_column is None:
+        class_column = config.ANNOTATION_CLASS_COLUMN
+        
     boxes = []
     chip_end_sec = chip_start_sec + chip_duration_sec
 
     for _, row in df_labels.iterrows():
         box_start_sec, box_end_sec = row['FileBeginSec'], row['FileEndSec']
         box_low_freq, box_high_freq = row['LowFreqHz'], row['HighFreqHz']
-        class_name = row['ClassSpeciesKW']
+        class_name = row[class_column]
         class_id = config.CLASS_TO_ID.get(class_name, config.CLASS_TO_ID['UndBio'])  # Default to UndBio if not found
 
         clip_start_sec = max(chip_start_sec, box_start_sec)

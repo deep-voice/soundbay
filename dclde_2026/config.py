@@ -46,6 +46,13 @@ MAX_N_FFT = 2048
 TARGET_FREQ_BINS = (MAX_N_FFT // 2) + 1 # 1025
 
 # --- Data Filtering ---
+# Column name for the class label in the annotations CSV
+ANNOTATION_CLASS_COLUMN = 'ClassSpecies' 
+
+# Value in annotation class column that represents noise/background to be excluded or used for augmentation
+# If this string is found (case-insensitive) in the class column, it may be used to extract noise profiles
+NOISE_CLASS_STRING = 'UndBio'
+
 # Providers with median BB height of 0 are not useful for detection
 PROVIDERS_TO_EXCLUDE = ["SIMRES", "SIO", "OrcaSound"]
 # Target classes (actual labels from annotations)
@@ -70,7 +77,7 @@ TEST_FOLD = 0 # Hold out fold 0 for testing
 
 # --- Model ---
 # Model type: 'beats' or 'yolo'
-MODEL_TYPE = 'beats'  # Options: 'beats' or 'yolo'
+MODEL_TYPE = 'yolo'  # Options: 'beats' or 'yolo'
 # Note: MAX_FREQ_HZ will be automatically adjusted in train.py based on MODEL_TYPE:
 # - BEATS: Limited to 8kHz (resamples to 16kHz internally, Nyquist = 8kHz)
 #          BEATS uses its own learned audio frontend, we don't control spectrograms
@@ -122,7 +129,7 @@ LOG_SPECTROGRAMS_EVERY_N_EPOCHS = 5  # Log spectrogram samples every N epochs
 NUM_SPECTROGRAM_SAMPLES = 4  # Number of spectrogram samples to log
 
 # --- Debug Mode ---
-DEBUG = False  # Enable debug mode for testing (smaller dataset, verbose logging, fewer epochs)
+DEBUG = True  # Enable debug mode for testing (smaller dataset, verbose logging, fewer epochs)
 DEBUG_MAX_SAMPLES = 100  # Maximum number of samples per split in debug mode
 DEBUG_EPOCHS = 2  # Number of epochs to run in debug mode
 

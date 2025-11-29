@@ -71,7 +71,7 @@ class AudioAugmentations:
     def __init__(self, annotations_df=None):
         self.noise_segments = None
         if config.AUGMENT_AUDIO_NOISE and annotations_df is not None:
-             noise_mask = annotations_df.get('ClassSpeciesKW', pd.Series()).str.contains('noise|background', case=False, na=False)
+             noise_mask = annotations_df.get(config.ANNOTATION_CLASS_COLUMN, pd.Series()).astype(str).str.contains(config.NOISE_CLASS_STRING, case=False, na=False)
              if noise_mask.any(): self.noise_segments = annotations_df[noise_mask]
     
     def add_noise(self, audio, gcs_path):
@@ -110,6 +110,7 @@ class AudioObjectDataset(Dataset):
         self.is_train = is_train
         self.use_beats = use_beats
         self.model_type = model_type or config.MODEL_TYPE.lower()
+        self.class_column = config.ANNOTATION_CLASS_COLUMN
         self.audio_aug = AudioAugmentations(annotations_df) if is_train else None
         self.spec_aug = SpectrogramAugmentations() if is_train else None
         
@@ -142,7 +143,7 @@ class AudioObjectDataset(Dataset):
             (self.annotations_df['FileBeginSec'] < row['chip_start_sec'] + config.WINDOW_SEC) &
             (self.annotations_df['FileEndSec'] > row['chip_start_sec'])
         ]
-        yolo_labels = utils.convert_labels_to_yolo(chip_labels, row['chip_start_sec'], config.WINDOW_SEC)
+        yolo_labels = utils.convert_labels_to_yolo(chip_labels, row['chip_start_sec'], config.WINDOW_SEC, class_column=self.class_column)
         labels = torch.tensor(yolo_labels, dtype=torch.float32)
 
         if self.use_beats:
@@ -203,6 +204,17 @@ def create_full_annotation_df():
     fs = GCSFileSystem()
     with fs.open(config.GCS_ANNOTATION_PATH) as f:
         df = pd.read_csv(f)
+    
+    print(f"Loaded annotations with columns: {df.columns.tolist()}")
+    
+    # Auto-detect class column if missing
+    if config.ANNOTATION_CLASS_COLUMN not in df.columns:
+        possible_cols = [c for c in df.columns if 'species' in c.lower() or 'class' in c.lower() or 'label' in c.lower() or 'call' in c.lower()]
+        if possible_cols:
+            print(f"WARNING: '{config.ANNOTATION_CLASS_COLUMN}' not found. Using '{possible_cols[0]}' instead.")
+            config.ANNOTATION_CLASS_COLUMN = possible_cols[0]
+        else:
+            print(f"ERROR: '{config.ANNOTATION_CLASS_COLUMN}' not found and no obvious alternative detected. Available columns: {df.columns.tolist()}")
     
     df = df[~df['Provider'].isin(config.PROVIDERS_TO_EXCLUDE)]
     df = df[(df['LowFreqHz'] < config.MAX_FREQ_HZ) & 
