@@ -82,23 +82,19 @@ class GCSAudioLoader:
         try:
             gcs_url = self._get_gcs_url(gcs_path)
             
-            # Try constructor with target SR first
-            try:
-                audio = AudioSample(gcs_url, sample_rate=self.target_sr)[offset_sec:offset_sec + duration_sec].as_tensor()
-            except (TypeError, ValueError):
-                # Fallback: load then resample
-                audio_sample = AudioSample(gcs_url)
-                orig_sr = self._get_sample_rate(audio_sample, orig_sr_hint)
-                segment = audio_sample[offset_sec:offset_sec + duration_sec]
-                
-                # Try AudioSample resampling
-                audio = self._try_audiosample_resample(segment, self.target_sr) if orig_sr != self.target_sr else None
-                
-                # Load normally if resampling failed or not needed
-                if audio is None:
-                    audio = segment.as_tensor()
-                    if orig_sr != self.target_sr:
-                        audio = self._resample_with_torchaudio(audio, orig_sr, self.target_sr)
+            # Load audio sample (AudioSample doesn't support sample_rate in constructor)
+            audio_sample = AudioSample(gcs_url)
+            orig_sr = self._get_sample_rate(audio_sample, orig_sr_hint)
+            segment = audio_sample[offset_sec:offset_sec + duration_sec]
+            
+            # Try AudioSample resampling
+            audio = self._try_audiosample_resample(segment, self.target_sr) if orig_sr != self.target_sr else None
+            
+            # Load normally if resampling failed or not needed
+            if audio is None:
+                audio = segment.as_tensor()
+                if orig_sr != self.target_sr:
+                    audio = self._resample_with_torchaudio(audio, orig_sr, self.target_sr)
             
             audio = self._normalize_audio_shape(audio)
             return (audio.numpy() if isinstance(audio, torch.Tensor) else audio, self.target_sr)
