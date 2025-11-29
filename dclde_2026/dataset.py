@@ -37,6 +37,9 @@ class GCSAudioLoader:
             return gcs_path
         if gcs_path.startswith('gs://'):
             gcs_path = gcs_path.replace('gs://', '')
+        # Remove bucket name from path if it's already included to avoid duplication
+        if gcs_path.startswith(f"{self.bucket_name}/"):
+            gcs_path = gcs_path[len(f"{self.bucket_name}/"):]
         return f"https://storage.googleapis.com/{self.bucket_name}/{gcs_path}"
 
     def _get_sample_rate(self, audio_sample, orig_sr_hint):
