@@ -43,7 +43,7 @@ HOP_LENGTH = 1024
 # (n_fft / 2) + 1 = 1025 bins.
 # All spectrograms will be resized to this height.
 MAX_N_FFT = 2048
-TARGET_FREQ_BINS = (MAX_N_FFT // 2) + 1 # 1025
+TARGET_FREQ_BINS = 1024 # Resize to 1024 (multiple of 32) instead of 1025
 
 # --- Data Filtering ---
 # Column name for the class label in the annotations CSV

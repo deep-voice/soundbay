@@ -194,6 +194,10 @@ class CustomCollate:
         else:
              # Spec: [3, F, T]
              max_time = max([d.shape[2] for d in data])
+             # Pad to multiple of 32 for YOLO
+             if max_time % 32 != 0:
+                 max_time = ((max_time // 32) + 1) * 32
+                 
              data = torch.stack([F.pad(d, (0, max_time - d.shape[2])) for d in data])
              
         return data, labels
