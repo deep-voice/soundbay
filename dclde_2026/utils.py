@@ -27,7 +27,10 @@ def map_filepath_to_gcs(row):
 def linear_freq_to_normalized_y(freq_hz):
     max_hz = config.SAMPLE_RATE / 2.0
     clipped_freq = np.clip(freq_hz, config.MIN_FREQ_HZ, config.MAX_FREQ_HZ)
-    return clipped_freq / max_hz
+    # We flipped the spectrogram so 0Hz is at index H-1 (Bottom, y=1)
+    # and MaxHz is at index 0 (Top, y=0).
+    # So Normalized Y = 1.0 - (freq / max_hz)
+    return 1.0 - (clipped_freq / max_hz)
 
 
 def convert_labels_to_yolo(df_labels, chip_start_sec, chip_duration_sec):
@@ -61,7 +64,8 @@ def convert_labels_to_yolo(df_labels, chip_start_sec, chip_duration_sec):
         x_center = (box_start_x_norm + box_end_x_norm) / 2.0
         y_center = (box_start_y_norm + box_end_y_norm) / 2.0
         width = box_end_x_norm - box_start_x_norm
-        height = box_end_y_norm - box_start_y_norm
+        # Calculate height ensuring it's positive
+        height = abs(box_end_y_norm - box_start_y_norm)
 
         boxes.append([class_id, np.clip(x_center, 0.0, 1.0), np.clip(y_center, 0.0, 1.0),
                      np.clip(width, 0.0, 1.0), np.clip(height, 0.0, 1.0)])

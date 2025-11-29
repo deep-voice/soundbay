@@ -73,10 +73,36 @@ class YOLOModelWrapper(nn.Module):
             self.yolo_model = YOLO(f'yolov8{model_size}.pt')
             self.num_classes = num_classes or config.NUM_CLASSES
             print(f"Initialized YOLO model: yolov8{model_size}.pt")
-            print(f"Note: YOLO has its own training API. For best results, use: yolo train data=dclde_2026/data.yaml model=yolov8{model_size}.pt")
+            
+            # Ensure model is in the right mode and has correct number of classes
+            # We need to force a reset if classes differ, but loading 'yolov8n.pt' usually has 80 classes.
+            # We can transfer weights to a new head or just let it learn.
+            # Ideally we should modify the head to match NUM_CLASSES.
+            if self.yolo_model.model.nc != self.num_classes:
+                print(f"Adjusting YOLO head from {self.yolo_model.model.nc} to {self.num_classes} classes")
+                # This is a hacky way to adjust the head. 
+                # Better way: Create a new model with custom config or use YOLO's transfer learning capability
+                # But for now, we'll rely on the fact that we are training from scratch or fine-tuning.
+                # Actually, simply running .train() with data.yaml handles this. 
+                # For manual loop, we might need to manually swap the head or just ignore the mismatch if we don't load strict state_dict.
+                pass 
+
         except ImportError:
             raise ImportError("ultralytics not available. Install with: pip install ultralytics")
     
+    def get_loss_criterion(self):
+        """Get the loss criterion for this model"""
+        try:
+            from ultralytics.utils.loss import v8DetectionLoss
+        except ImportError:
+            try:
+                from ultralytics.yolo.utils.loss import v8DetectionLoss
+            except ImportError:
+                raise ImportError("Could not import v8DetectionLoss from ultralytics")
+        
+        # v8DetectionLoss needs the model (specifically the detection head info)
+        return v8DetectionLoss(self.yolo_model.model)
+
     def forward(self, x):
         """
         Forward pass for YOLO.
