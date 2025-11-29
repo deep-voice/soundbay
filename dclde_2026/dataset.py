@@ -214,14 +214,23 @@ def create_full_annotation_df():
     
     def map_path(row):
         path = str(row['FilePath'])
+        
+        def fix_casing(p):
+            p = p.replace('\\', '/')
+            parts = p.split('/')
+            # Lowercase directories, preserve filename case
+            if len(parts) > 1:
+                return '/'.join([part.lower() for part in parts[:-1]] + [parts[-1]])
+            return p
+
         if 'DFO_CRP' in path:
-            return (gcs_base + '/dfo_crp/' + path.split('DFO_CRP/')[-1].lower()).replace('\\', '/')
+            return (gcs_base + '/dfo_crp/' + fix_casing(path.split('DFO_CRP/')[-1]))
         if 'UAF_NGOS' in path:
-            return (gcs_base + '/uaf_ngos/' + path.split('UAF/')[-1].lower()).replace('\\', '/')
+            return (gcs_base + '/uaf_ngos/' + fix_casing(path.split('UAF/')[-1]))
         
         prov = str(row['Provider']).lower()
         if prov == 'nan': return None
-        return (gcs_base + '/' + prov + '/audio/' + path.split('Audio/')[-1].lower()).replace('\\', '/')
+        return (gcs_base + '/' + prov + '/audio/' + fix_casing(path.split('Audio/')[-1]))
 
     df['gcs_path'] = df.apply(map_path, axis=1)
     df = df.dropna(subset=['gcs_path'])
