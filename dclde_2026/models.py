@@ -70,9 +70,16 @@ class YOLOModelWrapper(nn.Module):
         super().__init__()
         try:
             from ultralytics import YOLO
-            self.yolo_model = YOLO(f'yolov8{model_size}.pt')
+            # Store in list to avoid nn.Module registration of the wrapper which has conflicting .train()
+            self._yolo = [YOLO(f'yolov8{model_size}.pt')]
+            
             self.num_classes = num_classes or config.NUM_CLASSES
             print(f"Initialized YOLO model: yolov8{model_size}.pt")
+            
+            # Register the inner model as a submodule so parameters are found
+            # and .train()/.eval() work on the actual network
+            if hasattr(self.yolo_model, 'model'):
+                self.core_model = self.yolo_model.model
             
             # Ensure model is in the right mode and has correct number of classes
             # We need to force a reset if classes differ, but loading 'yolov8n.pt' usually has 80 classes.
@@ -89,6 +96,10 @@ class YOLOModelWrapper(nn.Module):
 
         except ImportError:
             raise ImportError("ultralytics not available. Install with: pip install ultralytics")
+    
+    @property
+    def yolo_model(self):
+        return self._yolo[0]
     
     def get_loss_criterion(self):
         """Get the loss criterion for this model"""

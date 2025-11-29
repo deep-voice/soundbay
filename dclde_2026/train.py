@@ -90,13 +90,9 @@ class Trainer:
     def run_epoch(self, loader, epoch=None, is_train=True):
         if is_train:
             self.model.train()
-            if hasattr(self.model, 'yolo_model'):
-                self.model.yolo_model.train()
             desc = f"Epoch {epoch+1} Train"
         else:
             self.model.eval()
-            if hasattr(self.model, 'yolo_model'):
-                self.model.yolo_model.eval()
             desc = "Validation"
 
         metrics = {'total_loss': 0, 'box_loss': 0, 'obj_loss': 0, 'cls_loss': 0, 'dfl_loss': 0}
