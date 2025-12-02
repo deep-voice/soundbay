@@ -242,11 +242,32 @@ def create_full_annotation_df():
         if 'DFO_CRP' in path:
             return (gcs_base + '/dfo_crp/' + fix_casing(path.split('DFO_CRP/')[-1]))
         if 'UAF_NGOS' in path:
-            return (gcs_base + '/uaf_ngos/' + fix_casing(path.split('UAF/')[-1]))
+            return (gcs_base + '/uaf/' + fix_casing(path.split('UAF/')[-1]))
         
         prov = str(row['Provider']).lower()
         if prov == 'nan': return None
-        return (gcs_base + '/' + prov + '/audio/' + fix_casing(path.split('Audio/')[-1]))
+        
+        # Mapping for provider names that don't match directory names exactly
+        prov_map = {
+            'jasco_vfpa': 'vfpa',
+            'smruconsulting': 'smru',
+            'jasco_vfpa_onc': 'vfpa', 
+            'uaf_ngos': 'uaf',
+        }
+        prov = prov_map.get(prov, prov)
+
+        # Fix double slashes and ensure clean path joining
+        suffix = fix_casing(path.split('Audio/')[-1])
+        suffix = suffix.lstrip('/')
+        
+        while '//' in suffix:
+            suffix = suffix.replace('//', '/')
+
+        # Apply directory/filename mappings
+        suffix = suffix.replace('straitofgeorgia/', 'straitofgeorgia_globus-robertsbank/')
+        suffix = suffix.replace('lime kiln', 'lime-kiln')
+            
+        return (gcs_base + '/' + prov + '/audio/' + suffix)
 
     df['gcs_path'] = df.apply(map_path, axis=1)
     df = df.dropna(subset=['gcs_path'])
@@ -254,7 +275,11 @@ def create_full_annotation_df():
     return df
 
 
-def create_chip_list(df_ann):
+def create_chip_list(df_ann, cache_path='chip_list_cache.pkl'):
+    if os.path.exists(cache_path):
+        print(f"Loading cached chip list from {cache_path}")
+        return pd.read_pickle(cache_path)
+
     print("Creating chips...")
     file_durations = df_ann.groupby('gcs_path')['FileEndSec'].max()
     chip_list = []
@@ -264,7 +289,11 @@ def create_chip_list(df_ann):
         starts = np.arange(0, max_time - config.WINDOW_SEC, config.WINDOW_SEC / 2)
         for s in starts:
             chip_list.append({'gcs_path': gcs_path, 'chip_start_sec': s, 'group': group})
-    return pd.DataFrame(chip_list)
+    
+    df_chips = pd.DataFrame(chip_list)
+    print(f"Saving chip list to {cache_path}")
+    df_chips.to_pickle(cache_path)
+    return df_chips
 
 
 def get_dataloaders(df_ann, df_chips, fold_id=0, use_beats=False, model_type=None):

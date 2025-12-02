@@ -80,6 +80,9 @@ class YOLOModelWrapper(nn.Module):
             # and .train()/.eval() work on the actual network
             if hasattr(self.yolo_model, 'model'):
                 self.core_model = self.yolo_model.model
+                # FORCE gradients on for all parameters
+                for param in self.core_model.parameters():
+                    param.requires_grad = True
             
             # Ensure model is in the right mode and has correct number of classes
             # We need to force a reset if classes differ, but loading 'yolov8n.pt' usually has 80 classes.
@@ -92,7 +95,9 @@ class YOLOModelWrapper(nn.Module):
                 # But for now, we'll rely on the fact that we are training from scratch or fine-tuning.
                 # Actually, simply running .train() with data.yaml handles this. 
                 # For manual loop, we might need to manually swap the head or just ignore the mismatch if we don't load strict state_dict.
-                pass 
+                
+                # IMPORTANT: When running in custom loop, we must ensure the model is in training mode
+                self.core_model.train() 
 
         except ImportError:
             raise ImportError("ultralytics not available. Install with: pip install ultralytics")
@@ -112,6 +117,22 @@ class YOLOModelWrapper(nn.Module):
                 raise ImportError("Could not import v8DetectionLoss from ultralytics")
         
         # v8DetectionLoss needs the model (specifically the detection head info)
+        # Fix for AttributeError: 'dict' object has no attribute 'box'
+        if hasattr(self.yolo_model.model, 'args') and isinstance(self.yolo_model.model.args, dict):
+            class AttributeDict(dict):
+                def __getattr__(self, attr):
+                    return self.get(attr)
+                def __setattr__(self, attr, value):
+                    self[attr] = value
+            
+            args_dict = self.yolo_model.model.args
+            # Ensure required loss hyperparameters exist with default values
+            if 'box' not in args_dict: args_dict['box'] = 7.5
+            if 'cls' not in args_dict: args_dict['cls'] = 0.5
+            if 'dfl' not in args_dict: args_dict['dfl'] = 1.5
+            
+            self.yolo_model.model.args = AttributeDict(args_dict)
+
         return v8DetectionLoss(self.yolo_model.model)
 
     def forward(self, x):

@@ -129,7 +129,7 @@ LOG_SPECTROGRAMS_EVERY_N_EPOCHS = 5  # Log spectrogram samples every N epochs
 NUM_SPECTROGRAM_SAMPLES = 4  # Number of spectrogram samples to log
 
 # --- Debug Mode ---
-DEBUG = True  # Enable debug mode for testing (smaller dataset, verbose logging, fewer epochs)
+DEBUG = False  # Enable debug mode for testing (smaller dataset, verbose logging, fewer epochs)
 DEBUG_MAX_SAMPLES = 100  # Maximum number of samples per split in debug mode
 DEBUG_EPOCHS = 2  # Number of epochs to run in debug mode
 
