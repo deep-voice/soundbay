@@ -20,6 +20,98 @@ except ImportError:
     print("Warning: AudioSample not available. Install audiosample for streaming audio loading.")
 
 
+GCS_FILE_CACHE_PATH = "dclde_2026/gcs_files_cache.pkl"
+
+
+def get_existing_gcs_files(cache_path=GCS_FILE_CACHE_PATH, force_refresh=False):
+    """
+    List all .wav files that actually exist in the GCS bucket under the DCLDE prefix.
+    Results are cached to disk to avoid re-listing on every run.
+    
+    Returns:
+        set: A set of full gs:// paths that exist in GCS
+    """
+    import pickle
+    
+    if os.path.exists(cache_path) and not force_refresh:
+        print(f"Loading cached GCS file list from {cache_path}")
+        with open(cache_path, 'rb') as f:
+            existing_files = pickle.load(f)
+        print(f"Loaded {len(existing_files)} existing files from cache")
+        return existing_files
+    
+    print("Listing files in GCS bucket (this may take a few minutes for ~200k files)...")
+    
+    fs = GCSFileSystem()
+    prefix = f"{config.GCS_AUDIO_BUCKET_NAME}/dclde/2026/dclde_2026_killer_whales/"
+    
+    # List all files recursively
+    try:
+        all_files = fs.glob(f"{prefix}**/*.wav")
+    except Exception as e:
+        print(f"Error listing with glob, trying ls: {e}")
+        # Fallback to recursive ls
+        all_files = []
+        def list_recursive(path):
+            try:
+                items = fs.ls(path, detail=True)
+                for item in items:
+                    if item['type'] == 'directory':
+                        list_recursive(item['name'])
+                    elif item['name'].endswith('.wav'):
+                        all_files.append(item['name'])
+            except Exception as e2:
+                print(f"  Error listing {path}: {e2}")
+        list_recursive(prefix)
+    
+    # Convert to gs:// format for consistency
+    existing_files = set()
+    for f in all_files:
+        if not f.startswith('gs://'):
+            f = f'gs://{f}'
+        existing_files.add(f)
+    
+    print(f"Found {len(existing_files)} .wav files in GCS")
+    
+    # Cache results
+    os.makedirs(os.path.dirname(cache_path) if os.path.dirname(cache_path) else '.', exist_ok=True)
+    with open(cache_path, 'wb') as f:
+        pickle.dump(existing_files, f)
+    print(f"Cached file list to {cache_path}")
+    
+    return existing_files
+
+
+def filter_annotations_by_existing_files(df, existing_files, gcs_path_column='gcs_path'):
+    """
+    Filter annotations DataFrame to only include rows where the audio file exists in GCS.
+    
+    Args:
+        df: Annotations DataFrame with gcs_path column
+        existing_files: Set of existing gs:// paths from get_existing_gcs_files()
+        gcs_path_column: Name of the column containing GCS paths
+    
+    Returns:
+        Filtered DataFrame
+    """
+    before_count = len(df)
+    unique_paths_before = df[gcs_path_column].nunique()
+    
+    # Check which paths exist
+    df_filtered = df[df[gcs_path_column].isin(existing_files)]
+    
+    after_count = len(df_filtered)
+    unique_paths_after = df_filtered[gcs_path_column].nunique()
+    
+    removed_annotations = before_count - after_count
+    removed_files = unique_paths_before - unique_paths_after
+    
+    print(f"Filtered annotations: {before_count} -> {after_count} ({removed_annotations} removed)")
+    print(f"Unique files: {unique_paths_before} -> {unique_paths_after} ({removed_files} missing files removed)")
+    
+    return df_filtered
+
+
 class GCSAudioLoader:
     def __init__(self, bucket_name, cache_dir=None, enable_cache=False):
         self.bucket_name = bucket_name
@@ -84,24 +176,6 @@ class AudioAugmentations:
         return audio * gain
 
 
-class SpectrogramAugmentations:
-    @staticmethod
-    def specaugment(spec, labels):
-        if not config.AUGMENT_SPEC_SPECAUGMENT or np.random.rand() > config.AUGMENT_SPEC_SPECAUGMENT_P: return spec, labels
-        # Simple masking
-        if config.AUGMENT_SPEC_FREQ_MASK:
-            f = np.random.randint(0, 10)
-            if f > 0: 
-                f0 = np.random.randint(0, max(1, spec.shape[1] - f))
-                spec[:, f0:f0+f, :] = 0
-        return spec, labels
-    
-    @staticmethod
-    def mixup(spec1, labels1, spec2, labels2):
-        # Placeholder for mixup to keep file short
-        return spec1, labels1 
-
-
 class AudioObjectDataset(Dataset):
     def __init__(self, df, annotations_df, audio_loader, is_train=True, use_beats=False, model_type=None):
         self.df_chips = df
@@ -112,14 +186,9 @@ class AudioObjectDataset(Dataset):
         self.model_type = model_type or config.MODEL_TYPE.lower()
         self.class_column = config.ANNOTATION_CLASS_COLUMN
         self.audio_aug = AudioAugmentations(annotations_df) if is_train else None
-        self.spec_aug = SpectrogramAugmentations() if is_train else None
         
-        # Simplified: Use one main spectrogram config
-        self.spec_transform = torchaudio.transforms.Spectrogram(
-            n_fft=config.N_FFT_LIST[-1], # 2048
-            hop_length=config.HOP_LENGTH,
-            power=2.0
-        )
+        # NOTE: Spectrogram generation moved to GPU (in models.py) to save CPU/bandwidth
+        # self.spec_aug removed from here as we don't have specs yet
 
     def __len__(self): return len(self.df_chips)
 
@@ -146,34 +215,8 @@ class AudioObjectDataset(Dataset):
         yolo_labels = utils.convert_labels_to_yolo(chip_labels, row['chip_start_sec'], config.WINDOW_SEC, class_column=self.class_column)
         labels = torch.tensor(yolo_labels, dtype=torch.float32)
 
-        if self.use_beats:
-            return torch.from_numpy(y).float().squeeze(0), labels
-            
-        # Spectrogram for YOLO
-        spec = self.spec_transform(torch.from_numpy(y).float()) # [1, F, T]
-        spec = 10 * torch.log10(spec + 1e-10)
-        spec = (spec - spec.min()) / (spec.max() - spec.min() + 1e-6)
-        
-        # Resize to target freq bins if needed
-        if spec.shape[1] != config.TARGET_FREQ_BINS:
-             # Use F.interpolate. Input must be [B, C, H, W] or [C, H, W].
-             # spec is [1, F, T]. We want to resize F dimension.
-             # Interpolate expects [Batch, Channels, Height, Width]
-             spec = spec.unsqueeze(0) # [1, 1, F, T]
-             spec = F.interpolate(spec, size=(config.TARGET_FREQ_BINS, spec.shape[3]), mode='bilinear', align_corners=False)
-             spec = spec.squeeze(0) # [1, F, T]
-
-        # Flip spectrogram vertically so 0Hz is at the bottom (Index H-1) and MaxHz is at the top (Index 0)
-        # This aligns with standard image coordinates where y=0 is the top.
-        spec = torch.flip(spec, [1])
-
-        # Replicate to 3 channels for YOLO
-        spec3 = spec.repeat(3, 1, 1) 
-        
-        if self.is_train and self.spec_aug:
-            spec3, labels = self.spec_aug.specaugment(spec3, labels)
-
-        return spec3, labels
+        # Return raw audio as tensor [C, T] (C=1 usually)
+        return torch.from_numpy(y).float(), labels
 
 
 class CustomCollate:
@@ -187,18 +230,24 @@ class CustomCollate:
         data = [item[0] for item in batch]
         labels = [item[1] for item in batch]
         
+        # Audio: [1, T]
+        # Check dimensions
+        # If all samples are same length (ensured by __getitem__ padding), we can just stack
+        # data is list of tensors [1, T]
+        
+        try:
+            data = torch.stack(data)
+        except RuntimeError:
+             # Fallback if lengths differ for some reason
+             max_len = max([d.shape[-1] for d in data])
+             data = torch.stack([F.pad(d, (0, max_len - d.shape[-1])) for d in data])
+             
+        # Result: [B, 1, T]
         if self.use_beats:
-             # Audio: [T]
-             max_len = max([d.shape[0] for d in data])
-             data = torch.stack([F.pad(d, (0, max_len - d.shape[0])) for d in data])
-        else:
-             # Spec: [3, F, T]
-             max_time = max([d.shape[2] for d in data])
-             # Pad to multiple of 32 for YOLO
-             if max_time % 32 != 0:
-                 max_time = ((max_time // 32) + 1) * 32
-                 
-             data = torch.stack([F.pad(d, (0, max_time - d.shape[2])) for d in data])
+             # BEATS expects [B, T] (no channel dim if mono?) or [B, C, T]
+             # If [B, 1, T], let's squeeze channel if BEATS expects so.
+             # BEATS model usually takes [B, T].
+             data = data.squeeze(1)
              
         return data, labels
 
@@ -271,14 +320,33 @@ def create_full_annotation_df():
 
     df['gcs_path'] = df.apply(map_path, axis=1)
     df = df.dropna(subset=['gcs_path'])
-    print(f"Loaded {len(df)} annotations")
+    print(f"Mapped {len(df)} annotations to GCS paths")
+    
+    # Filter out annotations for files that don't exist in GCS
+    existing_files = get_existing_gcs_files()
+    df = filter_annotations_by_existing_files(df, existing_files)
+    
+    print(f"Final annotation count: {len(df)}")
     return df
 
 
-def create_chip_list(df_ann, cache_path='chip_list_cache.pkl'):
-    if os.path.exists(cache_path):
+def refresh_gcs_file_cache():
+    """Force refresh the GCS file cache. Call this if files have been added/removed."""
+    return get_existing_gcs_files(force_refresh=True)
+
+
+def create_chip_list(df_ann, cache_path='chip_list_cache.pkl', force_refresh=False):
+    if os.path.exists(cache_path) and not force_refresh:
         print(f"Loading cached chip list from {cache_path}")
-        return pd.read_pickle(cache_path)
+        cached = pd.read_pickle(cache_path)
+        # Validate cache against current annotation files
+        cached_files = set(cached['gcs_path'].unique())
+        current_files = set(df_ann['gcs_path'].unique())
+        if cached_files == current_files:
+            return cached
+        else:
+            print(f"Cache outdated (files changed). Regenerating...")
+            # Fall through to regenerate
 
     print("Creating chips...")
     file_durations = df_ann.groupby('gcs_path')['FileEndSec'].max()

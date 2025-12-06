@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torchaudio
 from transformers import AutoModel, AutoConfig, AutoProcessor
 
@@ -76,6 +77,13 @@ class YOLOModelWrapper(nn.Module):
             self.num_classes = num_classes or config.NUM_CLASSES
             print(f"Initialized YOLO model: yolov8{model_size}.pt")
             
+            # Spectrogram transform (Moved from Dataset to GPU)
+            self.spec_transform = torchaudio.transforms.Spectrogram(
+                n_fft=config.N_FFT_LIST[-1], # 2048
+                hop_length=config.HOP_LENGTH,
+                power=2.0
+            )
+            
             # Register the inner model as a submodule so parameters are found
             # and .train()/.eval() work on the actual network
             if hasattr(self.yolo_model, 'model'):
@@ -84,19 +92,8 @@ class YOLOModelWrapper(nn.Module):
                 for param in self.core_model.parameters():
                     param.requires_grad = True
             
-            # Ensure model is in the right mode and has correct number of classes
-            # We need to force a reset if classes differ, but loading 'yolov8n.pt' usually has 80 classes.
-            # We can transfer weights to a new head or just let it learn.
-            # Ideally we should modify the head to match NUM_CLASSES.
             if self.yolo_model.model.nc != self.num_classes:
                 print(f"Adjusting YOLO head from {self.yolo_model.model.nc} to {self.num_classes} classes")
-                # This is a hacky way to adjust the head. 
-                # Better way: Create a new model with custom config or use YOLO's transfer learning capability
-                # But for now, we'll rely on the fact that we are training from scratch or fine-tuning.
-                # Actually, simply running .train() with data.yaml handles this. 
-                # For manual loop, we might need to manually swap the head or just ignore the mismatch if we don't load strict state_dict.
-                
-                # IMPORTANT: When running in custom loop, we must ensure the model is in training mode
                 self.core_model.train() 
 
         except ImportError:
@@ -116,8 +113,6 @@ class YOLOModelWrapper(nn.Module):
             except ImportError:
                 raise ImportError("Could not import v8DetectionLoss from ultralytics")
         
-        # v8DetectionLoss needs the model (specifically the detection head info)
-        # Fix for AttributeError: 'dict' object has no attribute 'box'
         if hasattr(self.yolo_model.model, 'args') and isinstance(self.yolo_model.model.args, dict):
             class AttributeDict(dict):
                 def __getattr__(self, attr):
@@ -138,24 +133,58 @@ class YOLOModelWrapper(nn.Module):
     def forward(self, x):
         """
         Forward pass for YOLO.
-        Note: YOLO expects images in [B, C, H, W] format with values in [0, 1] or [0, 255]
+        Input: Raw Audio [B, 1, T] or [B, T]
+        Output: Model predictions
         """
-        # YOLO expects images in specific format
-        # x is [B, 3, H, W] spectrogram
-        # Convert to [0, 255] range if needed
-        if x.max() <= 1.0:
-            x = x * 255.0
+        # 1. Compute Spectrogram on GPU
+        # Check input shape
+        if x.dim() == 2: # [B, T]
+            x = x.unsqueeze(1) # [B, 1, T]
         
-        # YOLO model expects numpy or PIL, but we can use it directly
-        # For training, YOLO uses its own training loop, so this is mainly for inference
-        results = self.yolo_model(x, verbose=False)
-        return results
+        # x is now [B, 1, T]. Spectrogram expects [..., T].
+        # If we pass [B, 1, T], output is [B, 1, F, T]
+        spec = self.spec_transform(x) 
+        spec = 10 * torch.log10(spec + 1e-10)
+        spec = (spec - spec.min()) / (spec.max() - spec.min() + 1e-6)
+        
+        # Resize if needed
+        if spec.shape[2] != config.TARGET_FREQ_BINS:
+             # spec is [B, 1, F, T]
+             # F.interpolate expects [B, C, H, W]
+             # We want to resize dim 2 (F)
+             spec = F.interpolate(spec, size=(config.TARGET_FREQ_BINS, spec.shape[3]), mode='bilinear', align_corners=False)
+
+        # Flip vertically (Low freq at bottom)
+        spec = torch.flip(spec, [2])
+        
+        # Replicate to 3 channels [B, 3, F, T]
+        x = spec.repeat(1, 3, 1, 1)
+
+        # 2. YOLO Forward
+        # Training hack for raw output
+        if self.training:
+            # Check/Force Detect head training mode to get raw output
+            detect_module = None
+            for m in self.core_model.modules():
+                if m.__class__.__name__ == 'Detect':
+                    detect_module = m
+                    break
+            
+            if detect_module:
+                prev_training = detect_module.training
+                detect_module.training = True 
+                
+                out = self.core_model(x)
+                
+                detect_module.training = prev_training
+                return out
+            
+            return self.core_model(x)
+
+        # Inference
+        return self.yolo_model(x, verbose=False)
     
     def train_yolo(self, data, epochs, imgsz, batch, **kwargs):
-        """
-        Train YOLO using its native training API.
-        This is the recommended way to train YOLO.
-        """
         return self.yolo_model.train(
             data=data,
             epochs=epochs,
