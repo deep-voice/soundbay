@@ -145,7 +145,10 @@ class YOLOModelWrapper(nn.Module):
         # If we pass [B, 1, T], output is [B, 1, F, T]
         spec = self.spec_transform(x) 
         spec = 10 * torch.log10(spec + 1e-10)
-        spec = (spec - spec.min()) / (spec.max() - spec.min() + 1e-6)
+        # Per-sample normalization (spec is [B, 1, F, T])
+        spec_min = spec.amin(dim=(1, 2, 3), keepdim=True)
+        spec_max = spec.amax(dim=(1, 2, 3), keepdim=True)
+        spec = (spec - spec_min) / (spec_max - spec_min + 1e-6)
         
         # Resize if needed
         if spec.shape[2] != config.TARGET_FREQ_BINS:
@@ -159,30 +162,66 @@ class YOLOModelWrapper(nn.Module):
         
         # Replicate to 3 channels [B, 3, F, T]
         x = spec.repeat(1, 3, 1, 1)
+        
+        # Pad/resize to ensure dimensions are divisible by 32 (YOLO stride requirement)
+        _, _, h, w = x.shape
+        pad_h = (32 - h % 32) % 32
+        pad_w = (32 - w % 32) % 32
+        if pad_h > 0 or pad_w > 0:
+            x = F.pad(x, (0, pad_w, 0, pad_h), mode='constant', value=0)
 
         # 2. YOLO Forward
-        # Training hack for raw output
-        if self.training:
-            # Check/Force Detect head training mode to get raw output
-            detect_module = None
-            for m in self.core_model.modules():
-                if m.__class__.__name__ == 'Detect':
-                    detect_module = m
-                    break
+        # Always return raw tensors from forward() for loss computation
+        # Use predict() method for inference with Results objects
+        
+        # Force Detect head to return raw output (not post-processed)
+        detect_module = None
+        for m in self.core_model.modules():
+            if m.__class__.__name__ == 'Detect':
+                detect_module = m
+                break
+        
+        if detect_module:
+            prev_training = detect_module.training
+            detect_module.training = True  # Force raw output mode
             
-            if detect_module:
-                prev_training = detect_module.training
-                detect_module.training = True 
-                
-                out = self.core_model(x)
-                
-                detect_module.training = prev_training
-                return out
+            out = self.core_model(x)
             
-            return self.core_model(x)
-
-        # Inference
-        return self.yolo_model(x, verbose=False)
+            detect_module.training = prev_training
+            return out
+        
+        return self.core_model(x)
+    
+    def predict(self, x, **kwargs):
+        """
+        Run inference and return Results objects (for visualization/export).
+        Use this instead of forward() when you need post-processed predictions.
+        """
+        # Prepare input (same as forward)
+        if x.dim() == 2:
+            x = x.unsqueeze(1)
+        
+        spec = self.spec_transform(x)
+        spec = 10 * torch.log10(spec + 1e-10)
+        # Per-sample normalization (spec is [B, 1, F, T])
+        spec_min = spec.amin(dim=(1, 2, 3), keepdim=True)
+        spec_max = spec.amax(dim=(1, 2, 3), keepdim=True)
+        spec = (spec - spec_min) / (spec_max - spec_min + 1e-6)
+        
+        if spec.shape[2] != config.TARGET_FREQ_BINS:
+            spec = F.interpolate(spec, size=(config.TARGET_FREQ_BINS, spec.shape[3]), mode='bilinear', align_corners=False)
+        
+        spec = torch.flip(spec, [2])
+        x = spec.repeat(1, 3, 1, 1)
+        
+        # Pad for stride 32
+        _, _, h, w = x.shape
+        pad_h = (32 - h % 32) % 32
+        pad_w = (32 - w % 32) % 32
+        if pad_h > 0 or pad_w > 0:
+            x = F.pad(x, (0, pad_w, 0, pad_h), mode='constant', value=0)
+        
+        return self.yolo_model(x, verbose=False, **kwargs)
     
     def train_yolo(self, data, epochs, imgsz, batch, **kwargs):
         return self.yolo_model.train(

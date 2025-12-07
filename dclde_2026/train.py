@@ -222,12 +222,12 @@ def log_spectrogram_samples(model, val_loader, device, num_samples=4, model_type
             inputs = inputs.to(device)
             # inputs is raw audio [B, 1, T] or [B, T]
             
-            # Generate predictions
-            preds = model(inputs) 
-            
             # Only support YOLO spectrogram logging for now
             if model_type != 'yolo':
                 continue
+                
+            # Generate predictions using predict() for Results objects
+            preds = model.predict(inputs) if hasattr(model, 'predict') else model(inputs)
                 
             # We need to manually generate spectrogram for visualization
             # since model output is detection results.
@@ -237,7 +237,10 @@ def log_spectrogram_samples(model, val_loader, device, num_samples=4, model_type
                 
                 spec = model.spec_transform(inputs)
                 spec = 10 * torch.log10(spec + 1e-10)
-                spec = (spec - spec.min()) / (spec.max() - spec.min() + 1e-6)
+                # Per-sample normalization (spec is [B, 1, F, T])
+                spec_min = spec.amin(dim=(1, 2, 3), keepdim=True)
+                spec_max = spec.amax(dim=(1, 2, 3), keepdim=True)
+                spec = (spec - spec_min) / (spec_max - spec_min + 1e-6)
                 
                 # Resize if needed (same logic as in model.forward)
                 if spec.shape[2] != config.TARGET_FREQ_BINS:
