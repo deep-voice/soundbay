@@ -1,0 +1,11 @@
+# @package _global_
+model:
+  criterion:
+    _target_: torch.nn.CrossEntropyLoss
+  model:
+    _target_: models.CNNRNN
+    num_classes: 3
+    cnn_out_channels: 32
+    rnn_hidden_size: 16
+    rnn_num_layers: 5
+    rnn_dropout: 0.2

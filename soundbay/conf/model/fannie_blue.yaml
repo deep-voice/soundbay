@@ -3,9 +3,5 @@ model:
   criterion:
     _target_: torch.nn.CrossEntropyLoss
   model:
-    _target_: models.EfficientNet2D
+    _target_: models.ResNet1Channel
     num_classes: 3
-    pretrained: True
-    hidden_dim: 68
-    dropout: 0.5
-    version: b7

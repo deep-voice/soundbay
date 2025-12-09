@@ -1,10 +1,10 @@
 # @package _global_
 experiment:
   checkpoint:
-    path: '/mnt/d/DeepVoice/checkpoints/ResNet1Channel_spec_128_lr_-3_3_sec/best.pth' #???
+    path: '/mnt/d/DeepVoice/checkpoints/ResNet1Channel_spec_1000__4_sec/best.pth' #???
     load_optimizer_state: False
-  save_raven: True
-  threshold: 0.9
+  save_raven: False
+  threshold: 0.99
   raven_max_freq: null
 hydra:
   run:

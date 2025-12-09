@@ -3,6 +3,6 @@ defaults:
   - ../data: fannie_blue
   - ../augmentations: _augmentations
   - ../preprocessors: _preprocessors
-  - ../model: defaults # check in future after first run
+  - ../model:  cnn_rnn
   - ../optim: fannie_blue
   - ../experiment: fannie_blue
