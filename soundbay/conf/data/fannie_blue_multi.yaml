@@ -3,35 +3,35 @@ data:
   label_names: ['Noise', 'ANT_BLUE', 'MAD_BLUE']
   batch_size: 64
   num_workers: 10
-  sample_rate: 1000
+  sample_rate: 128
   data_sample_rate: 1000
   min_freq: 0
-  max_freq: 500
-  n_fft: 2048
-  hop_length: 512
-  label_type: 'single_label'
+  max_freq: 64
+  n_fft: 256 # 2 sec window
+  hop_length: 128 # 50% overlap
+  label_type: 'multi_label'
   proba_threshold: 0.5
   train_dataset:
     _target_: soundbay.data.ClassifierDataset
     data_path: './datasets/fannie_project/'
     path_hierarchy: 0
     mode: train
-    metadata_path: './datasets/fannie_project/train_updated.csv'
-    augmentations_p: 0.0
+    metadata_path: './datasets/fannie_project/train_multi_labels.csv'
+    augmentations_p: 0.5
     augmentations: ${_augmentations}
     preprocessors: ${_preprocessors}
-    seq_length: 3
+    seq_length: 4.0  # seconds
     margin_ratio: 0.5
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     slice_flag: false
-    split_metadata_by_label: yes
+    split_metadata_by_label: true
   val_dataset:
     _target_: soundbay.data.ClassifierDataset
     data_path: './datasets/fannie_project/'
     path_hierarchy: 0
     mode: val
-    metadata_path: './datasets/fannie_project/val_updated.csv'
+    metadata_path: './datasets/fannie_project/val_multi_labels.csv'
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
