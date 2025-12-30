@@ -8,6 +8,7 @@ __pycache__/
 # common env and venv
 venv/
 env/
+.pywhale/*
 .env
 .venv
 
