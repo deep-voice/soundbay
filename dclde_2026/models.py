@@ -71,10 +71,12 @@ class YOLOModelWrapper(nn.Module):
         super().__init__()
         try:
             from ultralytics import YOLO
-            # Store in list to avoid nn.Module registration of the wrapper which has conflicting .train()
-            self._yolo = [YOLO(f'yolov8{model_size}.pt')]
+            from ultralytics.nn.modules.head import Detect
             
             self.num_classes = num_classes or config.NUM_CLASSES
+            
+            # Load pretrained YOLO model
+            self._yolo = [YOLO(f'yolov8{model_size}.pt')]
             print(f"Initialized YOLO model: yolov8{model_size}.pt")
             
             # Spectrogram transform (Moved from Dataset to GPU)
@@ -84,6 +86,39 @@ class YOLOModelWrapper(nn.Module):
                 power=2.0
             )
             
+            # Adjust the number of classes in the model if necessary
+            if self.yolo_model.model.nc != self.num_classes:
+                print(f"Adjusting YOLO head from {self.yolo_model.model.nc} to {self.num_classes} classes")
+                
+                # Find the Detect module and rebuild cv3 layers
+                for name, m in self.yolo_model.model.named_modules():
+                    if isinstance(m, Detect):
+                        # Update class count
+                        old_nc = m.nc
+                        m.nc = self.num_classes
+                        m.no = m.reg_max * 4 + self.num_classes
+                        
+                        # Rebuild cv3 (class prediction) layers with correct number of classes
+                        # cv3 structure: Sequential(Conv(in, nc), Conv(nc, nc), Conv2d(nc, nc))
+                        from ultralytics.nn.modules.conv import Conv
+                        
+                        for i in range(len(m.cv3)):
+                            # Get input channels from first layer
+                            in_ch = m.cv3[i][0].conv.in_channels
+                            
+                            # Rebuild cv3[i] with new nc
+                            m.cv3[i] = nn.Sequential(
+                                Conv(in_ch, self.num_classes, 3),
+                                Conv(self.num_classes, self.num_classes, 3),
+                                nn.Conv2d(self.num_classes, self.num_classes, 1)
+                            )
+                        
+                        # Update model-level nc
+                        self.yolo_model.model.nc = self.num_classes
+                        
+                        print(f"Rebuilt Detect head: nc={m.nc}, no={m.no}")
+                        break
+            
             # Register the inner model as a submodule so parameters are found
             # and .train()/.eval() work on the actual network
             if hasattr(self.yolo_model, 'model'):
@@ -92,9 +127,7 @@ class YOLOModelWrapper(nn.Module):
                 for param in self.core_model.parameters():
                     param.requires_grad = True
             
-            if self.yolo_model.model.nc != self.num_classes:
-                print(f"Adjusting YOLO head from {self.yolo_model.model.nc} to {self.num_classes} classes")
-                self.core_model.train() 
+            self.core_model.train()
 
         except ImportError:
             raise ImportError("ultralytics not available. Install with: pip install ultralytics")
@@ -103,8 +136,23 @@ class YOLOModelWrapper(nn.Module):
     def yolo_model(self):
         return self._yolo[0]
     
-    def get_loss_criterion(self):
+    def train(self, mode=True):
+        """Override train to ensure parameters require gradients after switching modes.
+        
+        Ultralytics YOLO's predict() and __call__() methods can freeze parameters
+        when running in inference mode. We need to re-enable gradients when
+        switching back to training mode.
+        """
+        super().train(mode)
+        if mode and hasattr(self, 'core_model'):
+            # Re-enable gradients on all parameters after switching to train mode
+            for param in self.core_model.parameters():
+                param.requires_grad = True
+        return self
+    
+    def get_loss_criterion(self, use_soft_negative=True):
         """Get the loss criterion for this model"""
+        from dclde_2026.losses import SoftNegativeYOLOLoss
         try:
             from ultralytics.utils.loss import v8DetectionLoss
         except ImportError:
@@ -121,14 +169,15 @@ class YOLOModelWrapper(nn.Module):
                     self[attr] = value
             
             args_dict = self.yolo_model.model.args
-            # Ensure required loss hyperparameters exist with default values
             if 'box' not in args_dict: args_dict['box'] = 7.5
             if 'cls' not in args_dict: args_dict['cls'] = 0.5
             if 'dfl' not in args_dict: args_dict['dfl'] = 1.5
-            
             self.yolo_model.model.args = AttributeDict(args_dict)
 
-        return v8DetectionLoss(self.yolo_model.model)
+        base_loss = v8DetectionLoss(self.yolo_model.model)
+        if use_soft_negative:
+            return SoftNegativeYOLOLoss(base_loss, cls_loss_scale=0.7)
+        return base_loss
 
     def forward(self, x):
         """

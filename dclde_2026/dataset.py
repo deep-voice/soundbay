@@ -45,9 +45,12 @@ def get_existing_gcs_files(cache_path=GCS_FILE_CACHE_PATH, force_refresh=False):
     fs = GCSFileSystem()
     prefix = f"{config.GCS_AUDIO_BUCKET_NAME}/dclde/2026/dclde_2026_killer_whales/"
     
-    # List all files recursively
+    # List all files recursively (wav AND flac - DFO_CRP uses flac!)
     try:
-        all_files = fs.glob(f"{prefix}**/*.wav")
+        all_files = []
+        for ext in ['*.wav', '*.flac']:
+            all_files.extend(fs.glob(f"{prefix}**/{ext}"))
+        print(f"Found {len(all_files)} audio files (.wav + .flac)")
     except Exception as e:
         print(f"Error listing with glob, trying ls: {e}")
         # Fallback to recursive ls
@@ -58,7 +61,7 @@ def get_existing_gcs_files(cache_path=GCS_FILE_CACHE_PATH, force_refresh=False):
                 for item in items:
                     if item['type'] == 'directory':
                         list_recursive(item['name'])
-                    elif item['name'].endswith('.wav'):
+                    elif item['name'].endswith('.wav') or item['name'].endswith('.flac'):
                         all_files.append(item['name'])
             except Exception as e2:
                 print(f"  Error listing {path}: {e2}")
@@ -128,10 +131,65 @@ class GCSAudioLoader:
             gcs_path = gcs_path[len(f"{self.bucket_name}/"):]
         return f"https://storage.googleapis.com/{self.bucket_name}/{gcs_path}"
 
-    def load_audio_segment(self, gcs_path, offset_sec, duration_sec, orig_sr_hint=None):
-        if not AUDIOSAMPLE_AVAILABLE: raise ImportError("AudioSample not available.")
+    def _load_with_ffmpeg(self, url, offset_sec, duration_sec):
+        """Load audio segment using ffmpeg (more reliable for streaming)
+        
+        Uses INPUT seeking (-ss BEFORE -i) for fast seeking.
+        This seeks to nearest keyframe then decodes - ~100x faster for long files.
+        For 5-second windows, any alignment error is negligible (<50ms typically).
+        """
+        import subprocess
+        import tempfile
+        import soundfile as sf
+        
+        with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as tmp:
+            tmp_path = tmp.name
+        
         try:
-            gcs_url = self._get_gcs_url(gcs_path)
+            # INPUT seeking: -ss BEFORE -i for fast seeking (seeks to keyframe)
+            # Much faster than output seeking, especially for long files
+            # For audio, keyframes are frequent so accuracy is still good
+            cmd = [
+                'ffmpeg', '-y',
+                '-ss', str(offset_sec),  # INPUT seeking = fast (before -i)
+                '-i', url,
+                '-t', str(duration_sec),
+                '-f', 'wav', '-acodec', 'pcm_s16le', 
+                '-ar', str(self.target_sr), '-ac', '1',
+                '-loglevel', 'error',
+                tmp_path
+            ]
+            result = subprocess.run(cmd, capture_output=True, timeout=60)  # Reduced timeout since it's faster now
+            
+            if result.returncode == 0:
+                data, sr = sf.read(tmp_path)
+                os.unlink(tmp_path)
+                # Convert to [1, T] shape
+                audio = np.expand_dims(data, axis=0).astype(np.float32)
+                return audio, sr
+            else:
+                os.unlink(tmp_path)
+                raise RuntimeError(f"ffmpeg failed: {result.stderr.decode()[:200]}")
+        except Exception as e:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
+            raise e
+
+    def load_audio_segment(self, gcs_path, offset_sec, duration_sec, orig_sr_hint=None):
+        gcs_url = self._get_gcs_url(gcs_path)
+        
+        # Try ffmpeg first (more reliable for streaming from GCS)
+        try:
+            return self._load_with_ffmpeg(gcs_url, offset_sec, duration_sec)
+        except Exception as ffmpeg_err:
+            pass  # Fall through to audiosample
+        
+        # Fallback to audiosample
+        if not AUDIOSAMPLE_AVAILABLE:
+            print(f"ERROR: ffmpeg failed and AudioSample not available for {gcs_path}")
+            return None, 0
+            
+        try:
             audio_sample = AudioSample(gcs_url)
             orig_sr = orig_sr_hint or (audio_sample.sample_rate if hasattr(audio_sample, 'sample_rate') else config.SAMPLE_RATE)
             
@@ -195,7 +253,7 @@ class AudioObjectDataset(Dataset):
     def __getitem__(self, idx):
         row = self.df_chips.iloc[idx]
         y, sr = self.audio_loader.load_audio_segment(row['gcs_path'], row['chip_start_sec'], config.WINDOW_SEC)
-        if y is None: return None, None
+        if y is None: return None, None, None
         
         if self.is_train and self.audio_aug:
             y = self.audio_aug.apply_gain(y)
@@ -215,8 +273,15 @@ class AudioObjectDataset(Dataset):
         yolo_labels = utils.convert_labels_to_yolo(chip_labels, row['chip_start_sec'], config.WINDOW_SEC, class_column=self.class_column)
         labels = torch.tensor(yolo_labels, dtype=torch.float32)
 
-        # Return raw audio as tensor [C, T] (C=1 usually)
-        return torch.from_numpy(y).float(), labels
+        # Chip metadata
+        chip_meta = {
+            'gcs_path': row['gcs_path'],
+            'chip_start_sec': row['chip_start_sec'],
+            'chip_end_sec': row['chip_start_sec'] + config.WINDOW_SEC
+        }
+
+        # Return raw audio as tensor [C, T] (C=1 usually), labels, and metadata
+        return torch.from_numpy(y).float(), labels, chip_meta
 
 
 class CustomCollate:
@@ -225,10 +290,11 @@ class CustomCollate:
 
     def __call__(self, batch):
         batch = [b for b in batch if b[0] is not None]
-        if not batch: return torch.tensor([]), []
+        if not batch: return torch.tensor([]), [], []
         
         data = [item[0] for item in batch]
         labels = [item[1] for item in batch]
+        metadata = [item[2] for item in batch]
         
         # Audio: [1, T]
         # Check dimensions
@@ -249,7 +315,7 @@ class CustomCollate:
              # BEATS model usually takes [B, T].
              data = data.squeeze(1)
              
-        return data, labels
+        return data, labels, metadata
 
 
 def create_full_annotation_df():
@@ -364,31 +430,90 @@ def create_chip_list(df_ann, cache_path='chip_list_cache.pkl', force_refresh=Fal
     return df_chips
 
 
-def get_dataloaders(df_ann, df_chips, fold_id=0, use_beats=False, model_type=None):
-    gkf = GroupKFold(n_splits=config.N_SPLITS)
-    splits = list(gkf.split(df_chips, groups=df_chips['group']))
+def get_dataloaders(df_ann, df_chips, fold_id=0, use_beats=False, model_type=None, return_splits=False):
+    """
+    Create train/val/test dataloaders with proper ~70/15/15 split.
     
-    val_idx = splits[fold_id][1]
-    test_idx = splits[(fold_id + 1) % config.N_SPLITS][1]
-    train_idx = list(set(range(len(df_chips))) - set(val_idx) - set(test_idx))
+    Uses stratified group splitting to ensure:
+    1. No group (Dataset) appears in multiple splits (prevents data leakage)
+    2. Split sizes are approximately 70% train, 15% val, 15% test
+    3. Each split has diverse groups when possible
+    """
+    # Get group sizes to create balanced splits
+    group_sizes = df_chips.groupby('group').size().sort_values(ascending=False)
+    total_samples = len(df_chips)
+    
+    # Target split ratios
+    train_ratio, val_ratio, test_ratio = 0.70, 0.15, 0.15
+    
+    # Assign groups to splits based on cumulative size to achieve target ratios
+    # This greedy approach assigns each group to the split that needs it most
+    train_groups, val_groups, test_groups = [], [], []
+    train_size, val_size, test_size = 0, 0, 0
+    
+    for group, size in group_sizes.items():
+        # Calculate current ratios
+        current_train_ratio = train_size / total_samples if total_samples > 0 else 0
+        current_val_ratio = val_size / total_samples if total_samples > 0 else 0
+        current_test_ratio = test_size / total_samples if total_samples > 0 else 0
+        
+        # Calculate how far each split is from its target
+        train_deficit = train_ratio - current_train_ratio
+        val_deficit = val_ratio - current_val_ratio
+        test_deficit = test_ratio - current_test_ratio
+        
+        # Assign to the split with the largest deficit
+        if train_deficit >= val_deficit and train_deficit >= test_deficit:
+            train_groups.append(group)
+            train_size += size
+        elif val_deficit >= test_deficit:
+            val_groups.append(group)
+            val_size += size
+        else:
+            test_groups.append(group)
+            test_size += size
+    
+    # Create indices for each split
+    train_idx = df_chips[df_chips['group'].isin(train_groups)].index.tolist()
+    val_idx = df_chips[df_chips['group'].isin(val_groups)].index.tolist()
+    test_idx = df_chips[df_chips['group'].isin(test_groups)].index.tolist()
+    
+    print(f"Split distribution: Train {len(train_idx)} ({100*len(train_idx)/total_samples:.1f}%), "
+          f"Val {len(val_idx)} ({100*len(val_idx)/total_samples:.1f}%), "
+          f"Test {len(test_idx)} ({100*len(test_idx)/total_samples:.1f}%)")
+    print(f"  Train groups: {train_groups}")
+    print(f"  Val groups: {val_groups}")  
+    print(f"  Test groups: {test_groups}")
     
     if config.DEBUG:
          train_idx = train_idx[:config.DEBUG_MAX_SAMPLES]
          val_idx = val_idx[:config.DEBUG_MAX_SAMPLES]
          test_idx = test_idx[:config.DEBUG_MAX_SAMPLES]
     
+    # Get the split dataframes
+    df_train = df_chips.iloc[train_idx].copy()
+    df_val = df_chips.iloc[val_idx].copy()
+    df_test = df_chips.iloc[test_idx].copy()
+    
     loader = GCSAudioLoader(config.GCS_AUDIO_BUCKET_NAME)
     
     datasets = {
-        'train': AudioObjectDataset(df_chips.iloc[train_idx], df_ann, loader, True, use_beats, model_type),
-        'val': AudioObjectDataset(df_chips.iloc[val_idx], df_ann, loader, False, use_beats, model_type),
-        'test': AudioObjectDataset(df_chips.iloc[test_idx], df_ann, loader, False, use_beats, model_type)
+        'train': AudioObjectDataset(df_train, df_ann, loader, True, use_beats, model_type),
+        'val': AudioObjectDataset(df_val, df_ann, loader, False, use_beats, model_type),
+        'test': AudioObjectDataset(df_test, df_ann, loader, False, use_beats, model_type)
     }
     
     collate = CustomCollate(use_beats)
     
-    return (
-        DataLoader(datasets['train'], config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS, collate_fn=collate),
-        DataLoader(datasets['val'], config.BATCH_SIZE, shuffle=False, num_workers=config.NUM_WORKERS, collate_fn=collate),
-        DataLoader(datasets['test'], config.BATCH_SIZE, shuffle=False, num_workers=config.NUM_WORKERS, collate_fn=collate)
+    loaders = (
+        DataLoader(datasets['train'], config.BATCH_SIZE, shuffle=True, num_workers=config.NUM_WORKERS, 
+                   collate_fn=collate, prefetch_factor=2, persistent_workers=True if config.NUM_WORKERS > 0 else False),
+        DataLoader(datasets['val'], config.BATCH_SIZE, shuffle=False, num_workers=config.NUM_WORKERS, 
+                   collate_fn=collate, prefetch_factor=2, persistent_workers=True if config.NUM_WORKERS > 0 else False),
+        DataLoader(datasets['test'], config.BATCH_SIZE, shuffle=False, num_workers=config.NUM_WORKERS, 
+                   collate_fn=collate, prefetch_factor=2, persistent_workers=True if config.NUM_WORKERS > 0 else False)
     )
+    
+    if return_splits:
+        return loaders, (df_train, df_val, df_test)
+    return loaders

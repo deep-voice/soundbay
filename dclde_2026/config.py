@@ -54,7 +54,8 @@ ANNOTATION_CLASS_COLUMN = 'ClassSpecies'
 NOISE_CLASS_STRING = 'UndBio'
 
 # Providers with median BB height of 0 are not useful for detection
-PROVIDERS_TO_EXCLUDE = ["SIMRES", "SIO", "OrcaSound"]
+# DFO_WDLP excluded due to narrow component-level annotations (avg height ~250 Hz) instead of full call boxes
+PROVIDERS_TO_EXCLUDE = ["SIMRES", "SIO", "OrcaSound", "DFO_WDLP"]
 # Target classes (actual labels from annotations)
 CLASSES = ['AB', 'HW', 'KW', 'UndBio']
 CLASS_TO_ID = {c: i for i, c in enumerate(CLASSES)}
@@ -64,7 +65,7 @@ NUM_CLASSES = len(CLASSES)
 # --- Training ---
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 BATCH_SIZE = 96
-NUM_WORKERS = 16
+NUM_WORKERS = 4  # Reduced from 16 - PyTorch recommends max 4 for this system
 EPOCHS = 100
 LEARNING_RATE = 1e-4
 WEIGHT_DECAY = 1e-5
@@ -125,7 +126,7 @@ AUGMENT_CUTMIX_ALPHA = 1.0  # Beta distribution parameter
 USE_WANDB = True  # Enable Weights & Biases logging
 WANDB_PROJECT = "dclde_2026"  # WandB project name
 WANDB_ENTITY = None  # WandB entity/team (None for personal)
-LOG_SPECTROGRAMS_EVERY_N_EPOCHS = 5  # Log spectrogram samples every N epochs
+LOG_SPECTROGRAMS_EVERY_N_EPOCHS = 1  # Log spectrogram samples every N epochs (was 5, now 1 for debugging)
 NUM_SPECTROGRAM_SAMPLES = 4  # Number of spectrogram samples to log
 
 # --- Debug Mode ---

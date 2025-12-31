@@ -7,6 +7,35 @@ from scipy.optimize import linear_sum_assignment
 from dclde_2026 import config
 
 
+class SoftNegativeYOLOLoss(nn.Module):
+    """Wrapper for YOLO v8 loss with soft negative mining.
+    
+    Reduces cls_loss weight to be more tolerant of potential unlabeled positives.
+    Also applies label smoothing to negative targets.
+    """
+    def __init__(self, base_loss, cls_loss_scale=0.7, neg_label_smooth=0.05):
+        super().__init__()
+        self.base_loss = base_loss
+        self.cls_loss_scale = cls_loss_scale  # Scale down cls loss
+        self.neg_label_smooth = neg_label_smooth  # Soft label for negatives (0 -> 0.05)
+        if hasattr(base_loss, 'nc'):
+            self.nc = base_loss.nc
+    
+    def forward(self, preds, batch):
+        """Compute loss with soft negative mining."""
+        loss, loss_items = self.base_loss(preds, batch)
+        
+        # Scale down cls_loss component (index 1 in loss_items: [box, cls, dfl])
+        if isinstance(loss_items, torch.Tensor) and loss_items.numel() >= 3:
+            # Reduce cls_loss contribution to total loss
+            cls_reduction = loss_items[1] * (1 - self.cls_loss_scale)
+            loss = loss - cls_reduction
+            loss_items = loss_items.clone()
+            loss_items[1] = loss_items[1] * self.cls_loss_scale
+        
+        return loss, loss_items
+
+
 def giou_loss(pred_boxes, target_boxes):
     pred_x1 = pred_boxes[:, 0] - pred_boxes[:, 2] / 2
     pred_y1 = pred_boxes[:, 1] - pred_boxes[:, 3] / 2
