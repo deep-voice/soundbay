@@ -1,6 +1,8 @@
 # IPython
 __pycache__/
 *.ipynb_checkpoints*
+.pywhale*
+datasets/*
 
 # VS code
 .vscode/
@@ -23,14 +25,14 @@ soundbay/runs
 soundbay/logs
 *last.pth
 *best.pth
-outputs/*
+outputs*
 .misc
 
 # redundant formats
 *.zip
 
 # outputs
-outputs/
+*outputs*/
 /soundbay/.null/inference.log
 /soundbay/wandb/
 
