@@ -35,43 +35,59 @@ class AnnotationProcessor:
         session = boto3.Session(profile_name=aws_profile) if aws_profile else boto3.Session()
         self.s3_client = session.client('s3')
         
-        # Pre-fetch list of folders to optimize lookups
-        self.folders_list = self._get_folders()
+        # Pre-fetch list of ALL files to optimize lookups
+        self.file_cache = self._build_file_cache()
 
-    def _get_folders(self) -> List[str]:
+    def _build_file_cache(self) -> Dict[str, str]:
         """
-        Retrieve a list of subfolders within the configured S3 prefix.
+        Scan the S3 prefix and build a cache mapping filename -> full_s3_uri.
+        This allows for O(1) existence checks.
         
         Returns:
-            List of folder names.
+            Dictionary mapping filename (basename) to full S3 URI.
         """
-        logger.info(f"Fetching folders from s3://{self.bucket}/{self.s3_prefix}...")
-        folders = []
+        logger.info(f"Building file cache from s3://{self.bucket}/{self.s3_prefix}...")
+        file_cache = {}
+        processed_count = 0
+        
         try:
             paginator = self.s3_client.get_paginator('list_objects_v2')
+            # Note: We do NOT use Delimiter here so we get all objects recursively
             page_iterator = paginator.paginate(
                 Bucket=self.bucket, 
-                Prefix=self.s3_prefix, 
-                Delimiter='/'
+                Prefix=self.s3_prefix
             )
 
             for page in page_iterator:
-                for prefix in page.get('CommonPrefixes', []):
-                    folder_path = prefix.get('Prefix')
-                    # Extract just the immediate folder name relative to s3_prefix
-                    # Logic matches original: remove the prefix from the full folder path
-                    relative_folder = folder_path.replace(self.s3_prefix, '', 1) 
-                    folders.append(relative_folder)
+                if 'Contents' not in page:
+                    continue
+                    
+                for obj in page['Contents']:
+                    key = obj['Key']
+                    # Skip if key matches the prefix exactly (folder placeholder)
+                    if key == self.s3_prefix:
+                        continue
+                        
+                    filename = os.path.basename(key)
+                    # If filename allows duplicates in different folders, we currently keep the LAST one found
+                    # or first one? Dictionary overwrite keeps the last one encountered in iteration.
+                    # Original logic was ambiguous but "first match" implies we might want to be careful.
+                    # However, assuming unique filenames across folders is safer or acceptable default.
+                    
+                    if filename not in file_cache:
+                        file_cache[filename] = f"s3://{self.bucket}/{key}"
+                    
+                    processed_count += 1
             
-            logger.info(f"Found {len(folders)} folders.")
-            return folders
+            logger.info(f"Cache built. Found {processed_count} files, {len(file_cache)} unique filenames.")
+            return file_cache
         except Exception as e:
-            logger.error(f"Error fetching folders: {e}")
-            return []
+            logger.error(f"Error building file cache: {e}")
+            return {}
 
     def check_file_exists_in_s3(self, filename: str) -> Optional[str]:
         """
-        Check if a file exists in any of the known S3 subfolders.
+        Check if a file exists in the cache.
 
         Args:
             filename: The name of the file to check.
@@ -79,18 +95,7 @@ class AnnotationProcessor:
         Returns:
             The full S3 path if found, otherwise None.
         """
-        for folder in self.folders_list:
-            # Construct candidate key
-            # Let's stick strictly to constructing the key:
-            full_key = f"{self.s3_prefix}{folder}{filename}"
-            
-            try:
-                self.s3_client.head_object(Bucket=self.bucket, Key=full_key)
-                return f"s3://{self.bucket}/{full_key}"
-            except Exception:
-                continue
-        
-        return None
+        return self.file_cache.get(filename)
 
     def get_local_annotation_files(self, directory: str) -> Dict[str, pd.DataFrame]:
         """
@@ -171,8 +176,7 @@ class AnnotationProcessor:
             processed_df['annotations_filename'] = annotations_filename
             
             # Check S3 for each row
-            # Note: This row-by-row S3 check is slow. 
-            # Ideally we'd batch this or check existency once, but sticking to original logic structure for safety.
+            # Optimized: using dictionary lookup for O(1) speed
             s3_paths = []
             for _, row in processed_df.iterrows():
                 fname = row.get('filename')
@@ -180,8 +184,9 @@ class AnnotationProcessor:
                     s3_paths.append('None')
                     continue
                 
-                s3_path = self.check_file_exists_in_s3(fname)
-                s3_paths.append(s3_path if s3_path else 'None')
+                # Fast lookup
+                s3_uri = self.check_file_exists_in_s3(fname)
+                s3_paths.append(s3_uri if s3_uri else 'None')
             
             processed_df['s3_path'] = s3_paths
             all_edited_dfs.append(processed_df)
