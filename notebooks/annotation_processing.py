@@ -131,23 +131,32 @@ class AnnotationProcessor:
         logger.info(f"Loaded {files_found} valid annotation files.")
         return all_dfs
 
-    def process_single_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+    def process_single_dataframe(self, annotations_filename: str, df: pd.DataFrame) -> pd.DataFrame:
         """
         Process a raw annotation DataFrame to standardize columns and types.
         """
         try:
             df = df.copy()
             # Convert 'Begin File' to string
+            # 'Begin File' or 'Begin.File' are valid column names
+            # rename 'Begin.File' to 'Begin File'
+            df.rename(columns={'Begin.File': 'Begin File'}, inplace=True)
             df['Begin File'] = df['Begin File'].astype(str)
             df['filename'] = df['Begin File']
             
             # Calculate timings
             df['call_length'] = df['End Time (s)'] - df['Begin Time (s)']
+            # check if file offst column exist, if not, use begin time as 'Begin Time (s)'
+            if 'File Offset (s)' not in df.columns:
+                df['File Offset (s)'] = df['Begin Time (s)']
             df['begin_time'] = df['File Offset (s)']
             df['end_time'] = df['begin_time'] + df['call_length']
             
             # Add label
-            df['label'] = 1
+            if '_fp.txt' in annotations_filename.lower():
+                df['label'] = 0
+            else:
+                df['label'] = 1
             
             return df
         except KeyError as e:
@@ -165,7 +174,7 @@ class AnnotationProcessor:
 
         logger.info("Processing files and checking S3...")
         for annotations_filename, df in tqdm(all_dfs.items(), desc="Processing"):
-            processed_df = self.process_single_dataframe(df)
+            processed_df = self.process_single_dataframe(annotations_filename, df)
             
             if processed_df.empty:
                 continue
@@ -195,6 +204,55 @@ class AnnotationProcessor:
             final_df = pd.concat(all_edited_dfs, ignore_index=True)
             logger.info(f"Saving combined DataFrame to {output_csv}")
             final_df.to_csv(output_csv, index=False)
+            
+            # --- Statistics Reporting ---
+            logger.info("="*30)
+            logger.info("PROCESSING STATISTICS")
+            logger.info("="*30)
+            
+            # 1. Unique files count
+            unique_files = final_df['filename'].nunique()
+            logger.info(f"Total Unique Audio Files: {unique_files}")
+
+            # 1.1 S3 Existence Count
+            found_count = (final_df['s3_path'] != 'None').sum()
+            total_count = len(final_df)
+            logger.info(f"Files Found in S3: {found_count} / {total_count} ({found_count/total_count:.1%})")
+            
+            # 2. Files per S3 folder
+            # Extract folder structure from s3_path. 
+            # Format: s3://bucket/prefix/folder/filename -> we want 'folder'
+            # We know s3_path is 's3://bucket/prefix/folder/filename' OR 'None'
+            
+            def extract_s3_folder(path_str):
+                if path_str == 'None' or not isinstance(path_str, str):
+                    return 'Not Found in S3'
+                # Remove bucket and prefix to get relative folder
+                # Our stored s3_path is full URI.
+                # simpler: parse standard URI or string manipulation
+                try:
+                    # s3://bucket/ ... /folder/filename
+                    # lets just split by slash and take the parent dir of the file
+                    # precise extraction depends on if we want full path or relative
+                    # let's just show the parent directory
+                    return os.path.dirname(path_str)
+                except:
+                    return 'Error Parsing Path'
+
+            s3_folders = final_df['s3_path'].apply(extract_s3_folder)
+            logger.info("\n--- Distribution by S3 Folder ---")
+            logger.info(s3_folders.value_counts().to_string())
+
+            # 3. Stats by annotation source file
+            logger.info("\n--- Distribution by Source Annotation File ---")
+            logger.info(final_df['annotations_filename'].value_counts().to_string())
+            
+            # 4. Label distribution
+            if 'label' in final_df.columns:
+                 logger.info("\n--- Label Distribution ---")
+                 logger.info(final_df['label'].value_counts().to_string())
+
+            logger.info("="*30)
             logger.info("Done.")
         else:
             logger.warning("No data processed.")
@@ -204,7 +262,7 @@ if __name__ == "__main__":
     BUCKET_NAME = 'deepvoice-user-uploads'
     S3_PREFIX = 'shayetudor@gmail.com/dropbox/cods/'
     INPUT_DIR = '/home/ubuntu/soundbay/datasets/shaye_txt'
-    OUTPUT_FILE = 'shaye_annotations_added_new_extended.csv'
+    OUTPUT_FILE = 'shaye_annotations_3.1.26_extended.csv'
 
     processor = AnnotationProcessor(
         s3_bucket=BUCKET_NAME,
