@@ -262,7 +262,7 @@ if __name__ == "__main__":
     BUCKET_NAME = 'deepvoice-user-uploads'
     S3_PREFIX = 'shayetudor@gmail.com/dropbox/cods/'
     INPUT_DIR = '/home/ubuntu/soundbay/datasets/shaye_txt'
-    OUTPUT_FILE = 'shaye_annotations_3.1.26_extended.csv'
+    OUTPUT_FILE = 'shaye_annotations_15.1.26_extended.csv'
 
     processor = AnnotationProcessor(
         s3_bucket=BUCKET_NAME,
