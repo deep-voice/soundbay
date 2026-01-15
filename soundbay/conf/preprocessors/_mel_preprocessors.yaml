@@ -12,5 +12,8 @@ _preprocessors:
 #    f_max: ${data.sample_rate / 2}
   amplitude_2_db:
     _target_: torchaudio.transforms.AmplitudeToDB
-  peak_norm:
-    _target_: soundbay.data.PeakNormalize
+    top_db: 180
+    # ref: 
+  # peak_norm:
+  #   _target_: soundbay.data.PeakNormalize
+

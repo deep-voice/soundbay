@@ -18,7 +18,7 @@ from sklearn.model_selection import train_test_split
 def process_val_train_bg(df_path):
     df = pd.read_csv(df_path, index_col=0)
     df = df.dropna()
-    df = df[df['Species'] !='UN']
+    # df = df[df['Species'] !='UN']
     sorted_dfs = df.sort_values('begin_time', ascending=True)
     newdf = bg_from_non_overlap_calls(sorted_dfs)
 
@@ -171,7 +171,7 @@ if __name__ == "__main__":
 
     # main_dir = '/Users/tomernahshon/Documents/soundbay/shaye_data/all_txt_19.7.25'
     main_dir = '/home/ubuntu/soundbay/datasets/shaye_txt'
-    # process_annotations_files(get_files, process_df, get_folders, check_file_exists, main_dir)
+    process_annotations_files(get_files, process_df, get_folders, check_file_exists, main_dir)
     # #load the saved csv file
     # df = pd.read_csv('shaye_annotations_added_new.csv')
     # print(df.shape)
@@ -191,10 +191,10 @@ if __name__ == "__main__":
     # df2.to_csv('shaye_annotations_added_nan_removed.csv', index=False)
 
     # process dataframe to val and train
-    train_df, val_df = process_val_train_bg(df2_path) 
-    save_path = '/home/ubuntu/soundbay/datasets/shaye_dfs'
-    train_df.to_csv(os.path.join(save_path, 'train.csv'))
-    val_df.to_csv(os.path.join(save_path, 'val.csv'))
+    # train_df, val_df = process_val_train_bg(df2_path) 
+    # save_path = '/home/ubuntu/soundbay/datasets/shaye_dfs'
+    # train_df.to_csv(os.path.join(save_path, 'train.csv'))
+    # val_df.to_csv(os.path.join(save_path, 'val.csv'))
 
 
         

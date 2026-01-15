@@ -1,7 +1,7 @@
 # @package _global_
 experiment:
   checkpoint:
-    path: ???
+    path: /home/ubuntu/checkpoints/p4phc42h/best.pth
     load_optimizer_state: False
   save_raven: False
   threshold: 0.5

@@ -10,7 +10,7 @@ import argparse
 import shutil
 
 # Configuration
-CSV_FILE = os.path.expanduser("~/soundbay/shaye_annotations_3.1.26_extended.csv")
+CSV_FILE = os.path.expanduser("~/soundbay/shaye_annotations_15.1.26_extended.csv")
 DEST_DIR = os.path.expanduser("~/soundbay/datasets/shaye_data_extended")
 MAX_WORKERS = 10 
 MIN_FREE_SPACE_BYTES = 200 * 1024 * 1024  # 200 MB

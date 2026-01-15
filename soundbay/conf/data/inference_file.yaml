@@ -6,6 +6,6 @@ data:
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate} # it is needed don't delete it!
     overlap: 0
-  batch_size: 64
-  num_workers: 2
+  batch_size: 128
+  num_workers: 4
   data_sample_rate: 44100
