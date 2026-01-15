@@ -5,7 +5,6 @@ data:
   num_workers: 6
   sample_rate: 300000
   data_sample_rate: 576000
-  max_freq: 150000
   min_freq: 100000
   n_fft: 2048
   hop_length: 128
@@ -31,7 +30,7 @@ data:
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
-    seq_length: 0.25
+    seq_length: ${data.train_dataset.seq_length}
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     slice_flag: true
