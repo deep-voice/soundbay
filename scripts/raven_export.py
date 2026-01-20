@@ -4,6 +4,86 @@ Raven Intelligence Export Module
 This module provides utilities to export soundbay models to Raven Intelligence format.
 It wraps trained models with their preprocessing pipeline to create standalone models
 that accept raw audio input, compatible with Raven Intelligence's expected interface.
+
+Raven Intelligence is a bioacoustics analysis tool from Cornell Lab of Ornithology that
+uses DJL (Deep Java Library) to run ML models for automated sound detection.
+
+=========================================================================================
+USAGE EXAMPLES
+=========================================================================================
+
+1. COMMAND LINE - Export a soundbay checkpoint to Raven format:
+   -------------------------------------------------------------------------
+   python scripts/raven_export.py /path/to/checkpoint/best.pth \\
+       --output-dir ~/Raven\ Workbench/Raven\ Intelligence/Models/ \\
+       --name My_Detector
+
+   This requires args.yaml to be in the same directory as the checkpoint.
+
+2. PYTHON API - Export from soundbay checkpoint:
+   -------------------------------------------------------------------------
+   from scripts.raven_export import create_raven_model_package
+
+   create_raven_model_package(
+       checkpoint_path='/path/to/checkpoint/best.pth',
+       output_dir='~/Raven Workbench/Raven Intelligence/Models/',
+       model_name='My_Detector',
+       export_format='torchscript',  # recommended; 'onnx' also available
+   )
+
+3. PYTHON API - Package an existing TorchScript model:
+   -------------------------------------------------------------------------
+   from scripts.raven_export import create_raven_model_package_from_torchscript
+
+   create_raven_model_package_from_torchscript(
+       torchscript_path='/path/to/model.pt',
+       output_dir='~/Raven Workbench/Raven Intelligence/Models/',
+       model_name='Whale_Detector',
+       label_names=['Noise', 'HUWH', 'RIWH'],
+       sample_rate=2000,   # Hz - input audio sample rate
+       seq_length=4.0,     # seconds - input audio duration
+   )
+
+=========================================================================================
+OUTPUT STRUCTURE
+=========================================================================================
+
+The export creates a .ravenmodel package with the following structure:
+
+    {output_dir}/
+    ├── {model_name}.ravenmodel    # JSON config file (describes model to Raven)
+    └── {model_name}/
+        ├── model.pt               # TorchScript model (or model.onnx)
+        └── labels.txt             # Class labels, one per line
+
+Copy both the .ravenmodel file AND the model directory to:
+    ~/Raven Workbench/Raven Intelligence/Models/
+
+Then restart Raven Intelligence and select the model for detection.
+
+=========================================================================================
+SUPPORTED MODEL ARCHITECTURES
+=========================================================================================
+
+Currently supports exporting these soundbay model types:
+- ResNet182D
+- Squeezenet2D
+
+For other architectures, use create_raven_model_package_from_torchscript() with a
+pre-exported TorchScript model that has preprocessing embedded.
+
+=========================================================================================
+NOTES
+=========================================================================================
+
+- TorchScript export is recommended over ONNX (STFT operations not supported in ONNX)
+- The wrapper embeds all preprocessing (resampling, MelSpectrogram, normalization)
+  so the exported model accepts raw audio and outputs class probabilities
+- Raven Intelligence uses DJL with PyTorch 2.5.1 - ensure version compatibility
+- Input tensor shape: (batch, samples) for models exported with this script
+- Output tensor shape: (batch, num_classes) with softmax probabilities
+
+=========================================================================================
 """
 
 import json
