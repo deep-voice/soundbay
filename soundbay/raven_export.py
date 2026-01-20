@@ -543,3 +543,167 @@ def create_raven_model_package(
     print(f"  2. Restart Raven Intelligence and select the model")
 
     return ravenmodel_path
+
+
+def create_raven_model_package_from_torchscript(
+    torchscript_path: Union[str, Path],
+    output_dir: Union[str, Path],
+    model_name: str,
+    label_names: List[str],
+    sample_rate: int,
+    seq_length: float,
+    input_channels: int = 1,
+) -> Path:
+    """
+    Create a Raven Intelligence model package from a pre-existing TorchScript model.
+
+    Use this when you have a TorchScript model (.pt) that already has preprocessing
+    embedded, rather than a soundbay checkpoint.
+
+    This creates:
+    - {model_name}.ravenmodel (JSON configuration)
+    - {model_name}/model.pt (copied TorchScript model)
+    - {model_name}/labels.txt (class labels)
+
+    Args:
+        torchscript_path: Path to the TorchScript model (.pt file)
+        output_dir: Directory to create the model package in
+        model_name: Name for the model
+        label_names: List of class label names (e.g., ['Noise', 'HUWH', 'RIWH'])
+        sample_rate: Expected input sample rate in Hz
+        seq_length: Expected input duration in seconds
+        input_channels: Number of input audio channels (default: 1)
+
+    Returns:
+        Path to the .ravenmodel file
+    """
+    import shutil
+
+    torchscript_path = Path(torchscript_path)
+    output_dir = Path(output_dir)
+
+    if not torchscript_path.exists():
+        raise FileNotFoundError(f"TorchScript model not found: {torchscript_path}")
+
+    # Create model directory
+    model_dir = output_dir / model_name
+    model_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy the TorchScript model
+    model_dest = model_dir / 'model.pt'
+    shutil.copy(torchscript_path, model_dest)
+    print(f"Copied TorchScript model to {model_dest}")
+
+    # Create labels file
+    labels_path = model_dir / 'labels.txt'
+    with open(labels_path, 'w') as f:
+        for label in label_names:
+            f.write(f"{label}\n")
+    print(f"Created labels file at {labels_path}")
+
+    # Calculate input dimensions
+    num_samples = int(sample_rate * seq_length)
+    num_classes = len(label_names)
+
+    # Determine input tensor dimensions based on channels
+    if input_channels == 1:
+        input_dims = [-1, input_channels, num_samples]
+    else:
+        input_dims = [-1, input_channels, num_samples]
+
+    # Create .ravenmodel configuration
+    ravenmodel_config = {
+        "name": model_name,
+        "engine": "PYTORCH",
+        "modelDirectory": {
+            "path": model_name
+        },
+        "labelsFilePath": {
+            "path": f"{model_name}/labels.txt"
+        },
+        "numLabels": num_classes,
+        "availableSignatures": ["default"],
+        "chosenSignature": "default",
+        "availableInputs": ["audio"],
+        "availableOutputs": ["scores"],
+        "inputTensors": {
+            "audio": {
+                "dimensions": input_dims,
+                "dataType": "FLOAT32",
+                "audio": True,
+                "value": None,
+                "file": None
+            }
+        },
+        "outputTensors": {
+            "scores": {
+                "dimensions": [-1, num_classes],
+                "dataType": "FLOAT32",
+                "audio": False,
+                "value": None,
+                "file": None
+            }
+        },
+        "scoresTensor": "scores",
+        "minSampleDuration": int(seq_length),
+        "maxSampleDuration": int(seq_length),
+        "minSampleRate": sample_rate,
+        "maxSampleRate": sample_rate
+    }
+
+    # Write .ravenmodel file
+    ravenmodel_path = output_dir / f"{model_name}.ravenmodel"
+    with open(ravenmodel_path, 'w') as f:
+        json.dump(ravenmodel_config, f, indent=2)
+    print(f"Created .ravenmodel file at {ravenmodel_path}")
+
+    print(f"\nRaven model package created successfully!")
+    print(f"  Model directory: {model_dir}")
+    print(f"  Configuration: {ravenmodel_path}")
+    print(f"  Labels: {label_names}")
+    print(f"  Sample rate: {sample_rate} Hz")
+    print(f"  Duration: {seq_length}s ({num_samples} samples)")
+
+    return ravenmodel_path
+
+
+if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        description='Export soundbay model to Raven Intelligence format'
+    )
+    parser.add_argument(
+        'checkpoint',
+        type=str,
+        help='Path to the soundbay checkpoint (.pth file)'
+    )
+    parser.add_argument(
+        '--output-dir',
+        type=str,
+        default='.',
+        help='Output directory for the model package'
+    )
+    parser.add_argument(
+        '--name',
+        type=str,
+        default=None,
+        help='Model name (defaults to checkpoint directory name)'
+    )
+    parser.add_argument(
+        '--no-softmax',
+        action='store_true',
+        help='Do not apply softmax to outputs'
+    )
+
+    args = parser.parse_args()
+
+    checkpoint_path = Path(args.checkpoint)
+    model_name = args.name or checkpoint_path.parent.name
+
+    create_raven_model_package(
+        checkpoint_path=checkpoint_path,
+        output_dir=args.output_dir,
+        model_name=model_name,
+        apply_softmax=not args.no_softmax,
+    )
