@@ -11,6 +11,7 @@ import hydra
 from pathlib import Path
 import os
 import pandas
+import cv2
 import datetime
 from omegaconf import OmegaConf
 
@@ -20,6 +21,46 @@ from soundbay.utils.checkpoint_utils import merge_with_checkpoint
 from soundbay.conf_dict import models_dict, datasets_dict
 
 from soundbay.utils.metrics import MetricsCalculator
+
+
+class GradCAM:
+    def __init__(self, model, target_layer):
+        self.model = model
+        self.target_layer = target_layer
+        self.gradients = None
+        self.activation = None
+        self._register_hooks()
+
+    def _register_hooks(self):
+        def forward_hook(module, input, output):
+            self.activation = output.detach()       
+        def backward_hook(module, grad_input, grad_output):
+            self.gradients = grad_output[0].detach()        
+            self.forward_handle = self.target_layer.register_forward_hook(forward_hook)
+            self.backward_handle = self.target_layer.register_backward_hook(backward_hook)   
+    
+        def remove_hooks(self):
+            self.forward_handle.remove()
+            self.backward_handle.remove()  
+    
+    def generate(self, input_tensor, target_class=None):
+        output = self.model(input_tensor)
+        if target_class is None:
+            target_class = output.argmax(dim=1).item()
+        if target_class >= output.shape[1]:
+            raise ValueError("Invalid target class index")
+        self.model.zero_grad()
+        class_loss = output[0, target_class]
+        class_loss.backward()
+    
+        pooled_gradients = self.gradients.mean(dim=[2, 3], keepdim=True)
+        weighted_activations = pooled_gradients * self.activation
+        cam = weighted_activations.sum(dim=1, keepdim=True)
+        cam = torch.nn.functional.relu(cam)
+        cam = cam.squeeze().cpu().numpy()
+        cam = cv2.resize(cam, (224, 224))
+        cam = (cam - cam.min()) / (cam.max() - cam.min())
+        return cam
 
 
 def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
@@ -78,8 +119,7 @@ def load_model(model_params, checkpoint_state_dict):
     model.load_state_dict(checkpoint_state_dict)
     return model
 
-
-def infer_with_metadata(
+def cam_to_image(
         device,
         batch_size,
         dataset_args,
@@ -87,62 +127,32 @@ def infer_with_metadata(
         checkpoint_state_dict,
         output_path,
         model_name,
-        proba_norm_func,
-        label_type
-):
-    """
-        This functions takes the ClassifierDataset dataset and produces the model prediction to a file
-        Input:
-            device: cpu/gpu
-            batch_size: the number of samples the model will infer at once
-            dataset_args: the required arguments for the dataset class
-            model_path: directory for the wanted trained model
-            output_path: directory to save the prediction file
-        """
-    # set paths and create dataset
-    test_dataset = datasets_dict[dataset_args['_target_']](data_path = dataset_args['data_path'],
-    metadata_path=dataset_args['metadata_path'], augmentations=dataset_args['augmentations'],
-    augmentations_p=dataset_args['augmentations_p'],
-    preprocessors=dataset_args['preprocessors'],
-    seq_length=dataset_args['seq_length'], data_sample_rate=dataset_args['data_sample_rate'],
-    sample_rate=dataset_args['sample_rate'], 
-    mode=dataset_args['mode'], slice_flag=dataset_args['slice_flag'], path_hierarchy=dataset_args['path_hierarchy'],
-    label_type=label_type
-    )
-
+        save_raven,
+        threshold,
+        label_names,
+        raven_max_freq,
+        proba_norm_func
+) -> None:
     # load model
     model = load_model(model_args, checkpoint_state_dict).to(device)
+    all_raven_list = []
+    dataset_args = dict(dataset_args)
+    dataset_type = dataset_args.pop('_target_')
+    test_dataset = datasets_dict[dataset_type](**dataset_args)
+    test_dataloader = DataLoader(
+        dataset=test_dataset, shuffle=False, batch_size=batch_size,
+        num_workers=0, pin_memory=False)
 
-    test_dataloader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size, num_workers=0,
-                                 pin_memory=False)
+    # create CAM for each sample
+    for i, (inputs, _) in enumerate(test_dataloader):
+        inputs = inputs.to(device)
+        cam = model(inputs)
+        all_raven_list.append(cam)
 
-    # predict
-    predict_prob = predict_proba(model, test_dataloader, device, None, proba_norm_func)
-
-    results_df = pandas.DataFrame(predict_prob)  # add class names
-    if hasattr(test_dataset, 'metadata'):
-        concat_dataset = pandas.concat([test_dataset.metadata, results_df],
-                                       axis=1)  # TODO: make sure metadata column order matches the prediction df order
-        metrics_dict = MetricsCalculator(
-                label_list=concat_dataset["label"].values.tolist(),
-                pred_list=np.argmax(predict_prob, axis=1).tolist(),
-                pred_proba_list=predict_prob,
-                label_type=label_type).calc_all_metrics()
-        print(metrics_dict)
-    else:
-        concat_dataset = results_df
-        print("Notice: The dataset has no ground truth labels")
-
-    # save file
-    dataset_name = Path(test_dataset.metadata_path).stem
-    filename = f"Inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{dataset_name}.csv"
-    output_file = output_path / filename
-    concat_dataset.to_csv(index=False, path_or_buf=output_file)
-
-    # save raven file
-
-    return
-
+    # save all CAMs
+    if save_raven:
+        for i, cam in enumerate(all_raven_list):
+            cam.save(os.path.join(output_path, f"cam_{i}.png"))
 
 def infer_without_metadata(
         device,
@@ -156,8 +166,7 @@ def infer_without_metadata(
         threshold,
         label_names,
         raven_max_freq,
-        proba_norm_func,
-        kwargs
+        proba_norm_func
 ):
     """
         This functions takes the InferenceDataset dataset and produces the model prediction to a file, by iterating
@@ -222,42 +231,6 @@ def infer_without_metadata(
 
     return
 
-def infer_proba(
-        device,
-        batch_size,
-        dataset_args,
-        model_args,
-        checkpoint_state_dict,
-        label_names,
-        proba_norm_func
-):
-    """
-        This functions takes the InferenceDataset dataset and produces the model prediction to a file, by iterating
-        on all channels in the file and concatenating the results.
-        Input:
-            device: cpu/gpu
-            batch_size: the number of samples the model will infer at once
-            dataset_args: the required arguments for the dataset class
-            model_path: directory for the wanted trained model
-            output_path: directory to save the prediction file
-    """
-    # load model
-    model = load_model(model_args, checkpoint_state_dict).to(device)
-    all_raven_list = []
-    dataset_args = dict(dataset_args)
-    dataset_type = dataset_args.pop('_target_')
-    test_dataset = datasets_dict[dataset_type](**dataset_args)
-    test_dataloader = DataLoader(dataset=test_dataset, shuffle=False, batch_size=batch_size, num_workers=0,
-                                 pin_memory=False)
-
-    # predict
-    predict_prob = predict_proba(model, test_dataloader, device, None, proba_norm_func)
-    label_names = ['Noise'] + [f'Call_{i}' for i in
-                               range(1, predict_prob.shape[1] + 1)] if label_names is None else label_names
-
-    results_df = pandas.DataFrame(predict_prob, columns=label_names)
-    return results_df
-
 
 def save_raven_file(filename, raven_out_df, output_path, model_name):
     raven_filename = f"{filename.stem}-Raven-inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}.txt"
@@ -265,59 +238,7 @@ def save_raven_file(filename, raven_out_df, output_path, model_name):
     raven_out_df.to_csv(index=False, path_or_buf=raven_output_file, sep='\t')
 
 
-def inference_to_file(
-    device,
-    batch_size,
-    dataset_args,
-    model_args,
-    checkpoint_state_dict,
-    output_path,
-    model_name,
-    save_raven,
-    threshold,
-    label_names,
-    raven_max_freq,
-    proba_norm_func,
-    label_type
-):
-    """
-    This functions takes the dataset and produces the model prediction to a file
-    Input:
-        device: cpu/gpu
-        batch_size: the number of samples the model will infer at once
-        dataset_args: the required arguments for the dataset class
-        model_path: directory for the wanted trained model
-        output_path: directory to save the prediction file
-    """
-    if dataset_args._target_.endswith('ClassifierDataset') or dataset_args._target_.endswith('NoBackGroundDataset'):
-        infer_with_metadata(device,
-                         batch_size,
-                         dataset_args,
-                         model_args,
-                         checkpoint_state_dict,
-                         output_path,
-                         model_name,
-                         proba_norm_func,
-                         label_type
-                         )
-    elif dataset_args._target_.endswith('InferenceDataset'):
-        infer_without_metadata(device,
-                          batch_size,
-                          dataset_args,
-                          model_args,
-                          checkpoint_state_dict,
-                          output_path,
-                          model_name,
-                          save_raven,
-                          threshold,
-                          label_names,
-                          raven_max_freq,
-                          proba_norm_func)
-    else:
-        raise ValueError('Only ClassifierDataset or InferenceDataset allowed in inference')
-
-
-@hydra.main(config_name="/runs/main_inference.yaml", config_path="conf", version_base='1.2')
+@hydra.main(config_name="/runs/main_inference.yaml", config_path="conf", version_base='1.2') ### CAM CONFIG
 def inference_main(args) -> None:
     """
     The main function for running predictions using a trained model on a wanted dataset. The arguments are inserted
@@ -343,39 +264,23 @@ def inference_main(args) -> None:
 
     default_norm_func = 'softmax' if args.data.label_type == 'single_label' else 'sigmoid'
 
-    if args.experiment.continous:
-        pass  # TODO: implement continous inference
-    else:
-        if args.experiment.save_raven:
-            inference_to_file(
-                device=device,
-                batch_size=args.data.batch_size,
-                dataset_args=args.data.test_dataset,
-                model_args=args.model.model,
-                checkpoint_state_dict=ckpt,
-                output_path=output_dirpath,
-                model_name=Path(args.experiment.checkpoint.path).parent.stem,
-                save_raven=args.experiment.save_raven,
-                threshold=args.experiment.threshold,
-                label_names=args.data.label_names,
-                raven_max_freq=args.experiment.raven_max_freq,
-                proba_norm_func=args.data.get('proba_norm_func', default_norm_func), # using "get" for backward compatibility,
-                label_type=args.data.label_type
-            )
-            print("Finished inference")
-        else:
-            results_df = infer_proba(
-                device=device,
-                batch_size=args.data.batch_size,
-                dataset_args=args.data.test_dataset,
-                model_args=args.model.model,
-                checkpoint_state_dict=ckpt,
-                label_names=args.data.label_names,
-                proba_norm_func=args.data.get('proba_norm_func', default_norm_func) # using "get" for backward compatibility,
-            )
-            print("Finished inference")
-            print(results_df)
-            results_df.to_csv(index=False, path_or_buf=output_dirpath / f"inference_results-{Path(args.experiment.checkpoint.path).parent.stem}.csv")
+    cam_to_image(
+        device=device,
+        batch_size=args.data.batch_size,
+        dataset_args=args.data.test_dataset,
+        model_args=args.model.model,
+        checkpoint_state_dict=ckpt,
+        output_path=output_dirpath,
+        model_name=Path(args.experiment.checkpoint.path).parent.stem,
+        save_raven=args.experiment.save_raven,
+        threshold=args.experiment.threshold,
+        label_names=args.data.label_names,
+        raven_max_freq=args.experiment.raven_max_freq,
+        proba_norm_func=args.data.get('proba_norm_func', default_norm_func), # using "get" for backward compatibility,
+        label_type=args.data.label_type
+    )
+    print("Finished inference")
+
 
 if __name__ == "__main__":
     inference_main()
