@@ -570,7 +570,7 @@ class InferenceDataset(Dataset):
         """
         all_data_frames = []
         if self.file_path.is_dir():
-            all_files = [self.file_path / x for x in self.file_path.iterdir()]
+            all_files = [x for x in self.file_path.iterdir()]
         else:
             all_files = [self.file_path]
         for file in all_files:

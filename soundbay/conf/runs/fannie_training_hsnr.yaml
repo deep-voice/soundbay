@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - ../data: fannie_blue_multi_hsnr
+  - ../augmentations: _augmentations
+  - ../preprocessors: _preprocessors
+  - ../model: multi_label # check in future after first run
+  - ../optim: fannie_blue
+  - ../experiment: fannie_blue

@@ -168,7 +168,7 @@ def modeling(
     optimizer = optim_dict[optimizer_args.pop('_target_')](model.parameters(), **optimizer_args)
 
     scheduler_args = dict(scheduler_args)
-    scheduler = scheduler_dict[scheduler_args.pop('_target_')](optimizer, **scheduler_args)
+    scheduler = scheduler_dict[scheduler_args.pop('_target_')](optimizer, **scheduler_args) 
 
     # Add the rest of the parameters to trainer instance
     _trainer = trainer(
@@ -193,7 +193,7 @@ def modeling(
 
 
 # TODO check how to use hydra without path override
-@hydra.main(config_name="/runs/fannie_training_multi_label", config_path="conf", version_base='1.2')
+@hydra.main(config_name="/runs/fannie_training_hsnr", config_path="conf", version_base='1.2')
 def main(validate_args) -> None:
 
     args = deepcopy(validate_args)
