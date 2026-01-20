@@ -512,3 +512,155 @@ class WAV2VEC2(nn.Module):
         if self.freeze_encoder:
             for param in self.wav2vec.encoder.parameters():
                 param.requires_grad = False
+
+
+class ConvRNN(nn.Module):
+    '''
+    '''
+
+    def __init__(self, conv_model: nn.Module, rnn_model: nn.Module, num_classes=2):
+        super(ConvRNN, self).__init__()
+        self.conv_model = conv_model
+        self.rnn_model = rnn_model
+        self.fc = nn.Linear(self.rnn_model.hidden_size, num_classes)
+
+    def forward(self, x):
+        # assume x shape: (batch, time, channels, height, width)
+        batch_size, time_steps, channels, height, width = x.size()
+
+        # step 1: reshape to (batch * time, channels, height, width)
+        x = x.view(batch_size * time_steps, channels, height, width)
+        x = self.conv_model(x)  # shape: (batch * time, features)
+        x = x.view(batch_size, time_steps, -1)  # shape: (batch, time, features)
+        x, _ = self.rnn_model(x)  # shape: (batch, time, rnn_hidden_size)
+        x = self.fc(x)  # shape: (batch, time, num_classes)
+        return x
+    
+class ResNetRNN(nn.Module):
+    '''
+    Docstring for ResNetRNN
+    '''
+    def __init__(self, num_classes=2, cnn_out_channels=128, rnn_hidden_size=128, rnn_num_layers=2, rnn_dropout=0.1):
+        super(ResNetRNN, self).__init__()
+
+        # CNN part
+        self.cnn = ResNet1Channel(
+            block='torchvision.models.resnet.BasicBlock',
+            layers=[3, 4, 6, 3],
+            num_classes=cnn_out_channels
+        )
+
+        # RNN part
+        self.rnn = nn.GRU(
+            input_size=cnn_out_channels,
+            hidden_size=rnn_hidden_size,
+            num_layers=rnn_num_layers,
+            batch_first=True,
+            dropout=rnn_dropout if rnn_num_layers > 1 else 0,
+            bidirectional=True,
+        )
+
+        # Classifier
+        self.fc = nn.Linear(rnn_hidden_size * 2, num_classes)  # *2 for bidirectional
+
+    def forward(self, x):
+        # assume x shape: (batch, time, channels, height, width)
+        batch_size, time_steps, channels, height, width = x.size()
+
+        # step 1: reshape to (batch * time, channels, height, width)
+        x = x.view(batch_size * time_steps, channels, height, width)
+        x = self.cnn(x)  # shape: (batch * time, features)
+        x = x.view(batch_size, time_steps, -1)  # shape: (batch, time, features)
+        x, _ = self.rnn(x)  # shape: (batch, time, rnn_hidden_size)
+        x = self.fc(x)  # shape: (batch, time, num_classes)
+        return x
+
+
+class CNNRNN(nn.Module):
+    """
+    A model combining Convolutional and Recurrent Neural Networks.
+    The CNN part extracts features from the input spectrogram, and the RNN part
+    processes these features as a sequence over time.
+    """
+
+    def __init__(
+        self,
+        num_classes=2,
+        cnn_out_channels=128,
+        rnn_hidden_size=128,
+        rnn_num_layers=2,
+        rnn_dropout=0.1,
+    ):
+        super(CNNRNN, self).__init__()
+
+        # CNN part
+        # self.cnn = nn.Sequential(
+        #     ConvBlock2d(1, 32, ker_size=3, padd=1, stride=1),
+        #     nn.MaxPool2d(kernel_size=2, stride=2),
+        #     ConvBlock2d(32, 64, ker_size=3, padd=1, stride=1),
+        #     nn.MaxPool2d(kernel_size=2, stride=2),
+        #     ConvBlock2d(64, cnn_out_channels, ker_size=3, padd=1, stride=1),
+        #     nn.MaxPool2d(kernel_size=2, stride=2),
+        # )
+        self.cnn = ResNet1Channel(
+            block='torchvision.models.resnet.BasicBlock',
+            layers=[3, 4, 6, 3],
+            num_classes=cnn_out_channels
+        )
+
+        # We need to determine the input size for the RNN based on the CNN output
+        # This is a placeholder; we'll calculate it dynamically in the forward pass
+        # or by passing a dummy tensor through the CNN.
+        # For a typical input of (batch, 1, 128, T), after 3 maxpools with stride 2 on height,
+        # the height becomes 128 / (2*2*2) = 16.
+        # So, rnn_input_size = cnn_out_channels * 16.
+        # Let's make it more robust by not hardcoding.
+        self.rnn_input_size = 32  # Will be determined on first forward pass
+
+        # RNN part
+        self.rnn = nn.GRU(
+            input_size=cnn_out_channels,  # Placeholder, will be updated
+            hidden_size=rnn_hidden_size,
+            num_layers=rnn_num_layers,
+            batch_first=True,  # Makes handling dimensions easier
+            dropout=rnn_dropout if rnn_num_layers > 1 else 0,
+            bidirectional=True,
+        )
+
+        # Classifier
+        self.fc = nn.Linear(rnn_hidden_size * 2, num_classes)  # *2 for bidirectional
+
+    def forward(self, x):
+        # x shape: (batch, channels, height, width)
+        # e.g., (batch, 1, 128, 431)
+
+        # Pass through CNN
+        x = self.cnn(x)
+        # x shape: (batch, cnn_out_channels, new_height, new_width)
+
+        # Prepare for RNN
+        # batch_size, channels, height, width = x.size()
+        _, vec_size = x.size()
+        
+        # Dynamically set RNN input size on first pass
+        if self.rnn_input_size is None:
+            # self.rnn_input_size = channels * height
+            self.rnn_input_size = vec_size
+            self.rnn.input_size = self.rnn_input_size
+            # Move the model to the correct device if the RNN was re-initialized
+            # Print your model configuration
+            self.rnn.to(x.device)
+
+        # Reshape for RNN: (batch, seq_len, features)
+        # We treat the width dimension as the sequence length
+        # x = x.permute(0, 3, 1, 2)  # (batch, width, channels, height)
+        # x = x.reshape(batch_size, width, -1)  # (batch, width, channels * height)
+
+        # Pass through RNN
+        # self.rnn.flatten_parameters() # Use if using DataParallel
+        x, _ = self.rnn(x)  # x shape: (batch, seq_len, rnn_hidden_size * 2)
+
+
+        # Classifier
+        x = self.fc(x)
+        return x
