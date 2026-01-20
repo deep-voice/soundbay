@@ -314,3 +314,232 @@ class RavenExportModel(nn.Module):
             'num_classes': args.model.model.num_classes,
             'label_names': list(args.data.label_names),
         }
+
+
+def export_to_onnx(
+    model: RavenExportModel,
+    output_path: Union[str, Path],
+    sample_rate: int,
+    seq_length: float,
+    opset_version: int = 14,
+) -> Path:
+    """
+    Export a RavenExportModel to ONNX format.
+
+    Args:
+        model: The RavenExportModel to export
+        output_path: Path for the output .onnx file
+        sample_rate: Input sample rate (for calculating input size)
+        seq_length: Sequence length in seconds
+        opset_version: ONNX opset version
+
+    Returns:
+        Path to the exported ONNX file
+    """
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    model.eval()
+
+    # Calculate input size: samples = sample_rate * seq_length
+    num_samples = int(sample_rate * seq_length)
+
+    # Create dummy input (batch_size=1)
+    dummy_input = torch.randn(1, num_samples)
+
+    # Export to ONNX
+    torch.onnx.export(
+        model,
+        dummy_input,
+        str(output_path),
+        export_params=True,
+        opset_version=opset_version,
+        do_constant_folding=True,
+        input_names=['audio'],
+        output_names=['scores'],
+        dynamic_axes={
+            'audio': {0: 'batch_size'},
+            'scores': {0: 'batch_size'},
+        },
+    )
+
+    print(f"Exported ONNX model to {output_path}")
+    return output_path
+
+
+def export_to_torchscript(
+    model: RavenExportModel,
+    output_path: Union[str, Path],
+    sample_rate: int,
+    seq_length: float,
+) -> Path:
+    """
+    Export a RavenExportModel to TorchScript format.
+
+    TorchScript is preferred when ONNX export fails (e.g., STFT not supported).
+    DJL supports loading TorchScript models via the PyTorch engine.
+
+    Args:
+        model: The RavenExportModel to export
+        output_path: Path for the output .pt file
+        sample_rate: Input sample rate (for calculating input size)
+        seq_length: Sequence length in seconds
+
+    Returns:
+        Path to the exported TorchScript file
+    """
+    output_path = Path(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    model.eval()
+
+    # Calculate input size: samples = sample_rate * seq_length
+    num_samples = int(sample_rate * seq_length)
+
+    # Create dummy input (batch_size=1)
+    dummy_input = torch.randn(1, num_samples)
+
+    # Use tracing for export (works better with dynamic ops like STFT)
+    with torch.no_grad():
+        traced_model = torch.jit.trace(model, dummy_input)
+
+    # Save the traced model
+    traced_model.save(str(output_path))
+
+    print(f"Exported TorchScript model to {output_path}")
+    return output_path
+
+
+def create_raven_model_package(
+    checkpoint_path: Union[str, Path],
+    output_dir: Union[str, Path],
+    model_name: str,
+    apply_softmax: bool = True,
+    export_format: str = 'torchscript',
+) -> Path:
+    """
+    Create a complete Raven Intelligence model package from a soundbay checkpoint.
+
+    This creates:
+    - {model_name}.ravenmodel (JSON configuration)
+    - {model_name}/model.pt or model.onnx (exported model)
+    - {model_name}/labels.txt (class labels)
+
+    Args:
+        checkpoint_path: Path to the soundbay .pth checkpoint
+        output_dir: Directory to create the model package in
+        model_name: Name for the model
+        apply_softmax: Whether to apply softmax in the model
+        export_format: 'torchscript' (default, recommended) or 'onnx'
+
+    Returns:
+        Path to the .ravenmodel file
+    """
+    checkpoint_path = Path(checkpoint_path)
+    output_dir = Path(output_dir)
+
+    # Load args for configuration
+    args_path = checkpoint_path.parent / 'args.yaml'
+    args = OmegaConf.load(args_path)
+
+    # Create the export model
+    print(f"Loading checkpoint from {checkpoint_path}...")
+    export_model = RavenExportModel.from_checkpoint(
+        checkpoint_path=checkpoint_path,
+        apply_softmax=apply_softmax,
+    )
+
+    # Get configuration
+    config = export_model.get_config(checkpoint_path)
+
+    # Create model directory
+    model_dir = output_dir / model_name
+    model_dir.mkdir(parents=True, exist_ok=True)
+
+    # Export model based on format
+    if export_format == 'torchscript':
+        model_path = model_dir / 'model.pt'
+        export_to_torchscript(
+            model=export_model,
+            output_path=model_path,
+            sample_rate=config['data_sample_rate'],
+            seq_length=config['seq_length'],
+        )
+        engine = "PYTORCH"
+    elif export_format == 'onnx':
+        model_path = model_dir / 'model.onnx'
+        export_to_onnx(
+            model=export_model,
+            output_path=model_path,
+            sample_rate=config['data_sample_rate'],
+            seq_length=config['seq_length'],
+        )
+        engine = "ONNX_RUNTIME"
+    else:
+        raise ValueError(f"Unknown export format: {export_format}. Use 'torchscript' or 'onnx'")
+
+    # Create labels file
+    labels_path = model_dir / 'labels.txt'
+    with open(labels_path, 'w') as f:
+        for label in config['label_names']:
+            f.write(f"{label}\n")
+    print(f"Created labels file at {labels_path}")
+
+    # Calculate input dimensions
+    num_samples = int(config['data_sample_rate'] * config['seq_length'])
+
+    # Create .ravenmodel configuration
+    ravenmodel_config = {
+        "name": model_name,
+        "engine": engine,
+        "modelDirectory": {
+            "path": model_name
+        },
+        "labelsFilePath": {
+            "path": f"{model_name}/labels.txt"
+        },
+        "numLabels": config['num_classes'],
+        "availableSignatures": ["default"],
+        "chosenSignature": "default",
+        "availableInputs": ["audio"],
+        "availableOutputs": ["scores"],
+        "inputTensors": {
+            "audio": {
+                "dimensions": [-1, num_samples],
+                "dataType": "FLOAT32",
+                "audio": True,
+                "value": None,
+                "file": None
+            }
+        },
+        "outputTensors": {
+            "scores": {
+                "dimensions": [-1, config['num_classes']],
+                "dataType": "FLOAT32",
+                "audio": False,
+                "value": None,
+                "file": None
+            }
+        },
+        "scoresTensor": "scores",
+        "minSampleDuration": int(config['seq_length']),
+        "maxSampleDuration": int(config['seq_length']),
+        "minSampleRate": config['data_sample_rate'],
+        "maxSampleRate": config['data_sample_rate']
+    }
+
+    # Write .ravenmodel file
+    ravenmodel_path = output_dir / f"{model_name}.ravenmodel"
+    with open(ravenmodel_path, 'w') as f:
+        json.dump(ravenmodel_config, f, indent=2)
+    print(f"Created .ravenmodel file at {ravenmodel_path}")
+
+    print(f"\nRaven model package created successfully!")
+    print(f"  Model directory: {model_dir}")
+    print(f"  Configuration: {ravenmodel_path}")
+    print(f"\nTo use in Raven Intelligence:")
+    print(f"  1. Copy both '{model_name}.ravenmodel' and '{model_name}/' to:")
+    print(f"     ~/Raven Workbench/Raven Intelligence/Models/")
+    print(f"  2. Restart Raven Intelligence and select the model")
+
+    return ravenmodel_path
