@@ -132,21 +132,37 @@ def _get_model_class(model_target: str):
 
 
 class PeakNormalizeModule(nn.Module):
-    """nn.Module version of PeakNormalize for export compatibility."""
+    """
+    nn.Module version of PeakNormalize for TorchScript export compatibility.
+
+    This is a re-implementation of soundbay.data.PeakNormalize as an nn.Module.
+    The original class uses __call__ which doesn't trace properly for TorchScript.
+
+    See: soundbay/data.py::PeakNormalize
+
+    IMPORTANT: Logic must match the original exactly to ensure consistent inference.
+    """
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x_min = x.amin(dim=(-2, -1), keepdim=True)
-        x_max = x.amax(dim=(-2, -1), keepdim=True)
-        return (x - x_min) / (x_max - x_min + 1e-8)
+        # Match original: (sample - sample.min()) / (sample.max() - sample.min() + 1e-8)
+        return (x - x.min()) / (x.max() - x.min() + 1e-8)
 
 
 class UnitNormalizeModule(nn.Module):
-    """nn.Module version of UnitNormalize for export compatibility."""
+    """
+    nn.Module version of UnitNormalize for TorchScript export compatibility.
+
+    This is a re-implementation of soundbay.data.UnitNormalize as an nn.Module.
+    The original class uses __call__ which doesn't trace properly for TorchScript.
+
+    See: soundbay/data.py::UnitNormalize
+
+    IMPORTANT: Logic must match the original exactly to ensure consistent inference.
+    """
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        mean = x.mean(dim=(-2, -1), keepdim=True)
-        std = x.std(dim=(-2, -1), keepdim=True)
-        return (x - mean) / (std + 1e-8)
+        # Match original: (sample - sample.mean()) / (sample.std() + 1e-8)
+        return (x - x.mean()) / (x.std() + 1e-8)
 
 
 class PreprocessingPipeline(nn.Module):
