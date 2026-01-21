@@ -87,6 +87,7 @@ NOTES
 """
 
 import json
+import shutil
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
@@ -96,61 +97,23 @@ import torchaudio
 from hydra.utils import instantiate
 from omegaconf import OmegaConf
 
+from soundbay.models import ResNet182D, Squeezenet2D
+
 
 def _get_model_class(model_target: str):
     """
-    Lazy import of model classes to avoid transformers dependency when not needed.
+    Get model class by target string from args.yaml.
     """
-    if model_target == 'models.ResNet182D':
-        # Import inline to avoid loading transformers-dependent modules
-        import torch.nn as nn
-        from torchvision import models as tv_models
-        from torchvision.models import ResNet18_Weights
+    MODEL_REGISTRY = {
+        'models.ResNet182D': ResNet182D,
+        'models.Squeezenet2D': Squeezenet2D,
+    }
 
-        class ResNet182D(nn.Module):
-            def __init__(self, num_classes=2, pretrained=True):
-                super(ResNet182D, self).__init__()
-                resnet = tv_models.resnet18(weights=ResNet18_Weights.DEFAULT) if pretrained else tv_models.resnet18(weights=None)
-                num_features = resnet.fc.in_features
-                resnet.fc = nn.Sequential(
-                    nn.Linear(num_features, 256),
-                    nn.ReLU(),
-                    nn.Dropout(0.5),
-                    nn.Linear(256, num_classes)
-                )
-                self.resnet = resnet
-
-            def forward(self, x):
-                x = x.repeat(1, 3, 1, 1)
-                return self.resnet(x)
-
-        return ResNet182D
-
-    elif model_target == 'models.Squeezenet2D':
-        import torch.nn as nn
-
-        class Squeezenet2D(nn.Module):
-            def __init__(self, num_classes=2, pretrained=True):
-                super(Squeezenet2D, self).__init__()
-                self.squeezenet = torch.hub.load('pytorch/vision:v0.10.0', 'squeezenet1_0', pretrained=pretrained)
-                num_features = self.squeezenet.classifier[1].out_channels
-                self.custom_classifier = nn.Sequential(
-                    nn.Linear(num_features, 256),
-                    nn.ReLU(),
-                    nn.Dropout(0.5),
-                    nn.Linear(256, num_classes)
-                )
-
-            def forward(self, x):
-                x = x.repeat(1, 3, 1, 1)
-                rep = self.squeezenet(x)
-                return self.custom_classifier(rep)
-
-        return Squeezenet2D
-
-    else:
+    if model_target not in MODEL_REGISTRY:
         raise ValueError(f"Unknown or unsupported model type for export: {model_target}. "
-                        f"Supported: models.ResNet182D, models.Squeezenet2D")
+                        f"Supported: {list(MODEL_REGISTRY.keys())}")
+
+    return MODEL_REGISTRY[model_target]
 
 
 class PeakNormalizeModule(nn.Module):
@@ -333,6 +296,9 @@ class RavenExportModel(nn.Module):
             RavenExportModel ready for export
         """
         checkpoint_path = Path(checkpoint_path)
+
+        if not checkpoint_path.exists():
+            raise FileNotFoundError(f"Checkpoint not found at {checkpoint_path}")
 
         # Find args.yaml
         if args_path is None:
@@ -657,8 +623,6 @@ def create_raven_model_package_from_torchscript(
     Returns:
         Path to the .ravenmodel file
     """
-    import shutil
-
     torchscript_path = Path(torchscript_path)
     output_dir = Path(output_dir)
 
@@ -686,10 +650,7 @@ def create_raven_model_package_from_torchscript(
     num_classes = len(label_names)
 
     # Determine input tensor dimensions based on channels
-    if input_channels == 1:
-        input_dims = [-1, input_channels, num_samples]
-    else:
-        input_dims = [-1, input_channels, num_samples]
+    input_dims = [-1, input_channels, num_samples]
 
     # Create .ravenmodel configuration
     ravenmodel_config = {
@@ -775,6 +736,13 @@ if __name__ == '__main__':
         action='store_true',
         help='Do not apply softmax to outputs'
     )
+    parser.add_argument(
+        '--format',
+        type=str,
+        default='torchscript',
+        choices=['torchscript', 'onnx'],
+        help='Export format (default: torchscript, recommended)'
+    )
 
     args = parser.parse_args()
 
@@ -786,4 +754,5 @@ if __name__ == '__main__':
         output_dir=args.output_dir,
         model_name=model_name,
         apply_softmax=not args.no_softmax,
+        export_format=args.format,
     )
