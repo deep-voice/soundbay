@@ -16,7 +16,14 @@ USAGE EXAMPLES
    -------------------------------------------------------------------------
    python scripts/raven_export.py /path/to/checkpoint/best.pth \\
        --output-dir ~/Raven\ Workbench/Raven\ Intelligence/Models/ \\
-       --name My_Detector
+       --name My_Detector \\
+       --format torchscript
+
+   Options:
+     --output-dir   Output directory for the model package (default: current dir)
+     --name         Model name (default: checkpoint directory name)
+     --format       Export format: 'torchscript' (default) or 'onnx'
+     --no-softmax   Do not apply softmax to outputs
 
    This requires args.yaml to be in the same directory as the checkpoint.
 
@@ -73,6 +80,13 @@ For other architectures, use create_raven_model_package_from_torchscript() with 
 pre-exported TorchScript model that has preprocessing embedded.
 
 =========================================================================================
+REQUIREMENTS
+=========================================================================================
+
+This script requires the `transformers` package to be installed (for soundbay.models import):
+    pip install transformers
+
+=========================================================================================
 NOTES
 =========================================================================================
 
@@ -80,7 +94,8 @@ NOTES
 - The wrapper embeds all preprocessing (resampling, MelSpectrogram, normalization)
   so the exported model accepts raw audio and outputs class probabilities
 - Raven Intelligence uses DJL with PyTorch 2.5.1 - ensure version compatibility
-- Input tensor shape: (batch, samples) for models exported with this script
+- Input tensor shape: (batch, samples) for models exported via create_raven_model_package
+- Input tensor shape: (batch, channels, samples) for pre-existing TorchScript models
 - Output tensor shape: (batch, num_classes) with softmax probabilities
 
 =========================================================================================
