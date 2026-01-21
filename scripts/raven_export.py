@@ -80,6 +80,19 @@ For other architectures, use create_raven_model_package_from_torchscript() with 
 pre-exported TorchScript model that has preprocessing embedded.
 
 =========================================================================================
+SUPPORTED PREPROCESSORS
+=========================================================================================
+
+The following preprocessors from soundbay/data.py are supported:
+- PeakNormalize (re-implemented as nn.Module for TorchScript compatibility)
+- UnitNormalize (re-implemented as nn.Module for TorchScript compatibility)
+- All torchaudio.transforms (MelSpectrogram, AmplitudeToDB, etc.)
+
+NOT supported (will raise an error):
+- MinFreqFiltering: uses numpy operations that cannot be traced
+- SlidingWindowNormalize: uses numpy and random operations
+
+=========================================================================================
 REQUIREMENTS
 =========================================================================================
 
@@ -219,15 +232,33 @@ class PreprocessingPipeline(nn.Module):
         if preprocessors_config is None or len(preprocessors_config) == 0:
             return nn.Identity()
 
+        # Preprocessors that are NOT supported for TorchScript export:
+        # - MinFreqFiltering: uses numpy operations
+        # - SlidingWindowNormalize: uses numpy and random operations
+        unsupported = ['MinFreqFiltering', 'SlidingWindowNormalize']
+
         for name, config in preprocessors_config.items():
             target = config.get('_target_', '')
 
+            # Check for unsupported preprocessors
+            for unsup in unsupported:
+                if unsup in target:
+                    raise ValueError(
+                        f"Preprocessor '{unsup}' is not supported for TorchScript export. "
+                        f"It uses numpy/random operations that cannot be traced. "
+                        f"See soundbay/data.py for the original implementation."
+                    )
+
             if 'PeakNormalize' in target:
+                # Use nn.Module version for TorchScript compatibility
+                # See: soundbay/data.py::PeakNormalize
                 processors.append(PeakNormalizeModule())
             elif 'UnitNormalize' in target:
+                # Use nn.Module version for TorchScript compatibility
+                # See: soundbay/data.py::UnitNormalize
                 processors.append(UnitNormalizeModule())
             else:
-                # Use hydra instantiate for standard transforms
+                # Use hydra instantiate for standard transforms (torchaudio, etc.)
                 processor = instantiate(config)
                 processors.append(processor)
 
