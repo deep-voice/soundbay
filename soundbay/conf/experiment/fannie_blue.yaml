@@ -3,7 +3,11 @@ experiment:
   debug: True
   manual_seed: 1234
   name: Blue_Whale_Fannie
+<<<<<<< HEAD
   run_id: Resnet_1d_ANT_HSNR_multi_label
+=======
+  run_id: CNNRNN_4_sec_multi_label
+>>>>>>> b79b2235f4963ddb82c3642ae9c9ea6854628b72
   project: 'finding_willy'
   group_name: blue_train
   bucket_name: deepvoice-experiments

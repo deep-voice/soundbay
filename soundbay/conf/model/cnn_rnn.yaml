@@ -6,6 +6,10 @@ model:
     _target_: models.CNNRNN
     num_classes: 3
     cnn_out_channels: 32
+<<<<<<< HEAD
     rnn_hidden_size: 128
+=======
+    rnn_hidden_size: 16
+>>>>>>> b79b2235f4963ddb82c3642ae9c9ea6854628b72
     rnn_num_layers: 5
     rnn_dropout: 0.2

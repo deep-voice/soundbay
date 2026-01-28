@@ -2,6 +2,7 @@
 data:
   test_dataset:
     _target_: soundbay.data.InferenceDataset
+<<<<<<< HEAD
     # file_path: './datasets/temp_delete/5756.220318073455.wav'
     # file_path: './datasets/fannie_project/5756.220319193455.wav'
     # file_path: './datasets/fannie_project/5756.211212042958.wav'
@@ -9,6 +10,9 @@ data:
     #ant blue whale
     file_path: './datasets/fannie_project/5756.220422153455.wav'
     # file_path: './datasets/fannie_project/5756.210602142958.wav'
+=======
+    file_path: './datasets/temp_delete/5756.220318073455.wav'
+>>>>>>> b79b2235f4963ddb82c3642ae9c9ea6854628b72
     data_sample_rate: ${data.data_sample_rate}
     sample_rate: ${data.sample_rate}
     seq_length: 1
