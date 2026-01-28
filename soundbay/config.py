@@ -9,7 +9,7 @@ This module provides a dataclass-based configuration system that supports:
 """
 
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Union
+from typing import Optional, List, Dict, Any, Union, TypeVar
 from dataclasses import field, asdict, fields
 from copy import deepcopy
 from pydantic.dataclasses import dataclass
@@ -231,19 +231,244 @@ class TrainingConfig:
     optim: OptimConfig = field(default_factory=OptimConfig)
 
 
+# TypeVar for generic config merging
+ConfigT = TypeVar('ConfigT', 'TrainingConfig', 'InferenceConfig', 'EvaluateConfig')
+
+
 def merge_configs(base_config: TrainingConfig, override_config: TrainingConfig) -> TrainingConfig:
     """Merge two configs into a single config"""
     return OmegaConf.to_object(OmegaConf.merge(OmegaConf.structured(base_config), OmegaConf.structured(override_config)))
 
 
-def merge_config_with_overrides(base_config: TrainingConfig, overrides: DictConfig) -> TrainingConfig:
-    """Merge a config with overrides"""
+def merge_config_with_overrides(base_config: ConfigT, overrides: DictConfig) -> ConfigT:
+    """Merge a config with overrides. Works with TrainingConfig and InferenceConfig."""
     return OmegaConf.to_object(OmegaConf.merge(OmegaConf.structured(base_config), overrides))
 
 
 def create_training_config(config_path: Optional[str] = None, overrides: Optional[list[str]] = None) -> TrainingConfig:
     """Create a training config"""
     base_config = TrainingConfig()
+    if config_path is not None:
+        base_config = merge_config_with_overrides(base_config, OmegaConf.load(config_path))
+    if overrides:
+        base_config = merge_config_with_overrides(base_config, OmegaConf.from_dotlist(overrides))
+    return base_config
+
+
+# ============================================================================
+# Inference Configuration Classes
+# ============================================================================
+
+@dataclass
+class InferenceDatasetConfig:
+    """Configuration for inference dataset settings"""
+    module_name: str = "InferenceDataset"
+    file_path: str = "./tests/assets/data/sample.wav"
+    overlap: float = 0.0
+
+    @field_validator("overlap")
+    def validate_overlap(cls, v: float) -> float:
+        if v < 0 or v >= 1:
+            raise ValueError("overlap must be between 0 and 1 (exclusive)")
+        return v
+
+    @field_validator("module_name")
+    def validate_module_name(cls, v: str) -> str:
+        allowed_values = ["InferenceDataset"]
+        if v not in allowed_values:
+            raise ValueError(f"module_name must be one of {allowed_values}, got {v}")
+        return v
+
+
+@dataclass
+class InferenceExperimentConfig:
+    """Configuration for inference experiment settings"""
+    checkpoint_path: str = ""  # Required - path to model checkpoint
+    save_raven: bool = False
+    threshold: float = 0.5
+    raven_max_freq: Optional[int] = None
+
+    @field_validator("threshold")
+    def validate_threshold(cls, v: float) -> float:
+        if v < 0 or v > 1:
+            raise ValueError("threshold must be between 0 and 1")
+        return v
+
+
+@dataclass
+class InferenceModelConfig:
+    """Configuration for model settings during inference (populated from checkpoint)"""
+    num_classes: int = 2
+    module_name: str = "ResNet1Channel"
+    model_params: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class InferenceDataConfig:
+    """Configuration for inference data processing"""
+    label_names: Optional[List[str]] = None  # Auto-loaded from checkpoint if None
+    batch_size: int = 64
+    num_workers: int = 2
+    sample_rate: int = 16000
+    data_sample_rate: int = 44100
+    # These will be populated from checkpoint
+    min_freq: int = 0
+    n_fft: int = 1024
+    hop_length: int = 256
+    label_type: str = 'single_label'
+    seq_length: float = 1.0
+    n_mels: int = 64
+    audio_representation: Optional[str] = "mel_spectrogram"
+    normalization: Optional[str] = "peak"
+    resize: bool = False
+    size: tuple[int, int] = (224, 224)
+    test_dataset: InferenceDatasetConfig = field(default_factory=InferenceDatasetConfig)
+
+    @field_validator("label_type")
+    def validate_label_type(cls, v: str) -> str:
+        allowed_values = ["single_label", "multi_label"]
+        if v not in allowed_values:
+            raise ValueError(f"label_type must be one of {allowed_values}, got {v}")
+        return v
+
+    @field_validator("audio_representation")
+    def validate_audio_representation(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        allowed_values = ["spectrogram", "mel_spectrogram", "sliding_window_spectrogram"]
+        if v not in allowed_values:
+            raise ValueError(f"audio_representation must be one of {allowed_values}, got {v}")
+        return v
+
+    @field_validator("normalization")
+    def validate_normalization(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        allowed_values = ["peak", "unit"]
+        if v not in allowed_values:
+            raise ValueError(f"normalization must be one of {allowed_values}, got {v}")
+        return v
+
+
+@dataclass
+class InferenceConfig:
+    """Main inference configuration class"""
+    data: InferenceDataConfig = field(default_factory=InferenceDataConfig)
+    experiment: InferenceExperimentConfig = field(default_factory=InferenceExperimentConfig)
+    model: InferenceModelConfig = field(default_factory=InferenceModelConfig)
+
+
+def create_inference_config(config_path: Optional[str] = None, overrides: Optional[list[str]] = None) -> InferenceConfig:
+    """Create an inference config from optional config file and command-line overrides"""
+    base_config = InferenceConfig()
+    if config_path is not None:
+        base_config = merge_config_with_overrides(base_config, OmegaConf.load(config_path))
+    if overrides:
+        base_config = merge_config_with_overrides(base_config, OmegaConf.from_dotlist(overrides))
+    return base_config
+
+
+# ============================================================================
+# Evaluate Configuration Classes (for labeled datasets with metrics)
+# ============================================================================
+
+@dataclass
+class EvaluateDatasetConfig:
+    """Configuration for evaluation dataset (ClassifierDataset/NoBackGroundDataset)"""
+    module_name: str = "ClassifierDataset"
+    data_path: str = "./tests/assets/data/"
+    metadata_path: str = "./tests/assets/annotations/sample_annotations.csv"
+    path_hierarchy: int = 0
+    mode: str = "val"
+    augmentations_p: float = 0.0
+    slice_flag: bool = True
+    margin_ratio: float = 0.0
+
+    @field_validator("augmentations_p")
+    def validate_augmentations_p(cls, v: float) -> float:
+        if v < 0 or v > 1:
+            raise ValueError("augmentations_p must be between 0 and 1")
+        return v
+
+    @field_validator("margin_ratio")
+    def validate_margin_ratio(cls, v: float) -> float:
+        if v < 0 or v > 1:
+            raise ValueError("margin_ratio must be between 0 and 1")
+        return v
+
+    @field_validator("module_name")
+    def validate_module_name(cls, v: str) -> str:
+        allowed_values = ["ClassifierDataset", "NoBackGroundDataset"]
+        if v not in allowed_values:
+            raise ValueError(f"module_name must be one of {allowed_values}, got {v}")
+        return v
+
+    @field_validator("mode")
+    def validate_mode(cls, v: str) -> str:
+        allowed_values = ["train", "val", "test"]
+        if v not in allowed_values:
+            raise ValueError(f"mode must be one of {allowed_values}, got {v}")
+        return v
+
+
+@dataclass
+class EvaluateDataConfig:
+    """Configuration for evaluation data processing"""
+    label_names: Optional[List[str]] = None  # Auto-loaded from checkpoint if None
+    batch_size: int = 64
+    num_workers: int = 2
+    sample_rate: int = 16000
+    data_sample_rate: int = 44100
+    # These will be populated from checkpoint
+    min_freq: int = 0
+    n_fft: int = 1024
+    hop_length: int = 256
+    label_type: str = 'single_label'
+    seq_length: float = 1.0
+    n_mels: int = 64
+    audio_representation: Optional[str] = "mel_spectrogram"
+    normalization: Optional[str] = "peak"
+    resize: bool = False
+    size: tuple[int, int] = (224, 224)
+    test_dataset: EvaluateDatasetConfig = field(default_factory=EvaluateDatasetConfig)
+
+    @field_validator("label_type")
+    def validate_label_type(cls, v: str) -> str:
+        allowed_values = ["single_label", "multi_label"]
+        if v not in allowed_values:
+            raise ValueError(f"label_type must be one of {allowed_values}, got {v}")
+        return v
+
+    @field_validator("audio_representation")
+    def validate_audio_representation(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        allowed_values = ["spectrogram", "mel_spectrogram", "sliding_window_spectrogram"]
+        if v not in allowed_values:
+            raise ValueError(f"audio_representation must be one of {allowed_values}, got {v}")
+        return v
+
+    @field_validator("normalization")
+    def validate_normalization(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        allowed_values = ["peak", "unit"]
+        if v not in allowed_values:
+            raise ValueError(f"normalization must be one of {allowed_values}, got {v}")
+        return v
+
+
+@dataclass
+class EvaluateConfig:
+    """Main evaluation configuration class"""
+    data: EvaluateDataConfig = field(default_factory=EvaluateDataConfig)
+    experiment: InferenceExperimentConfig = field(default_factory=InferenceExperimentConfig)  # Reuse from inference
+    model: InferenceModelConfig = field(default_factory=InferenceModelConfig)  # Reuse from inference
+
+
+def create_evaluate_config(config_path: Optional[str] = None, overrides: Optional[list[str]] = None) -> EvaluateConfig:
+    """Create an evaluate config from optional config file and command-line overrides"""
+    base_config = EvaluateConfig()
     if config_path is not None:
         base_config = merge_config_with_overrides(base_config, OmegaConf.load(config_path))
     if overrides:

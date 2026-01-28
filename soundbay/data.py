@@ -381,7 +381,7 @@ class InferenceDataset(Dataset):
     class for storing and loading data.
     '''
     def __init__(self, file_path: Union[str, Path],
-                 preprocessors: DictConfig,
+                 preprocessor,
                  seq_length: float = 1,
                  data_sample_rate: int = 44100,
                  sample_rate: int = 44100,
@@ -389,6 +389,12 @@ class InferenceDataset(Dataset):
         """
         __init__ method initiates InferenceDataset instance:
         Input:
+            file_path: Path to audio file or directory containing audio files
+            preprocessor: Preprocessor object for audio processing
+            seq_length: Length of audio segments in seconds
+            data_sample_rate: Original sample rate of the audio files
+            sample_rate: Target sample rate for processing
+            overlap: Overlap between segments (0 to 1, exclusive of 1)
 
         Output:
         InferenceDataset Object - inherits from Dataset object in PyTorch package
@@ -402,7 +408,7 @@ class InferenceDataset(Dataset):
         self.data_sample_rate = data_sample_rate
         self.overlap = overlap
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
-        self.preprocessor = ClassifierDataset.set_preprocessor(preprocessors)
+        self.preprocessor = preprocessor
         self.metadata = self._create_inference_metadata()
 
     def _create_inference_metadata(self) -> pd.DataFrame:
