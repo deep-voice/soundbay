@@ -1,24 +1,29 @@
 name: CI test
+
 on:
   pull_request:
     types: [labeled]
-jobs:
 
+jobs:
   ci-test:
     if: ${{ github.event.label.name == 'ci-test' }}
-    runs-on: ubuntu-22.04 
+    runs-on: ubuntu-22.04
+
     steps:
-      - name: Checkout 
-        uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-      - name: install dependencies and run tests
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies and run tests
         run: |
-          sudo apt-get update
-          sudo apt-get install -y python3.11
-          sudo apt-get install -y python3.11-dev
-          sudo apt-get install -y python3.11-venv 
-          python3.11 -m venv venv
+          python -m venv venv
           source venv/bin/activate
           pip install -U pip
           pip install torch torchvision torchaudio
