@@ -1,6 +1,0 @@
-# @package _global_
-_preprocessors:
-  spectrogram:
-    _target_: soundbay.models.ASTPreprocessorWrapper
-    sample_rate: ${data.sample_rate}
-    huggingface_path: ${model.model.huggingface_path}
