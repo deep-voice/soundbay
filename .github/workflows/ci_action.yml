@@ -23,4 +23,5 @@ jobs:
           pip install -U pip
           pip install torch torchvision torchaudio
           pip install -e .
+          pip install --upgrade transformers
           pytest
