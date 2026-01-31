@@ -13,7 +13,7 @@ from torchvision.models import squeezenet, ResNet18_Weights
 import torchvision.models as models
 
 from soundbay.utils.files_handler import load_config
-from transformers import AutoProcessor, ASTModel
+from transformers import AutoFeatureExtractor, ASTModel
 
 
 @dataclass
@@ -113,7 +113,7 @@ class ResNet1Channel(ResNet):
 class ASTPreprocessorWrapper():
     def __init__(self, sample_rate, huggingface_path):
         self.sample_rate = sample_rate
-        self.processor = AutoProcessor.from_pretrained(huggingface_path, max_length=1024, sampling_rate=self.sample_rate)
+        self.processor = AutoFeatureExtractor.from_pretrained(huggingface_path, max_length=1024, sampling_rate=self.sample_rate)
 
     def __call__(self, orig_wav):
         mel_spectogram = self.processor(orig_wav.numpy(), sampling_rate=self.sample_rate, return_tensors="pt")
