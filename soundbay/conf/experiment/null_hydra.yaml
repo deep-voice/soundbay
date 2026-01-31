@@ -1,5 +1,0 @@
-# @package _global_
-hydra:
-  run:
-    dir: .null
-  output_subdir: null
