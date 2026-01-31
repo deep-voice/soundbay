@@ -31,15 +31,9 @@ sudo apt install sox
 ## Usage
 
 ### Experiment management philosophy 
-The framework utilizes Hydra package for configuration and experiments management, we highly encourage you to refer their [tutorials](https://hydra.cc/docs/tutorials/intro/)
-We provide modular recipes inside [conf](soundbay/conf/) to run experiments and to reproduce well established algorithms.
-We have three levels of parameters control:
-- run-summarizing config files
-- parameters groups, represented by a row in the defaults of the config file
-- the lowest level of parameters, detailed in the parameter group config file.
-
-Each row in a run configuration file calls a (hopefully) stand-alone group of parameters which can be switched to another one easily, enabling us to run many different experiments without boilerplate.
-
+The framework uses standard YAML files for configuration management, handled by OmegaConf and Pydantic for validation.
+We provide modular recipes inside [conf](soundbay/conf/) to run experiments.
+Configuration is strictly typed and validated before execution.
 
 ### Data structure
 Path to the datafolder should be passed as an argument for training. The data folder or subfolders should contain `.wav` files. 
@@ -51,24 +45,23 @@ A toy example is available for [data](tests/assets/data) and the respective [ann
 Running train and inference commands are done from src.
 Run the following command for a toy problem training:
 ```sh
-python soundbay/train.py
+python soundbay/train.py --config soundbay/conf/runs/main.yaml
 ```
-The toy run uses the default configuration with its default parameters. 
-Parameters overriding and config file changes are available, please refer Hydra tutorial for more details.
-For example,
+The toy run uses the default configuration from the provided yaml file.
+Parameters can be overridden from the command line using dot notation:
 ```sh
-python soundbay/train.py --config-name runs/main_unit_norm data.batch_size=8 +data.optim=jasco_vgg_19 experiment.manual_seed=4321
+python soundbay/train.py --config soundbay/conf/runs/main_unit_norm.yaml data.batch_size=8 experiment.manual_seed=4321
 ```
-Runs training with a config file under conf/runs/main_unit_norm, overriding the batch_size parameter in data, manual_seed in experiment, and the group parameter optim with jasco_vgg_19 instead of the default. 
+This runs training with the specified config file, overriding the batch_size in the data section and manual_seed in the experiment section. 
 
 ### inference Example
 To run the predictions of the model on a single audio file use the inference script:
 ```sh
-python soundbay/inference.py --config-name runs/inference_single_audio experiment.checkpoint.path=<PATH/TO/MODEL> data.test_dataset.file_path=<PATH/TO/FILE>
+python soundbay/inference.py --config soundbay/conf/runs/inference_single_audio.yaml --checkpoint <PATH/TO/MODEL/CHECKPOINT> --file <PATH/TO/FILE>
 ```
 To run the predictions of the model on a labeled test partition use:
 ```sh
-python soundbay/inference.py --config-name runs/main_inference experiment.checkpoint.path=<PATH/TO/MODEL> data.test_dataset.data_path=<PATH/TO/DATA> data.test_dataset.metadata_path=<PATH/TO/METADATA> 
+python soundbay/inference.py --config soundbay/conf/runs/main_inference.yaml --checkpoint <PATH/TO/MODEL/CHECKPOINT> data.test_dataset.data_path=<PATH/TO/DATA> data.test_dataset.metadata_path=<PATH/TO/METADATA> 
 ```
 
 ## License

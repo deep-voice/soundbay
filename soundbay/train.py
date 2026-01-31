@@ -3,13 +3,11 @@
 Main training loop
 --------------------
 This script main.py constitutes the main training loop.
-main function is wrapped with hydra @main wrapper which contains all the configuration and variables needed
-to run the main training loop (models, data paths,
-augmentations, preprocessing etc..) - for more details about hydra package
-configuration please refer to https://hydra.cc/
+The configuration and variables needed to run the main training loop (models, data paths,
+augmentations, preprocessing etc..) are defined in YAML configuration files and validated using Pydantic.
 
 The configuration files are located in ./soundbay/conf folder and it's possible to overwrite specific arguments
-using the command line when running main.py (e.g. "main.py experiment.debug=True")
+using the command line when running train.py (e.g. "train.py --config conf/main.yaml experiment.debug=True")
 
 * prior to running this script make sure to define the data paths, annotations and output accordingly
 * make sure to install all the packages stated in the requirements.txt file prior to running this script
@@ -216,7 +214,7 @@ def modeling(
 
 
 @click.command()
-@click.option("--config", type=Optional[str], help="Path to configuration file")
+@click.option("--config", type=str, default="soundbay/conf/runs/main.yaml", help="Path to configuration file")
 @click.argument("overrides", nargs=-1)
 def train(config: Optional[str], overrides: list[str]) -> None:
     

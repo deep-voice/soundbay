@@ -202,7 +202,7 @@ def run_evaluation(
 
 
 @click.command()
-@click.option("--config", type=Optional[str], default=None, help="Path to configuration YAML file")
+@click.option("--config", type=str, default="soundbay/conf/runs/main.yaml", help="Path to configuration YAML file")
 @click.option("--checkpoint", required=True, help="Path to model checkpoint file")
 @click.option("--metadata", "metadata_path", default=None, help="Path to metadata CSV file with labels")
 @click.option("--data-path", "data_path", default=None, help="Path to directory containing audio files")

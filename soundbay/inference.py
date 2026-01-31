@@ -259,7 +259,7 @@ def run_inference(
 
 
 @click.command()
-@click.option("--config", type=Optional[str], default=None, help="Path to configuration YAML file")
+@click.option("--config", type=str, default="soundbay/conf/runs/main_inference.yaml", help="Path to configuration YAML file")
 @click.option("--checkpoint", required=True, help="Path to model checkpoint file")
 @click.option("--file", "file_path", default=None, help="Path to audio file or directory for inference")
 @click.option("--output", "output_path", default=None, help="Directory to save output files (default: ./outputs)")
