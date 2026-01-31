@@ -10,6 +10,12 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-v4-${{ hashFiles('**/requirements.txt') }}
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
