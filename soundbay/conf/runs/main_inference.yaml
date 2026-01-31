@@ -1,4 +1,21 @@
-# @package _global_
-defaults:
-  - ../data: defaults_inference
-  - ../experiment: inference
+data:
+  batch_size: 64
+  num_workers: 10
+  data_sample_rate: 44100
+  sample_rate: 16000
+  proba_norm_func: softmax
+  test_dataset:
+    module_name: ClassifierDataset
+    data_path: ./tests/assets/data
+    metadata_path: ./tests/assets/annotations/sample_annotations.csv
+    mode: test
+    path_hierarchy: 0
+    augmentations_p: 0.0
+    slice_flag: true
+
+experiment:
+  checkpoint:
+    path: ""
+    load_optimizer_state: false
+  save_raven: false
+  threshold: 0.5
