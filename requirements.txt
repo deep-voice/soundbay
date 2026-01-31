@@ -20,4 +20,3 @@ audiomentations==0.26.0
 click==8.*
 botocore==1.*
 dropbox
-transformers>=4.59.0
