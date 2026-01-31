@@ -16,11 +16,10 @@ jobs:
         run: |
           sudo add-apt-repository ppa:deadsnakes/ppa
           sudo apt-get update
-          sudo apt install sox
-          sudo apt-get install -y python3.8
-          sudo apt-get install -y python3.8-dev
-          sudo apt-get install -y python3.8-venv 
-          python3.8 -m venv venv
+          sudo apt-get install -y python3.11
+          sudo apt-get install -y python3.11-dev
+          sudo apt-get install -y python3.11-venv 
+          python3.11 -m venv venv
           source venv/bin/activate
           pip install -U pip
           pip install -e .
