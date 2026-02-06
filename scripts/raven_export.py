@@ -157,8 +157,11 @@ class PeakNormalizeModule(nn.Module):
     """
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Match original: (sample - sample.min()) / (sample.max() - sample.min() + 1e-8)
-        return (x - x.min()) / (x.max() - x.min() + 1e-8)
+        # Per-sample normalization: reduce all dims except batch, keepdim for broadcasting
+        dims = list(range(1, x.dim()))
+        x_min = x.amin(dim=dims, keepdim=True)
+        x_max = x.amax(dim=dims, keepdim=True)
+        return (x - x_min) / (x_max - x_min + 1e-8)
 
 
 class UnitNormalizeModule(nn.Module):
@@ -174,8 +177,11 @@ class UnitNormalizeModule(nn.Module):
     """
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Match original: (sample - sample.mean()) / (sample.std() + 1e-8)
-        return (x - x.mean()) / (x.std() + 1e-8)
+        # Per-sample normalization: reduce all dims except batch, keepdim for broadcasting
+        dims = list(range(1, x.dim()))
+        x_mean = x.mean(dim=dims, keepdim=True)
+        x_std = x.std(dim=dims, keepdim=True)
+        return (x - x_mean) / (x_std + 1e-8)
 
 
 class PreprocessingPipeline(nn.Module):
