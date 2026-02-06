@@ -378,9 +378,11 @@ class RavenExportModel(nn.Module):
             raise FileNotFoundError(f"args.yaml not found at {args_path}")
 
         # Load configuration
+        print("  Loading configuration...")
         args = OmegaConf.load(args_path)
 
         # Load checkpoint
+        print("  Loading model weights...")
         checkpoint = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
 
         # Create model
@@ -392,13 +394,16 @@ class RavenExportModel(nn.Module):
         # Force pretrained=False since we're loading weights from checkpoint
         model_kwargs = {k: v for k, v in model_config.items() if k != '_target_'}
         model_kwargs['pretrained'] = False
+        print(f"  Creating {model_target} model...")
         model = model_class(**model_kwargs)
 
         # Load weights
+        print("  Loading trained weights...")
         model.load_state_dict(checkpoint['model'])
         model.eval()
 
         # Create preprocessing pipeline
+        print("  Building preprocessing pipeline...")
         preprocessing = PreprocessingPipeline(
             data_sample_rate=args.data.data_sample_rate,
             sample_rate=args.data.sample_rate,
@@ -514,10 +519,12 @@ def export_to_torchscript(
     dummy_input = torch.randn(1, num_samples)
 
     # Use tracing for export (works better with dynamic ops like STFT)
+    print("  Tracing model with TorchScript (this may take a moment)...")
     with torch.no_grad():
         traced_model = torch.jit.trace(model, dummy_input)
 
     # Save the traced model
+    print("  Saving traced model...")
     traced_model.save(str(output_path))
 
     print(f"Exported TorchScript model to {output_path}")
@@ -552,12 +559,16 @@ def create_raven_model_package(
     checkpoint_path = Path(checkpoint_path)
     output_dir = Path(output_dir)
 
+    print(f"\n{'='*60}")
+    print(f"Exporting model: {model_name}")
+    print(f"{'='*60}")
+
     # Load args for configuration
     args_path = checkpoint_path.parent / 'args.yaml'
     args = OmegaConf.load(args_path)
 
     # Create the export model
-    print(f"Loading checkpoint from {checkpoint_path}...")
+    print(f"\nStep 1/4: Loading checkpoint from {checkpoint_path}")
     export_model = RavenExportModel.from_checkpoint(
         checkpoint_path=checkpoint_path,
         apply_softmax=apply_softmax,
@@ -571,6 +582,7 @@ def create_raven_model_package(
     model_dir.mkdir(parents=True, exist_ok=True)
 
     # Export model based on format
+    print(f"\nStep 2/4: Exporting to {export_format} format")
     if export_format == 'torchscript':
         model_path = model_dir / 'model.pt'
         export_to_torchscript(
@@ -593,11 +605,12 @@ def create_raven_model_package(
         raise ValueError(f"Unknown export format: {export_format}. Use 'torchscript' or 'onnx'")
 
     # Create labels file
+    print(f"\nStep 3/4: Creating labels file")
     labels_path = model_dir / 'labels.txt'
     with open(labels_path, 'w') as f:
         for label in config['label_names']:
             f.write(f"{label}\n")
-    print(f"Created labels file at {labels_path}")
+    print(f"  Labels: {config['label_names']}")
 
     # Calculate input dimensions
     num_samples = int(config['data_sample_rate'] * config['seq_length'])
@@ -643,12 +656,13 @@ def create_raven_model_package(
     }
 
     # Write .ravenmodel file
+    print(f"\nStep 4/4: Creating .ravenmodel configuration")
     ravenmodel_path = output_dir / f"{model_name}.ravenmodel"
     with open(ravenmodel_path, 'w') as f:
         json.dump(ravenmodel_config, f, indent=2)
-    print(f"Created .ravenmodel file at {ravenmodel_path}")
 
-    print(f"\nRaven model package created successfully!")
+    print(f"\n{'='*60}")
+    print(f"SUCCESS! Raven model package created")
     print(f"  Model directory: {model_dir}")
     print(f"  Configuration: {ravenmodel_path}")
     print(f"\nTo use in Raven Intelligence:")
