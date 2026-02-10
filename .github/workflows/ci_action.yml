@@ -32,6 +32,8 @@ jobs:
           python -m venv venv
           source venv/bin/activate
           pip install -U pip
+          pip install "scipy<1.10.0"
           pip install -e .
           pip install torch torchvision torchaudio
+          python -c "import scipy; import librosa; print(f'Success! Scipy: {scipy.__version__}, Librosa: {librosa.__version__}')"
           pytest
