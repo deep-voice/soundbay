@@ -1,0 +1,30 @@
+{
+    "name": "soundbay",
+    "build": {
+        "dockerfile": "Dockerfile",
+        "context": ".."
+    },
+    "workspaceFolder": "/workspace",
+    "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+    "runArgs": [
+        "--gpus",
+        "all"
+    ],
+    "mounts": [
+        "source=soundbay-pip-cache,target=/root/.cache/pip,type=volume"
+    ],
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.vscode-pylance",
+                "ms-toolsai.jupyter",
+                "eamodio.gitlens"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/bin/python3.8",
+                "editor.formatOnSave": true
+            }
+        }
+    }
+}
