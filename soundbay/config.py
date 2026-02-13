@@ -7,9 +7,8 @@ This module provides a dataclass-based configuration system that supports:
 - Type validation and conversion
 - Nested value overrides using dot notation
 """
-
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Union, TypeVar
+from typing import Optional, List, Dict, Any, Union, TypeVar, Tuple
 from dataclasses import field, asdict, fields
 from copy import deepcopy
 from pydantic.dataclasses import dataclass
