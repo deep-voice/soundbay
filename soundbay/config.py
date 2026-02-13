@@ -95,7 +95,7 @@ class DataConfig:
     audio_representation: Optional[str] = "spectrogram"
     normalization: Optional[str] = "peak"
     resize: bool = False
-    size: tuple[int, int] = (224, 224)
+    size: Tuple[int, int] = (224, 224)
     n_mels: int = 64
     seq_length: int = 1
     train_dataset: DatasetConfig = field(default_factory=DatasetConfig)
