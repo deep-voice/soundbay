@@ -1,39 +1,28 @@
 name: CI test
-
 on:
   pull_request:
     types: [labeled]
-
 jobs:
+
   ci-test:
     if: ${{ github.event.label.name == 'ci-test' }}
-    runs-on: ubuntu-22.04
-
+    runs-on: ubuntu-22.04 
     steps:
-      - name: Cache pip
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-v4-${{ hashFiles('**/requirements.txt') }}
-
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout 
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.event.pull_request.head.sha }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install dependencies and run tests
+      - name: install dependencies and run tests
         run: |
-          python -m venv venv
+          sudo add-apt-repository ppa:deadsnakes/ppa
+          sudo apt-get update
+          sudo apt install sox
+          sudo apt-get install -y python3.8
+          sudo apt-get install -y python3.8-dev
+          sudo apt-get install -y python3.8-venv 
+          python3.8 -m venv venv
           source venv/bin/activate
           pip install -U pip
           pip install -e .
           pip install torch torchvision torchaudio
-          pip install "scipy<1.10.0" "numpy<1.24.0"
-          python -c "import scipy; import numpy; print(f'Fixed! Scipy: {scipy.__version__}, Numpy: {numpy.__version__}')"
           pytest
