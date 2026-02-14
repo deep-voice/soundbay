@@ -3,6 +3,7 @@ import numpy as np
 import random
 from torchvision.transforms import Compose, Resize
 from torchaudio.transforms import Spectrogram, MelSpectrogram, AmplitudeToDB
+from typing import Tuple
 
 
 class PeakNormalize:
@@ -132,7 +133,7 @@ class SlidingWindowNormalize:
 
 class Preprocessor:
     def __init__(self, audio_representation: str, normalization: str, resize: bool, 
-                       size: tuple[int, int], sample_rate: int, min_freq: int, n_fft: int, 
+                       size: Tuple[int, int], sample_rate: int, min_freq: int, n_fft: int, 
                        hop_length: int, n_mels: int):
         self.audio_processor = self.set_audio_processor(audio_representation, min_freq, n_fft, 
                                                         hop_length, sample_rate, n_mels)

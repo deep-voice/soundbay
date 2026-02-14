@@ -10,7 +10,7 @@ Usage:
     python inference.py --checkpoint /path/to/model.pth data.data_sample_rate=2000
 """
 
-from typing import Union, Literal, Optional
+from typing import Union, Literal, Optional, List
 
 import pandas as pd
 import torch
@@ -98,7 +98,7 @@ def infer_without_metadata(
         model_name: str,
         save_raven: bool,
         threshold: float,
-        label_names: list,
+        label_names: List[str],
         raven_max_freq: Optional[int],
         proba_norm_func: str,
         seq_length: float,

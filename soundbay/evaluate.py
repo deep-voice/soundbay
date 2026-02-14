@@ -10,7 +10,7 @@ Usage:
     python -m soundbay.evaluate --checkpoint model.pth data.data_sample_rate=2000
 """
 
-from typing import Optional, Literal, Dict, Any
+from typing import Optional, Literal, Dict, Any, Tuple
 
 import pandas as pd
 import torch
@@ -91,7 +91,7 @@ def run_evaluation(
     checkpoint_state_dict: dict,
     output_path: Path,
     model_name: str
-) -> tuple[Path, Dict[str, Any]]:
+) -> Tuple[Path, Dict[str, Any]]:
     """
     Run evaluation with the given configuration and checkpoint.
     
@@ -214,7 +214,7 @@ def evaluate_main(
     metadata_path: Optional[str],
     data_path: Optional[str],
     output_path: Optional[str],
-    overrides: tuple
+    overrides: Tuple
 ) -> None:
     """
     Evaluate a trained model on labeled data.

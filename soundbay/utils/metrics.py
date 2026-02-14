@@ -1,12 +1,12 @@
 import numpy as np
 from sklearn import metrics
-from typing import Dict
+from typing import Dict, List
 
 
 class MetricsCalculator:
     """class for metrics calculators."""
 
-    def __init__(self, label_list: list, pred_list: list, pred_proba_list: list, label_type: str):
+    def __init__(self, label_list: List, pred_list: List, pred_proba_list: List, label_type: str):
         """
         Initialize the base metrics calculator.
 

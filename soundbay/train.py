@@ -31,7 +31,7 @@ from soundbay.preprocessing import Preprocessor
 from soundbay.augmentations import Augmentor
 import string
 import click
-from typing import Optional
+from typing import Optional, List
 from soundbay.config import create_training_config
 from dataclasses import asdict
 
@@ -216,7 +216,7 @@ def modeling(
 @click.command()
 @click.option("--config", type=str, default="soundbay/conf/runs/main.yaml", help="Path to configuration file")
 @click.argument("overrides", nargs=-1)
-def train(config: Optional[str], overrides: list[str]) -> None:
+def train(config: Optional[str], overrides: List[str]) -> None:
     
     args = create_training_config(config_path=config, overrides=overrides)
     app.init(args)
