@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional
 
 @dataclass
 class Config:
@@ -38,10 +38,8 @@ class Config:
 
     # Loss function
     loss_type: str = "distance_weighted"  # "positive_only" or "distance_weighted"
-    loss_decay_rate: float = 0.0  # Distance decay (0 = all frames weighted; lower = more penalty on unannotated)
+    loss_decay_rate: float = 0.02  # How fast weight decays with distance (for distance_weighted)
     loss_min_weight: float = 0.1  # Minimum weight for distant frames (for distance_weighted)
-    class_weights: Optional[List[float]] = None  # Per-class loss weights (length num_classes); None = equal
-    focal_gamma: float = 1.0  # Focal loss exponent (0 = plain BCE; 1–2 typical for stability)
     
     # Augmentations
     use_augmentations: bool = True  # Enable audio augmentations during training

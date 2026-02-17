@@ -19,7 +19,7 @@ import io
 from collections import defaultdict
 
 from config import Config
-from model import BioacousticDetector, BioacousticDetectorBEATS, load_state_dict_compat
+from model import BioacousticDetector, BioacousticDetectorBEATS, load_state_dict_compat, get_state_dict_from_checkpoint
 from local_dataset import get_local_dataloaders, download_dataset
 from callbacks import SpectrogramVisualizer, CLASS_COLORS
 
@@ -37,10 +37,16 @@ def load_model(checkpoint_path, config):
     else:
         raise ValueError(f"Unknown model_type: {config.model_type}")
     
-    # Load checkpoint (with compat for old single-classifier checkpoints)
+    # Load checkpoint (older-classifier compat via load_state_dict_compat)
     checkpoint = torch.load(checkpoint_path, map_location=device, weights_only=False)
-    state_dict, strict = load_state_dict_compat(checkpoint['model_state_dict'], model)
-    model.load_state_dict(state_dict, strict=strict)
+    state_dict_raw = get_state_dict_from_checkpoint(checkpoint)
+    state_dict, strict = load_state_dict_compat(state_dict_raw, model)
+    try:
+        model.load_state_dict(state_dict, strict=strict)
+    except Exception as e:
+        model.load_state_dict(state_dict, strict=False)
+        import warnings
+        warnings.warn(f"Checkpoint loaded with strict=False after strict load failed: {e}")
     model.eval()
     
     return model, device, checkpoint

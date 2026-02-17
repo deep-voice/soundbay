@@ -68,11 +68,7 @@ class Trainer:
             print(f"Using distance-weighted loss (decay={config.loss_decay_rate}, min_weight={config.loss_min_weight})")
         else:
             print("Using positive-only loss")
-        if getattr(config, 'class_weights', None) is not None:
-            print(f"Class weights: {config.class_weights}")
-        if getattr(config, 'focal_gamma', 0.0) > 0:
-            print(f"Focal loss gamma: {config.focal_gamma}")
-        
+
         # Log time masking status
         if self.time_masking is not None:
             print(f"Time masking: ENABLED (prob={config.time_mask_prob}, max_frames={config.time_mask_max_frames})")
@@ -80,19 +76,14 @@ class Trainer:
     
     def compute_loss(self, outputs, targets):
         """Compute loss based on config.loss_type."""
-        kwargs = dict(
-            class_weights=getattr(self.config, 'class_weights', None),
-            focal_gamma=getattr(self.config, 'focal_gamma', 0.0),
-        )
         if self.config.loss_type == "distance_weighted":
             return compute_distance_weighted_loss(
                 outputs, targets,
                 decay_rate=self.config.loss_decay_rate,
-                min_weight=self.config.loss_min_weight,
-                **kwargs
+                min_weight=self.config.loss_min_weight
             )
         else:
-            return compute_positive_only_loss(outputs, targets, **kwargs)
+            return compute_positive_only_loss(outputs, targets)
     
     def train_epoch(self, epoch):
         self.model.train()
@@ -126,13 +117,6 @@ class Trainer:
             
             # Compute loss (based on config.loss_type)
             loss, per_sample_loss, positive_mask = self.compute_loss(outputs, targets)
-
-            # Skip backward/step on NaN/Inf to avoid corrupting parameters
-            if not (torch.isfinite(loss).item()):
-                if getattr(self, "_nan_skip_count", 0) < 5:
-                    print(f"\n  [WARN] Skipping batch at step {self.global_step}: loss={loss.item()}")
-                    self._nan_skip_count = getattr(self, "_nan_skip_count", 0) + 1
-                continue
 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=self.config.grad_clip)

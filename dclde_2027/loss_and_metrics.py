@@ -1,17 +1,6 @@
 import torch
 
 
-# Clamp logits to avoid overflow in BCE and focal weight (keeps loss finite)
-LOGIT_CLAMP = 15.0
-
-
-def _focal_weight(outputs, targets, gamma, max_weight=10.0):
-    """Per-element focal weight: (1-p)^gamma for positives, p^gamma for negatives. Capped for stability."""
-    p = torch.sigmoid(outputs).clamp(1e-7, 1.0 - 1e-7)
-    w = targets * (1 - p).pow(gamma) + (1 - targets) * p.pow(gamma)
-    return w.clamp(max=max_weight)
-
-
 def compute_distance_to_annotations(positive_mask):
     """
     Compute distance (in frames) from each frame to the nearest annotated frame.
@@ -41,101 +30,42 @@ def compute_distance_to_annotations(positive_mask):
     return distances
 
 
-def compute_distance_weighted_loss(
-    outputs,
-    targets,
-    decay_rate=0.0,
-    min_weight=0.1,
-    class_weights=None,
-    focal_gamma=0.0,
-):
+def compute_distance_weighted_loss(outputs, targets, decay_rate=0.02, min_weight=0.1):
     """
-    BCE loss on all frames with distance-based frame weights, optional per-class
-    weights, and optional focal weighting. Full multi-label: every (frame, class)
-    is included with targets 0 or 1 (no masking of negatives).
-    
-    - Annotated frames: frame weight = 1.0
-    - Unannotated frames: weight = max(min_weight, exp(-decay_rate * distance))
-      (decay_rate=0 gives all unannotated frames full weight)
-    
-    Args:
-        outputs: (batch, frames, classes)
-        targets: (batch, frames, classes) — 0s and 1s for all entries
-        decay_rate: distance decay (0 = no decay, all frames weighted)
-        min_weight: minimum weight for distant frames
-        class_weights: optional (num_classes,) or list; applied per class
-        focal_gamma: if > 0, apply focal weighting (default 0 = plain BCE)
-    
-    Returns:
-        batch_loss, per_sample_loss, positive_mask
+    BCE loss with distance-weighted frame weights. Full multi-label on all frames.
+    Annotated frames weight=1.0; unannotated weight=max(min_weight, exp(-decay_rate*distance)).
     """
-    positive_mask = targets.sum(dim=-1) > 0  # (batch, frames)
-
-    # Clamp logits for numerical stability (avoids inf/nan in BCE and focal)
-    outputs_safe = outputs.clamp(-LOGIT_CLAMP, LOGIT_CLAMP)
-
+    positive_mask = targets.sum(dim=-1) > 0
     distances = compute_distance_to_annotations(positive_mask)
     weights = torch.exp(-decay_rate * distances)
     weights = torch.clamp(weights, min=min_weight)
     weights[positive_mask] = 1.0
     weights_expanded = weights.unsqueeze(-1).expand_as(outputs)
-
-    # Per-element BCE on all (frame, class) — full multi-label, no masking of 0s
     per_element_loss = torch.nn.functional.binary_cross_entropy_with_logits(
-        outputs_safe, targets, reduction='none'
+        outputs, targets, reduction='none'
     )
-
-    if focal_gamma > 0:
-        per_element_loss = per_element_loss * _focal_weight(outputs_safe, targets, focal_gamma)
-
-    if class_weights is not None:
-        device = outputs.device
-        cw = class_weights if isinstance(class_weights, torch.Tensor) else torch.tensor(class_weights, dtype=outputs.dtype, device=device)
-        cw = cw.view(1, 1, -1).expand_as(outputs)
-        per_element_loss = per_element_loss * cw
-
     weighted_loss = per_element_loss * weights_expanded
     batch_loss = weighted_loss.sum() / (weights_expanded.sum() + 1e-8)
     per_sample_loss = weighted_loss.sum(dim=(1, 2)) / (weights_expanded.sum(dim=(1, 2)) + 1e-8)
     return batch_loss, per_sample_loss, positive_mask
 
 
-def compute_positive_only_loss(outputs, targets, class_weights=None, focal_gamma=0.0):
+def compute_positive_only_loss(outputs, targets):
     """
-    BCE loss only on frames that have annotations. On those frames we use full
-    multi-label: all classes are included (targets 0 and 1), no masking of negatives.
-    
-    Args:
-        outputs: (batch, frames, classes)
-        targets: (batch, frames, classes)
-        class_weights: optional (num_classes,) or list
-        focal_gamma: if > 0, apply focal weighting
-    
-    Returns:
-        batch_loss, per_sample_loss, positive_mask
+    BCE loss only on frames that have annotations. Full multi-label on those frames (0s and 1s).
     """
-    positive_mask = targets.sum(dim=-1) > 0  # (batch, frames)
+    positive_mask = targets.sum(dim=-1) > 0
     mask_expanded = positive_mask.unsqueeze(-1).expand_as(outputs).float()
-    outputs_safe = outputs.clamp(-LOGIT_CLAMP, LOGIT_CLAMP)
-
     per_element_loss = torch.nn.functional.binary_cross_entropy_with_logits(
-        outputs_safe, targets, reduction='none'
+        outputs, targets, reduction='none'
     )
-    if focal_gamma > 0:
-        per_element_loss = per_element_loss * _focal_weight(outputs_safe, targets, focal_gamma)
-    if class_weights is not None:
-        device = outputs.device
-        cw = class_weights if isinstance(class_weights, torch.Tensor) else torch.tensor(class_weights, dtype=outputs.dtype, device=device)
-        cw = cw.view(1, 1, -1).expand_as(outputs)
-        per_element_loss = per_element_loss * cw
-
     per_element_loss = per_element_loss * mask_expanded
     n = mask_expanded.sum()
     if n > 0:
         batch_loss = per_element_loss.sum() / n
         per_sample_loss = per_element_loss.sum(dim=(1, 2)) / (mask_expanded.sum(dim=(1, 2)) + 1e-8)
     else:
-        batch_loss = torch.nn.functional.binary_cross_entropy_with_logits(outputs_safe, targets)
+        batch_loss = torch.nn.functional.binary_cross_entropy_with_logits(outputs, targets)
         per_sample_loss = torch.zeros(outputs.shape[0], device=outputs.device)
     return batch_loss, per_sample_loss, positive_mask
 
