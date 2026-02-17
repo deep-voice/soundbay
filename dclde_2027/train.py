@@ -7,7 +7,7 @@ from tqdm import tqdm
 from pathlib import Path
 
 from config import Config
-from model import BioacousticDetector, BioacousticDetectorBEATS
+from model import BioacousticDetector, BioacousticDetectorBEATS, load_state_dict_compat
 from dataset import get_dataloaders, get_debug_dataloaders
 from local_dataset import get_local_dataloaders, download_dataset
 from callbacks import WandbCallback, SampleCollector
@@ -279,7 +279,7 @@ class Trainer:
         checkpoint_path = self.output_dir / filename
         torch.save(checkpoint, checkpoint_path)
         
-        # Log checkpoint to W&B
+        # Sync checkpoint to AWS (callback handles S3 upload)
         if self.callback:
             self.callback.log_checkpoint(checkpoint_path, filename)
     
@@ -388,7 +388,16 @@ def main(debug, local):
             param.requires_grad = False
     else:
         raise ValueError(f"Unknown model_type: {config.model_type}. Choose 'perch' or 'beats'.")
-    
+
+    # Optional: load weights from checkpoint (e.g. old single-classifier or same architecture)
+    if getattr(config, "resume_checkpoint_path", None):
+        ckpt_path = config.resume_checkpoint_path
+        print(f"  Loading weights from checkpoint: {ckpt_path}")
+        checkpoint = torch.load(ckpt_path, map_location=device, weights_only=False)
+        state_dict, strict = load_state_dict_compat(checkpoint["model_state_dict"], model)
+        model.load_state_dict(state_dict, strict=strict)
+        print("  Checkpoint loaded (old classifier format remapped if needed).")
+
     if config.use_augmentations:
         aug_list = ["noise", "gain", "mixup"]
         if config.use_time_masking:

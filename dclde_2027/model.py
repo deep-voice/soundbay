@@ -4,6 +4,56 @@ import torchaudio
 from transformers import AutoModel, AutoProcessor, AutoConfig
 
 
+def _is_old_classifier_format(state_dict):
+    """True if checkpoint uses single 'classifier' (no shared + class_towers)."""
+    has_old = "classifier.3.weight" in state_dict or "classifier.0.weight" in state_dict
+    has_new = "shared.0.weight" in state_dict
+    return has_old and not has_new
+
+
+def load_state_dict_compat(state_dict, model, strict=True):
+    """
+    Load checkpoint state_dict into model, remapping old single classifier to
+    shared + per-class towers if needed. Use for training resume or inference.
+
+    Old format: classifier = Sequential(Linear(embed, hidden), ReLU, Dropout, Linear(hidden, num_classes))
+    New format: shared = Sequential(Linear(embed, hidden), ReLU, Dropout) + class_towers[i] = Sequential(..., Linear(hidden, 1))
+
+    Returns:
+        (state_dict_to_load, strict_flag) so caller can do:
+        model.load_state_dict(state_dict_to_load, strict=strict_flag)
+    """
+    if not _is_old_classifier_format(state_dict):
+        return state_dict, strict
+
+    new_sd = model.state_dict()
+    num_classes = sum(1 for k in new_sd if k.startswith("class_towers.") and k.endswith(".3.weight"))
+
+    for key in list(state_dict.keys()):
+        if key.startswith("classifier."):
+            continue
+        if key in new_sd and new_sd[key].shape == state_dict[key].shape:
+            new_sd[key] = state_dict[key].clone()
+
+    if "classifier.0.weight" in state_dict:
+        new_sd["shared.0.weight"] = state_dict["classifier.0.weight"].clone()
+    if "classifier.0.bias" in state_dict:
+        new_sd["shared.0.bias"] = state_dict["classifier.0.bias"].clone()
+
+    if "classifier.3.weight" in state_dict:
+        w = state_dict["classifier.3.weight"]  # (num_classes, hidden_dim)
+        n = min(num_classes, w.shape[0])
+        for i in range(n):
+            new_sd[f"class_towers.{i}.3.weight"] = w[i : i + 1].clone()
+    if "classifier.3.bias" in state_dict:
+        b = state_dict["classifier.3.bias"]
+        n = min(num_classes, b.shape[0])
+        for i in range(n):
+            new_sd[f"class_towers.{i}.3.bias"] = b[i : i + 1].clone()
+
+    return new_sd, True
+
+
 class PerchONNX(torch.nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -139,18 +189,24 @@ class BioacousticDetector(torch.nn.Module):
 
     def _build_positional_encoding(self, T, C, device):
         """Build 2D positional encoding by combining temporal and spectral embeddings."""
+        # Expand temporal: (T, D) -> (T, 1, D) -> (T, C, D)
         temp_pos = self.temporal_pos_embed[:T].unsqueeze(1).expand(T, C, -1)
+        # Expand spectral: (C, D) -> (1, C, D) -> (T, C, D)
         spec_pos = self.spectral_pos_embed[:C].unsqueeze(0).expand(T, C, -1)
+        # Combine and flatten to (T*C, D)
         pos_encoding = (temp_pos + spec_pos).reshape(T * C, -1)
         return pos_encoding
 
     def forward(self, x):
+        # Squeeze channel dimension if present: (batch, 1, samples) -> (batch, samples)
         if x.dim() == 3:
             x = x.squeeze(1)
         emb = self.encoder(x)
+        # Perch outputs 4D: (batch, T, C, embed_dim) -> reshape to 3D: (batch, T*C, embed_dim)
         if emb.dim() == 4:
             batch, T, C, D = emb.shape
             emb = emb.reshape(batch, T * C, D)
+            # Add learnable positional encoding to preserve temporal-spectral structure
             pos_encoding = self._build_positional_encoding(T, C, emb.device)
             x = emb + pos_encoding.unsqueeze(0)
         else:

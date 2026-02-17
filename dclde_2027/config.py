@@ -34,7 +34,8 @@ class Config:
     grad_clip: float = 1.0
     threshold: float = 0.5
     output_dir: str = "/home/ubuntu/soundbay/dclde_2027/checkpoints"
-    
+    resume_checkpoint_path: Optional[str] = None  # If set, load this checkpoint into model (supports old classifier format)
+
     # Loss function
     loss_type: str = "distance_weighted"  # "positive_only" or "distance_weighted"
     loss_decay_rate: float = 0.0  # Distance decay (0 = all frames weighted; lower = more penalty on unannotated)

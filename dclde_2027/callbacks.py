@@ -301,17 +301,8 @@ class WandbCallback:
                 wandb.log({f"spectrograms/{prefix}": images, "epoch": step_or_epoch})
     
     def log_checkpoint(self, checkpoint_path, artifact_name):
-        """Log a model checkpoint as artifact and backup to S3."""
-        # Log to W&B
-        artifact = wandb.Artifact(
-            name=f"model-{self.run_id}",
-            type="model",
-            description=f"Model checkpoint: {artifact_name}"
-        )
-        artifact.add_file(str(checkpoint_path))
-        wandb.log_artifact(artifact)
-        
-        # Backup to S3
+        """Sync checkpoint to AWS S3 (no W&B artifact to save space)."""
+        # Backup to S3 only
         s3_path = f"s3://{S3_CHECKPOINT_BUCKET}/{S3_CHECKPOINT_PREFIX}/{self.run_id}/{artifact_name}"
         try:
             subprocess.run(
