@@ -1,0 +1,64 @@
+experiment:
+  project: finding_willy
+  name: icml2013_run
+  debug: false
+  artifacts_upload_limit: 64
+
+model:
+  module_name: ResNet1Channel
+  num_classes: 2
+  criterion: cross_entropy
+  model_params:
+    layers: [3, 4, 6, 3]
+    block: torchvision.models.resnet.Bottleneck
+
+data:
+  label_names: ['Noise', 'Call']
+  batch_size: 512
+  num_workers: 6
+  sample_rate: 2000
+  data_sample_rate: 2000
+  min_freq: 0
+  n_fft: 256
+  hop_length: 64
+  seq_length: 1.5
+  audio_representation: spectrogram
+  
+  train_dataset:
+    module_name: ClassifierDataset
+    data_path: ../datasets/ICML_2013/train2
+    metadata_path: ../datasets/ICML_2013/annotation_train.csv
+    mode: train
+    augmentations_p: 0.5
+    margin_ratio: 0.0
+    slice_flag: false
+    augmentations_config:
+      pitch_shift_p: 0.0
+      time_stretch_p: 0.5
+      time_masking_p: 0.5
+      frequency_masking_p: 0.5
+      min_semitones: -4
+      max_semitones: 4
+      min_rate: 0.9
+      max_rate: 1.1
+
+  val_dataset:
+    module_name: ClassifierDataset
+    data_path: ../datasets/ICML_2013/train2
+    metadata_path: ../datasets/ICML_2013/annotation_val.csv
+    mode: val
+    augmentations_p: 0.0
+    margin_ratio: 0.0
+    slice_flag: true
+
+optim:
+  epochs: 100
+  freeze_layers_for_finetune: true
+  optimizer:
+    module_name: torch.optim.Adam
+    params:
+      lr: 0.0005
+  scheduler:
+    module_name: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+    params:
+      T_0: 5
