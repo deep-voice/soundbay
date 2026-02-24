@@ -9,19 +9,15 @@ import pandas as pd
 import soundfile as sf
 import torch
 import torchaudio
-import torchvision
-from hydra.utils import instantiate
 from omegaconf import DictConfig
 from torch.utils.data import Dataset
-from torchvision import transforms
-from audiomentations import Compose
 
 
 class BaseDataset(Dataset):
     """
     class for storing and loading data.
     """
-    def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors, label_type,
+    def __init__(self, data_path, metadata_path, augmentor, augmentations_p, preprocessor, label_type,
                  seq_length=1, data_sample_rate=44100, sample_rate=44100, mode="train",
                  slice_flag=False, margin_ratio=0, split_metadata_by_label=False, path_hierarchy: int = 0):
         """
@@ -29,9 +25,9 @@ class BaseDataset(Dataset):
         Input:
         data_path - string
         metadata_path - string
-        augmentations - list of classes audiogemtations
+        augmentor - Augmentor object
         augmentations_p - array of probabilities (float64)
-        preprocessors - list of classes from preprocessors (TBD function)
+        preprocessor - Preprocessor object
         path_hierarchy - enables working with data that is organized in a hierarchy of folders. The default value is 0,
         which means all the audio files are flattened in the same folder. If the value is 1, the audio files are
         organized in one folder per class, and so on. The annotations in the metadata has to be aligned with the path
@@ -56,6 +52,8 @@ class BaseDataset(Dataset):
         Output:
         ClassifierDataset Object - inherits from Dataset object in PyTorch package
         """
+        if mode == "val":
+            assert augmentations_p == 0, "augmentations_p must be 0 for validation mode"
         self.audio_dict = self._create_audio_dict(Path(data_path), path_hierarchy=path_hierarchy)
         self.metadata_path = metadata_path
         self.dtype_dict = {'filename': 'str'}
@@ -68,8 +66,9 @@ class BaseDataset(Dataset):
         self.data_sample_rate = data_sample_rate
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
         self._preprocess_metadata(slice_flag)
-        self.augmenter = self._set_augmentations(augmentations, augmentations_p)
-        self.preprocessor = self.set_preprocessor(preprocessors)
+        self.augmentations_p = augmentations_p
+        self.augmentor = augmentor
+        self.preprocessor = preprocessor
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
         self.num_classes = self._get_num_classes()
@@ -202,41 +201,14 @@ class BaseDataset(Dataset):
     def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
         raise NotImplementedError
 
-    def _set_augmentations(self, augmentations_dict, augmentations_p):
-        """
-        get augmentations list and instantiate - TBD
-        """
-        if augmentations_dict is not None:
-            augmentations_list = [instantiate(args) for args in augmentations_dict.values()]
-        else:
-            augmentations_list = []
-        self._train_augmenter = Compose(augmentations_list, p=augmentations_p, shuffle=True)
-        self._val_augmenter = torch.nn.Identity()
-
     def augment(self, x):
         if self.mode == 'train':
-            return torch.tensor(self._train_augmenter(x.numpy(), self.sample_rate), dtype=torch.float32)
+            if random.random() < self.augmentations_p:
+                return torch.tensor(self.augmentor(x.numpy(), self.sample_rate), dtype=torch.float32)
+            else:
+                return x
         else:
-            return self._val_augmenter(x)
-
-    @staticmethod
-    def set_preprocessor(preprocessors_args):
-        """
-        function set_preprocessor takes preprocessors_args as an argument and creates a preprocessor object
-        to be applied later on the audio segment
-
-        input:
-        preprocessors_args - list of classes from torchvision
-
-        output:
-        preprocessor - Composes several transforms together (transforms object)
-        """
-        if len(preprocessors_args) > 0:
-            processors_list = [instantiate(args) for args in preprocessors_args.values()]
-            preprocessor = transforms.Compose(processors_list)
-        else:
-            preprocessor = torch.nn.Identity()
-        return preprocessor
+            return x
 
     def _get_num_classes(self) -> int:
         """
@@ -285,7 +257,10 @@ class BaseDataset(Dataset):
         path_to_file, begin_time, end_time, label, channel = self._grab_fields(idx)
         audio = self._get_audio(path_to_file, begin_time, end_time, label, channel)
         audio_raw = self.sampler(audio)
-        audio_augmented = self.augment(audio_raw)
+        if self.mode == "train":
+            audio_augmented = self.augment(audio_raw)
+        else:
+            audio_augmented = audio_raw
         audio_processed = self.preprocessor(audio_augmented)
 
         if self.mode == "train" or self.mode == "val":
@@ -401,143 +376,12 @@ class NoBackGroundDataset(BaseDataset):
         return audio
 
 
-class PeakNormalize:
-    """Convert array to lay between 0 to 1"""
-
-    def __call__(self, sample):
-
-        return (sample - sample.min()) / (sample.max() - sample.min() + 1e-8)
-
-
-class MinFreqFiltering:
-    """Cut the spectrogram frequency axis to make it start from min_freq
-    ***Note: In case a MaxFreqFiltering is implemented, the max_freq should be greater than min_freq***
-
-    input:
-        min_freq_filtering - int
-        sample_rate - int
-
-    output:
-        spectrogram - pytorch tensor (3-D array)
-    """
-
-    def __init__(self, min_freq_filtering, sample_rate):
-        self.min_freq_filtering = min_freq_filtering
-        self.sample_rate = sample_rate
-
-    def edit_spectrogram_axis(self, sample):
-        if self.min_freq_filtering > self.sample_rate / 2 or self.min_freq_filtering < 0:
-            raise ValueError("min_freq_filtering should be greater than 0, and smaller than sample_rate/2")
-        max_freq_in_spectrogram = self.sample_rate / 2
-        min_value = sample.size(dim=1) * self.min_freq_filtering / max_freq_in_spectrogram
-        min_value = int(np.floor(min_value))
-        sample = sample[:, min_value:, :]
-
-        return sample
-
-    def __call__(self, sample):
-
-        return self.edit_spectrogram_axis(sample)
-
-
-class UnitNormalize:
-    """Remove mean and divide by std to normalize samples"""
-
-    def __call__(self, sample):
-
-        return (sample - sample.mean()) / (sample.std() + 1e-8)
-
-
-class SlidingWindowNormalize:
-    """ Based on Sliding window augmentations of
-    https://github.com/cchinchristopherj/Right-Whale-Convolutional-Neural-Network/blob/master/whale_cnn.py
-        Translated to torch
-        Has 50/50 chance of activating H sliding window or V sliding window
-
-        Must come after spectrogram and before AmplitudeToDB
-    """
-
-    def __init__(self, sr: float, n_fft: int, lower_cutoff: float = 50, norm=True,
-                 inner_ratio: float = 0.06, outer_ratio: float = 0.5):
-        self.sr = sr
-        self.n_fft = n_fft
-        self.lower_cutoff = lower_cutoff
-        self.norm = norm
-        self.inner_ratio = inner_ratio
-        self.outer_ratio = outer_ratio
-
-    def spectrogram_norm(self, spect):
-
-        min_f_ind = int((self.lower_cutoff / (self.sr / 2)) * self.n_fft)
-
-        mval, sval = np.mean(spect[min_f_ind:, :]), np.std(spect[min_f_ind:, :])
-        fact_ = 1.5
-        spect[spect > mval + fact_ * sval] = mval + fact_ * sval
-        spect[spect < mval - fact_ * sval] = mval - fact_ * sval
-        spect[:min_f_ind, :] = mval
-
-        return spect
-
-    # slidingWindowV Function from: https://github.com/nmkridler/moby2/blob/master/metrics.py
-    def slidingWindow(self, torch_spectrogram, dim=0):
-        ''' slidingWindow Method
-                Enhance the contrast vertically (along frequency dimension) for dim=0 and
-                horizontally (along temporal dimension) for dim=1
-
-                Args:
-                    torch_spectrogram: 2-D numpy array image
-                    dim: dimension to do the sliding window across
-                Returns:
-                    Q: 2-D numpy array image with vertically-enhanced contrast
-
-        '''
-        if dim not in {0, 1}:
-            raise ValueError('dim must be 0 or 1')
-
-        spect = torch_spectrogram.cpu().clone().numpy()
-        spect_shape = spect.shape
-        spect = spect.squeeze()
-        if self.norm:
-            spect = self.spectrogram_norm(spect)
-
-        # Set up the local mean window
-        wInner = np.ones(int(self.inner_ratio * spect.shape[dim]))
-        # Set up the overall mean window
-        wOuter = np.ones(int(self.outer_ratio * spect.shape[dim]))
-        # Remove overall mean and local mean using np.convolve
-        for i in range(spect.shape[1-dim]):
-            if dim == 0:
-                spect[:, i] = spect[:, i] - (
-                        np.convolve(spect[:, i], wOuter, 'same') - np.convolve(spect[:, i], wInner, 'same')) / (
-                            wOuter.shape[0] - wInner.shape[0])
-            elif dim == 1:
-                spect[i, :] = spect[i, :] - (
-                        np.convolve(spect[i, :], wOuter, 'same') - np.convolve(spect[i, :], wInner, 'same')) / (
-                                      wOuter.shape[0] - wInner.shape[0])
-
-        spect[spect < 0] = 0.
-        return torch.from_numpy(spect).reshape(spect_shape)
-
-    def __call__(self, x):
-
-        if random.random() < 0.5:
-            return self.slidingWindow(x, dim=0)
-        else:
-            return self.slidingWindow(x, dim=1)
-
-
-class Resize(torchvision.transforms.Resize):
-
-    def __init__(self, size):
-        super().__init__(list(size))
-
-
 class InferenceDataset(Dataset):
     '''
     class for storing and loading data.
     '''
     def __init__(self, file_path: Union[str, Path],
-                 preprocessors: DictConfig,
+                 preprocessor,
                  seq_length: float = 1,
                  data_sample_rate: int = 44100,
                  sample_rate: int = 44100,
@@ -545,6 +389,12 @@ class InferenceDataset(Dataset):
         """
         __init__ method initiates InferenceDataset instance:
         Input:
+            file_path: Path to audio file or directory containing audio files
+            preprocessor: Preprocessor object for audio processing
+            seq_length: Length of audio segments in seconds
+            data_sample_rate: Original sample rate of the audio files
+            sample_rate: Target sample rate for processing
+            overlap: Overlap between segments (0 to 1, exclusive of 1)
 
         Output:
         InferenceDataset Object - inherits from Dataset object in PyTorch package
@@ -558,7 +408,7 @@ class InferenceDataset(Dataset):
         self.data_sample_rate = data_sample_rate
         self.overlap = overlap
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
-        self.preprocessor = ClassifierDataset.set_preprocessor(preprocessors)
+        self.preprocessor = preprocessor
         self.metadata = self._create_inference_metadata()
 
     def _create_inference_metadata(self) -> pd.DataFrame:

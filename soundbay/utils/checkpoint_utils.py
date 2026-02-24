@@ -1,8 +1,10 @@
-from typing import Union
-import boto3
-from omegaconf import OmegaConf
+from typing import Union, Dict, Any
+from collections.abc import Mapping
+from omegaconf import OmegaConf, DictConfig
 from pathlib import Path
 from tqdm import tqdm
+
+from soundbay.config import InferenceConfig, EvaluateConfig
 
 
 def walk(input_path):
@@ -32,6 +34,8 @@ def upload_experiment_to_s3(experiment_id: str,
         bucket_name: name of the desired bucket path
         include_parent: flag to include the parent of the experiment folder while saving to s3
     """
+    import boto3  # Import here to make it optional for inference
+    
     assert dir_path.is_dir(), 'should upload experiments as directories to s3!'
     object_global = experiment_id
     current_global = str(dir_path.resolve())
@@ -72,3 +76,196 @@ def merge_with_checkpoint(run_args, checkpoint_args):
     run_args.data.label_names = checkpoint_args.data.label_names
     OmegaConf.set_struct(run_args, True)
     return run_args
+
+
+def _extract_model_module_name(model_target: str) -> str:
+    """Extract model module name from _target_ string (e.g., 'models.EfficientNet2D' -> 'EfficientNet2D')"""
+    return model_target.split('.')[-1]
+
+
+def _get_checkpoint_value(ckpt_args: Dict[str, Any], key_path: str, default: Any = None) -> Any:
+    """
+    Safely get a nested value from checkpoint args dict using dot notation.
+    E.g., _get_checkpoint_value(args, 'data.train_dataset.seq_length', 1.0)
+    """
+    keys = key_path.split('.')
+    value = ckpt_args
+    try:
+        for key in keys:
+            if isinstance(value, dict):
+                value = value.get(key)
+            else:
+                value = getattr(value, key, None)
+            if value is None:
+                return default
+        return value
+    except (KeyError, AttributeError, TypeError):
+        return default
+
+
+def merge_inference_config_with_checkpoint(
+    inference_config: InferenceConfig,
+    ckpt_args: Dict[str, Any]
+) -> InferenceConfig:
+    """
+    Merge inference config with checkpoint args, extracting model and preprocessing settings.
+    
+    This function updates the inference config with values from the checkpoint that are
+    necessary for inference (model architecture, preprocessing parameters, etc.).
+    
+    Input:
+        inference_config: InferenceConfig dataclass with user-provided settings
+        ckpt_args: Dictionary of checkpoint args (from ckpt_dict['args'])
+    Output:
+        Updated InferenceConfig with checkpoint values merged in
+    """
+    # Convert to OmegaConf for easier merging
+    config_dict = OmegaConf.structured(inference_config)
+    OmegaConf.set_struct(config_dict, False)
+    
+    # -------------------------------------------------------------------------
+    # Extract model configuration
+    # -------------------------------------------------------------------------
+    model_config = _get_checkpoint_value(ckpt_args, 'model.model', {})
+    if isinstance(model_config, (dict, DictConfig, Mapping)):
+        model_target = model_config.get('_target_', '')
+        module_name = _extract_model_module_name(model_target)
+        num_classes = model_config.get('num_classes', 2)
+        
+        # Extract model params (everything except _target_ and num_classes)
+        model_params = {k: v for k, v in model_config.items() 
+                       if k not in ('_target_', 'num_classes')}
+        
+        config_dict.model.module_name = module_name
+        config_dict.model.num_classes = num_classes
+        config_dict.model.model_params = model_params
+    
+    # -------------------------------------------------------------------------
+    # Extract data/preprocessing configuration
+    # -------------------------------------------------------------------------
+    # Sample rate (use checkpoint's training sample rate)
+    sample_rate = _get_checkpoint_value(ckpt_args, 'data.sample_rate')
+    if sample_rate is not None:
+        config_dict.data.sample_rate = sample_rate
+    
+    # FFT parameters
+    n_fft = _get_checkpoint_value(ckpt_args, 'data.n_fft')
+    if n_fft is not None:
+        config_dict.data.n_fft = n_fft
+    
+    hop_length = _get_checkpoint_value(ckpt_args, 'data.hop_length')
+    if hop_length is not None:
+        config_dict.data.hop_length = hop_length
+    
+    # Min frequency - handle backward compatibility
+    min_freq = _get_checkpoint_value(ckpt_args, 'data.min_freq')
+    if min_freq is None:
+        min_freq = _get_checkpoint_value(ckpt_args, 'data.min_freq_filtering', 0)
+    config_dict.data.min_freq = min_freq
+    
+    # n_mels - try to extract from preprocessors if available
+    n_mels = _get_checkpoint_value(ckpt_args, '_preprocessors.mel_spectrogram.n_mels')
+    if n_mels is not None:
+        config_dict.data.n_mels = n_mels
+    
+    # Seq length from train dataset
+    seq_length = _get_checkpoint_value(ckpt_args, 'data.train_dataset.seq_length')
+    if seq_length is not None:
+        config_dict.data.seq_length = float(seq_length)
+    
+    # Label configuration
+    label_names = _get_checkpoint_value(ckpt_args, 'data.label_names')
+    if label_names is not None:
+        config_dict.data.label_names = list(label_names)
+    
+    label_type = _get_checkpoint_value(ckpt_args, 'data.label_type', 'single_label')
+    config_dict.data.label_type = label_type
+    
+    OmegaConf.set_struct(config_dict, True)
+    
+    # Convert back to InferenceConfig dataclass
+    return OmegaConf.to_object(config_dict)
+
+
+def merge_evaluate_config_with_checkpoint(
+    evaluate_config: EvaluateConfig,
+    ckpt_args: Dict[str, Any]
+) -> EvaluateConfig:
+    """
+    Merge evaluate config with checkpoint args, extracting model and preprocessing settings.
+    
+    This function updates the evaluate config with values from the checkpoint that are
+    necessary for evaluation (model architecture, preprocessing parameters, etc.).
+    
+    Input:
+        evaluate_config: EvaluateConfig dataclass with user-provided settings
+        ckpt_args: Dictionary of checkpoint args (from ckpt_dict['args'])
+    Output:
+        Updated EvaluateConfig with checkpoint values merged in
+    """
+    # Convert to OmegaConf for easier merging
+    config_dict = OmegaConf.structured(evaluate_config)
+    OmegaConf.set_struct(config_dict, False)
+    
+    # -------------------------------------------------------------------------
+    # Extract model configuration
+    # -------------------------------------------------------------------------
+    model_config = _get_checkpoint_value(ckpt_args, 'model.model', {})
+    if isinstance(model_config, (dict, DictConfig, Mapping)):
+        model_target = model_config.get('_target_', '')
+        module_name = _extract_model_module_name(model_target)
+        num_classes = model_config.get('num_classes', 2)
+        
+        # Extract model params (everything except _target_ and num_classes)
+        model_params = {k: v for k, v in model_config.items() 
+                       if k not in ('_target_', 'num_classes')}
+        
+        config_dict.model.module_name = module_name
+        config_dict.model.num_classes = num_classes
+        config_dict.model.model_params = model_params
+    
+    # -------------------------------------------------------------------------
+    # Extract data/preprocessing configuration
+    # -------------------------------------------------------------------------
+    # Sample rate (use checkpoint's training sample rate)
+    sample_rate = _get_checkpoint_value(ckpt_args, 'data.sample_rate')
+    if sample_rate is not None:
+        config_dict.data.sample_rate = sample_rate
+    
+    # FFT parameters
+    n_fft = _get_checkpoint_value(ckpt_args, 'data.n_fft')
+    if n_fft is not None:
+        config_dict.data.n_fft = n_fft
+    
+    hop_length = _get_checkpoint_value(ckpt_args, 'data.hop_length')
+    if hop_length is not None:
+        config_dict.data.hop_length = hop_length
+    
+    # Min frequency - handle backward compatibility
+    min_freq = _get_checkpoint_value(ckpt_args, 'data.min_freq')
+    if min_freq is None:
+        min_freq = _get_checkpoint_value(ckpt_args, 'data.min_freq_filtering', 0)
+    config_dict.data.min_freq = min_freq
+    
+    # n_mels - try to extract from preprocessors if available
+    n_mels = _get_checkpoint_value(ckpt_args, '_preprocessors.mel_spectrogram.n_mels')
+    if n_mels is not None:
+        config_dict.data.n_mels = n_mels
+    
+    # Seq length from train dataset
+    seq_length = _get_checkpoint_value(ckpt_args, 'data.train_dataset.seq_length')
+    if seq_length is not None:
+        config_dict.data.seq_length = float(seq_length)
+    
+    # Label configuration
+    label_names = _get_checkpoint_value(ckpt_args, 'data.label_names')
+    if label_names is not None:
+        config_dict.data.label_names = list(label_names)
+    
+    label_type = _get_checkpoint_value(ckpt_args, 'data.label_type', 'single_label')
+    config_dict.data.label_type = label_type
+    
+    OmegaConf.set_struct(config_dict, True)
+    
+    # Convert back to EvaluateConfig dataclass
+    return OmegaConf.to_object(config_dict)

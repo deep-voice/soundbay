@@ -1,5 +1,16 @@
-# @package _global_
-defaults:
-  - ../data: inference_file_manatees
-  - ../experiment: inference
-  - ../experiment: null_hydra
+data:
+  batch_size: 64
+  num_workers: 2
+  data_sample_rate: 44100
+  sample_rate: 16000
+  test_dataset:
+    module_name: InferenceDataset
+    file_path: ./tests/assets/data/sample.wav
+    overlap: 0.0
+
+experiment:
+  checkpoint:
+    path: ""
+    load_optimizer_state: false
+  save_raven: false
+  threshold: 0.5

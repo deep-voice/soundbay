@@ -51,6 +51,7 @@ class Trainer:
         self.model = model
         self.epochs = epochs
         self.logger = logger
+        # create the criterion here
         self.criterion = criterion
         self.device = device
         self.epochs_trained = 0

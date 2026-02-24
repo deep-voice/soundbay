@@ -6,7 +6,7 @@ from soundbay.utils.logging import Logger
 from soundbay.inference import predict_proba
 from soundbay.trainers import Trainer
 from pathlib import Path
-from soundbay.utils.app import App
+from soundbay.utils.app import app
 from omegaconf import DictConfig
 
 
@@ -38,7 +38,7 @@ def test_trainer(model, optimizer, scheduler, train_data_loader, criterion, labe
 
     wandb.init(project=None, mode='disabled')
     args = DictConfig({'experiment': {'debug': False}})
-    App.init(args)
+    app.init(args)
     output_dirpath = Path.cwd()
 
     # basic training run of model

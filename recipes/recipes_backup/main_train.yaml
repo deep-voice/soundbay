@@ -1,0 +1,49 @@
+experiment:
+  project: finding_willy
+  name: main_training_example
+  debug: false
+  artifacts_upload_limit: 64
+
+model:
+  module_name: ResNet1Channel
+  num_classes: 2
+  criterion: cross_entropy
+  model_params:
+    layers: [3, 4, 6, 3]
+    block: torchvision.models.resnet.Bottleneck
+
+data:
+  batch_size: 64
+  audio_representation: spectrogram
+  train_dataset:
+    data_path: ./tests/assets/data/
+    augmentations_p: 0.8
+    augmentations_config:
+      pitch_shift_p: 0.0
+      time_stretch_p: 0.5
+      time_masking_p: 0.5
+      frequency_masking_p: 0.5
+      min_semitones: -4
+      max_semitones: 4
+      min_rate: 0.9
+      max_rate: 1.1
+      min_band_part: 0.05
+      max_band_part: 0.2
+      min_bandwidth_fraction: 0.05
+      max_bandwidth_fraction: 0.2
+      add_multichannel_background_noise_p: 0.0
+      min_snr_in_db: 3
+      max_snr_in_db: 30
+      lru_cache_size: 100
+
+optim:
+  epochs: 100
+  freeze_layers_for_finetune: true
+  optimizer:
+    module_name: torch.optim.Adam
+    params:
+      lr: 0.0005
+  scheduler:
+    module_name: torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+    params:
+      T_0: 5
