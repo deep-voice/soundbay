@@ -20,14 +20,26 @@ USAGE EXAMPLES
        --format torchscript
 
    Options:
-     --output-dir   Output directory for the model package (default: current dir)
-     --name         Model name (default: checkpoint directory name)
-     --format       Export format: 'torchscript' (default) or 'onnx'
-     --no-softmax   Do not apply softmax to outputs
+     --output-dir                Output directory for the model package (default: current dir)
+     --name                      Model name (default: checkpoint directory name)
+     --format                    Export format: 'torchscript' (default) or 'onnx'
+     --no-softmax                Do not apply softmax to outputs (raw logits)
+     --compensate-for-sigmoid    Apply softmax + inverse-sigmoid (recommended, see below)
 
    This requires args.yaml to be in the same directory as the checkpoint.
 
-2. PYTHON API - Export from soundbay checkpoint:
+2. COMMAND LINE - Export with Raven sigmoid compensation (RECOMMENDED):
+   -------------------------------------------------------------------------
+   Raven Intelligence applies sigmoid independently to each model output.
+   Use --compensate-for-sigmoid so that Raven's sigmoid recovers correct
+   softmax probabilities (scores sum to 1.0 with proper calibration):
+
+   python scripts/raven_export.py /path/to/checkpoint/best.pth \\
+       --output-dir ~/Raven\ Workbench/Raven\ Intelligence/Models/ \\
+       --name My_Detector \\
+       --compensate-for-sigmoid
+
+3. PYTHON API - Export from soundbay checkpoint:
    -------------------------------------------------------------------------
    from scripts.raven_export import create_raven_model_package
 
@@ -36,9 +48,10 @@ USAGE EXAMPLES
        output_dir='~/Raven Workbench/Raven Intelligence/Models/',
        model_name='My_Detector',
        export_format='torchscript',  # recommended; 'onnx' also available
+       compensate_for_sigmoid=True,  # recommended for Raven Intelligence
    )
 
-3. PYTHON API - Package an existing TorchScript model:
+4. PYTHON API - Package an existing TorchScript model:
    -------------------------------------------------------------------------
    from scripts.raven_export import create_raven_model_package_from_torchscript
 
@@ -86,10 +99,11 @@ SUPPORTED PREPROCESSORS
 The following preprocessors from soundbay/data.py are supported:
 - PeakNormalize (re-implemented as nn.Module for TorchScript compatibility)
 - UnitNormalize (re-implemented as nn.Module for TorchScript compatibility)
-- All torchaudio.transforms (MelSpectrogram, AmplitudeToDB, etc.)
+- LibrosaPcen (re-implemented as nn.Module with torch.jit.script for IIR loop)
+- MinFreqFiltering (replaced with nn.Identity - no-op when channel dim is 1)
+- All torchaudio.transforms (MelSpectrogram, Spectrogram, AmplitudeToDB, etc.)
 
 NOT supported (will raise an error):
-- MinFreqFiltering: uses numpy operations that cannot be traced
 - SlidingWindowNormalize: uses numpy and random operations
 
 =========================================================================================
@@ -105,16 +119,26 @@ NOTES
 
 - TorchScript export is recommended over ONNX (STFT operations not supported in ONNX)
 - The wrapper embeds all preprocessing (resampling, MelSpectrogram, normalization)
-  so the exported model accepts raw audio and outputs class probabilities
+  so the exported model accepts raw audio and outputs class scores
 - Raven Intelligence uses DJL with PyTorch 2.5.1 - ensure version compatibility
-- Input tensor shape: (batch, samples) for models exported via create_raven_model_package
-- Input tensor shape: (batch, channels, samples) for pre-existing TorchScript models
-- Output tensor shape: (batch, num_classes) with softmax probabilities
+- Input tensor shape: (batch, channels, samples) - matches both soundbay's training
+  data format (where _get_audio returns (1, samples)) and Raven's expected interface
+- Output tensor shape: (batch, num_classes)
+
+OUTPUT POST-PROCESSING OPTIONS:
+- --compensate-for-sigmoid (RECOMMENDED): outputs inverse-sigmoid of softmax probs.
+  Raven's sigmoid then recovers exact softmax probabilities (sum to 1.0).
+  This is the correct option for calibrated scores in both binary and multiclass models.
+- --no-softmax: outputs raw logits. Raven's sigmoid gives usable but uncalibrated
+  scores that do not sum to 1.0. May suffice for binary models with threshold tuning.
+- (default): outputs softmax probabilities directly. NOT recommended for Raven, as
+  Raven's sigmoid will double-transform the scores into a compressed range.
 
 =========================================================================================
 """
 
 import json
+import math
 import shutil
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -184,6 +208,78 @@ class UnitNormalizeModule(nn.Module):
         return (x - x_mean) / (x_std + 1e-8)
 
 
+class LibrosaPcenModule(nn.Module):
+    """
+    nn.Module version of LibrosaPcen for TorchScript export compatibility.
+
+    Implements Per-Channel Energy Normalization (PCEN) as a pure PyTorch nn.Module,
+    mathematically equivalent to librosa.core.pcen as called by
+    soundbay.utils.signal_processing.LibrosaPcen.
+
+    The IIR smoothing filter requires a loop over time frames, so this module
+    must be torch.jit.script'd (not traced) before inclusion in a traced pipeline.
+
+    See: soundbay/utils/signal_processing.py::LibrosaPcen
+         soundbay/models.py::PCENTransform.pcen (similar but different initialization)
+
+    IMPORTANT: The smoothing coefficient 'b' and initial conditions match librosa's
+    implementation exactly (using scipy.signal.lfilter_zi steady-state initialization),
+    NOT the simpler PCENTransform.pcen initialization. This is critical because the
+    barks model was trained with LibrosaPcen → librosa.core.pcen.
+    """
+
+    def __init__(
+        self,
+        sr: int,
+        hop_length: int,
+        gain: float = 0.6,
+        bias: float = 0.1,
+        power: float = 0.2,
+        time_constant: float = 0.4,
+        eps: float = 1e-9,
+    ):
+        super().__init__()
+        # Compute smoothing coefficient from time_constant, matching librosa.core.pcen:
+        #   t_frames = time_constant * sr / hop_length
+        #   b = (sqrt(1 + 4 * t_frames^2) - 1) / (2 * t_frames^2)
+        t_frames = time_constant * sr / float(hop_length)
+        b = (math.sqrt(1 + 4 * t_frames ** 2) - 1) / (2 * t_frames ** 2)
+
+        self.b: float = b
+        self.gain: float = gain
+        self.bias: float = bias
+        self.power: float = power
+        self.eps: float = eps
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Apply PCEN normalization along the time axis (last dimension).
+
+        Args:
+            x: Spectrogram tensor of shape (batch, channels, freq, time)
+
+        Returns:
+            PCEN-normalized tensor of same shape
+        """
+        b = self.b
+
+        # IIR filter along time axis, matching librosa's lfilter initialization.
+        # librosa uses zi = lfilter_zi([b], [1, b-1]) = [1-b] (unscaled),
+        # so M[0] = b * S[0] + (1-b), NOT M[0] = S[0].
+        m = x[..., :1] * b + (1.0 - b)
+        m_frames: List[torch.Tensor] = [m]
+
+        for t in range(1, x.shape[-1]):
+            m = (1.0 - b) * m + b * x[..., t : t + 1]
+            m_frames.append(m)
+
+        M = torch.cat(m_frames, dim=-1)
+
+        # PCEN formula: (S / (M + eps)^gain + bias)^power - bias^power
+        pcen = (x / (M + self.eps).pow(self.gain) + self.bias).pow(self.power) - self.bias ** self.power
+        return pcen
+
+
 class PreprocessingPipeline(nn.Module):
     """
     A torch.nn.Module that encapsulates the preprocessing pipeline from args.yaml.
@@ -239,9 +335,8 @@ class PreprocessingPipeline(nn.Module):
             return nn.Identity()
 
         # Preprocessors that are NOT supported for TorchScript export:
-        # - MinFreqFiltering: uses numpy operations
         # - SlidingWindowNormalize: uses numpy and random operations
-        unsupported = ['MinFreqFiltering', 'SlidingWindowNormalize']
+        unsupported = ['SlidingWindowNormalize']
 
         for name, config in preprocessors_config.items():
             target = config.get('_target_', '')
@@ -255,7 +350,30 @@ class PreprocessingPipeline(nn.Module):
                         f"See soundbay/data.py for the original implementation."
                     )
 
-            if 'PeakNormalize' in target:
+            if 'LibrosaPcen' in target:
+                # Use nn.Module PCEN for TorchScript compatibility.
+                # Must be torch.jit.script'd because the IIR loop can't be traced.
+                # See: soundbay/utils/signal_processing.py::LibrosaPcen
+                sr = config.get('sr')
+                # Support both 'hop_length' (current config) and 'n_mels' (legacy config)
+                hop_length = config.get('hop_length')
+                if hop_length is None:
+                    n_mels = config.get('n_mels')
+                    if n_mels is None:
+                        raise ValueError(
+                            "LibrosaPcen config must have 'hop_length' or 'n_mels'"
+                        )
+                    hop_length = int(sr / n_mels)
+                pcen_module = LibrosaPcenModule(sr=sr, hop_length=hop_length)
+                processors.append(torch.jit.script(pcen_module))
+            elif 'MinFreqFiltering' in target:
+                # MinFreqFiltering is a no-op when the channel dim is 1:
+                # min_bin = int(floor(size(dim=1) * min_freq / (sr/2))) = 0
+                # So sample[:, 0:, :] returns the full tensor.
+                # Replace with Identity to avoid numpy dependency.
+                # See: soundbay/data.py::MinFreqFiltering
+                processors.append(nn.Identity())
+            elif 'PeakNormalize' in target:
                 # Use nn.Module version for TorchScript compatibility
                 # See: soundbay/data.py::PeakNormalize
                 processors.append(PeakNormalizeModule())
@@ -275,15 +393,14 @@ class PreprocessingPipeline(nn.Module):
         Apply preprocessing to raw audio.
 
         Args:
-            x: Raw audio tensor of shape (batch, samples) or (batch, 1, samples)
+            x: Raw audio tensor of shape (batch, channels, samples)
+               This matches soundbay's training data format where _get_audio
+               returns (1, samples) per sample, batched to (batch, 1, samples).
+               Raven Intelligence also sends 3D (batch, channels, samples).
 
         Returns:
             Preprocessed tensor ready for the model
         """
-        # Ensure correct shape: (batch, 1, samples)
-        if x.dim() == 2:
-            x = x.unsqueeze(1)
-
         # Apply resampling
         x = self.resampler(x)
 
@@ -300,7 +417,7 @@ class RavenExportModel(nn.Module):
     This model accepts raw audio as input and outputs class scores,
     matching Raven Intelligence's expected interface.
 
-    Input: Raw audio tensor (batch, samples) at data_sample_rate
+    Input: Raw audio tensor (batch, channels, samples) at data_sample_rate
     Output: Class probabilities (batch, num_classes)
     """
 
@@ -309,6 +426,7 @@ class RavenExportModel(nn.Module):
         model: nn.Module,
         preprocessing: PreprocessingPipeline,
         apply_softmax: bool = True,
+        compensate_for_sigmoid: bool = False,
     ):
         """
         Initialize the export model.
@@ -317,30 +435,42 @@ class RavenExportModel(nn.Module):
             model: The trained soundbay model
             preprocessing: The preprocessing pipeline
             apply_softmax: Whether to apply softmax to outputs (recommended for Raven)
+            compensate_for_sigmoid: Apply softmax then inverse-sigmoid, so that
+                Raven's sigmoid post-processing recovers correct softmax probabilities.
+                Overrides apply_softmax when True.
         """
         super().__init__()
 
         self.preprocessing = preprocessing
         self.model = model
         self.apply_softmax = apply_softmax
+        self.compensate_for_sigmoid = compensate_for_sigmoid
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         Forward pass from raw audio to class scores.
 
         Args:
-            x: Raw audio tensor of shape (batch, samples)
+            x: Raw audio tensor of shape (batch, samples) as sent by DJL
 
         Returns:
             Class probabilities of shape (batch, num_classes)
         """
+        # DJL sends 2D (batch, samples) even when config specifies channels.
+        # Add channel dim for torchaudio transforms.
+        x = x.unsqueeze(1)
+
         # Apply preprocessing
         x = self.preprocessing(x)
 
         # Run through model
         logits = self.model(x)
 
-        # Apply softmax for probabilities
+        # Post-processing: compensate for Raven's sigmoid, plain softmax, or raw logits
+        if self.compensate_for_sigmoid:
+            probs = torch.softmax(logits, dim=-1)
+            probs = probs.clamp(1e-7, 1 - 1e-7)
+            return torch.log(probs / (1 - probs))  # inverse sigmoid
         if self.apply_softmax:
             return torch.softmax(logits, dim=-1)
         return logits
@@ -351,6 +481,7 @@ class RavenExportModel(nn.Module):
         checkpoint_path: Union[str, Path],
         args_path: Optional[Union[str, Path]] = None,
         apply_softmax: bool = True,
+        compensate_for_sigmoid: bool = False,
     ) -> 'RavenExportModel':
         """
         Create a RavenExportModel from a soundbay checkpoint.
@@ -359,6 +490,7 @@ class RavenExportModel(nn.Module):
             checkpoint_path: Path to the .pth checkpoint file
             args_path: Path to args.yaml. If None, looks for it in the same directory
             apply_softmax: Whether to apply softmax to outputs
+            compensate_for_sigmoid: Apply softmax then inverse-sigmoid for Raven compatibility
 
         Returns:
             RavenExportModel ready for export
@@ -410,7 +542,8 @@ class RavenExportModel(nn.Module):
             preprocessors_config=dict(args.get('_preprocessors', {})),
         )
 
-        return cls(model=model, preprocessing=preprocessing, apply_softmax=apply_softmax)
+        return cls(model=model, preprocessing=preprocessing, apply_softmax=apply_softmax,
+                   compensate_for_sigmoid=compensate_for_sigmoid)
 
     def get_config(self, checkpoint_path: Union[str, Path]) -> dict:
         """
@@ -463,7 +596,8 @@ def export_to_onnx(
     # Calculate input size: samples = sample_rate * seq_length
     num_samples = int(sample_rate * seq_length)
 
-    # Create dummy input (batch_size=1)
+    # Create dummy input (batch_size=1, samples)
+    # 2D: DJL sends (batch, samples). Model unsqueezes channel dim internally.
     dummy_input = torch.randn(1, num_samples)
 
     # Export to ONNX
@@ -515,13 +649,22 @@ def export_to_torchscript(
     # Calculate input size: samples = sample_rate * seq_length
     num_samples = int(sample_rate * seq_length)
 
-    # Create dummy input (batch_size=1)
+    # Create dummy input (batch_size=1, samples)
+    # 2D: DJL sends (batch, samples). Model unsqueezes channel dim internally.
     dummy_input = torch.randn(1, num_samples)
 
-    # Use tracing for export (works better with dynamic ops like STFT)
+    # Use tracing for export (works better with dynamic ops like STFT).
+    # Note: any scripted submodules (e.g. LibrosaPcenModule) are preserved
+    # correctly within the traced graph.
     print("  Tracing model with TorchScript (this may take a moment)...")
     with torch.no_grad():
         traced_model = torch.jit.trace(model, dummy_input)
+
+    # Freeze the graph: inlines parameters/buffers as constants (model is in eval-mode).
+    # Note: optimize_for_inference() is intentionally omitted — its graph rewrites
+    # can be incompatible with DJL's PyTorch engine (e.g., dimension mismatches).
+    print("  Freezing model graph...")
+    traced_model = torch.jit.freeze(traced_model)
 
     # Save the traced model
     print("  Saving traced model...")
@@ -536,6 +679,7 @@ def create_raven_model_package(
     output_dir: Union[str, Path],
     model_name: str,
     apply_softmax: bool = True,
+    compensate_for_sigmoid: bool = False,
     export_format: str = 'torchscript',
 ) -> Path:
     """
@@ -551,6 +695,7 @@ def create_raven_model_package(
         output_dir: Directory to create the model package in
         model_name: Name for the model
         apply_softmax: Whether to apply softmax in the model
+        compensate_for_sigmoid: Apply softmax then inverse-sigmoid for Raven compatibility
         export_format: 'torchscript' (default, recommended) or 'onnx'
 
     Returns:
@@ -572,6 +717,7 @@ def create_raven_model_package(
     export_model = RavenExportModel.from_checkpoint(
         checkpoint_path=checkpoint_path,
         apply_softmax=apply_softmax,
+        compensate_for_sigmoid=compensate_for_sigmoid,
     )
 
     # Get configuration
@@ -731,8 +877,8 @@ def create_raven_model_package_from_torchscript(
     num_samples = int(sample_rate * seq_length)
     num_classes = len(label_names)
 
-    # Determine input tensor dimensions based on channels
-    input_dims = [-1, input_channels, num_samples]
+    # DJL sends 2D (batch, samples) regardless of channel config
+    input_dims = [-1, num_samples]
 
     # Create .ravenmodel configuration
     ravenmodel_config = {
@@ -819,6 +965,11 @@ if __name__ == '__main__':
         help='Do not apply softmax to outputs'
     )
     parser.add_argument(
+        '--compensate-for-sigmoid',
+        action='store_true',
+        help='Apply softmax then inverse-sigmoid so Raven\'s sigmoid recovers correct softmax probabilities'
+    )
+    parser.add_argument(
         '--format',
         type=str,
         default='torchscript',
@@ -836,5 +987,6 @@ if __name__ == '__main__':
         output_dir=args.output_dir,
         model_name=model_name,
         apply_softmax=not args.no_softmax,
+        compensate_for_sigmoid=args.compensate_for_sigmoid,
         export_format=args.format,
     )
