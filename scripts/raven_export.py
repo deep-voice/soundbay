@@ -172,28 +172,36 @@ class PeakNormalizeModule(nn.Module):
     """
     nn.Module version of PeakNormalize for TorchScript export compatibility.
 
-    The original class is not an nn.Module so it can't be traced by TorchScript.
-    This wrapper preserves the exact same logic (global min/max across all dims).
-
-    See: soundbay/data.py::PeakNormalize
+    The original (soundbay/data.py::PeakNormalize) uses sample.min()/sample.max()
+    which reduces ALL dims. That's fine because it runs per-sample inside __getitem__
+    (no batch dim). Here we reduce all dims EXCEPT batch so that each sample in a
+    batch is normalized independently — matching the original's per-sample semantics
+    even when Raven sends batch_size > 1.
     """
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return (x - x.min()) / (x.max() - x.min() + 1e-8)
+        dims = list(range(1, x.dim()))
+        x_min = x.amin(dim=dims, keepdim=True)
+        x_max = x.amax(dim=dims, keepdim=True)
+        return (x - x_min) / (x_max - x_min + 1e-8)
 
 
 class UnitNormalizeModule(nn.Module):
     """
     nn.Module version of UnitNormalize for TorchScript export compatibility.
 
-    The original class is not an nn.Module so it can't be traced by TorchScript.
-    This wrapper preserves the exact same logic (global mean/std across all dims).
-
-    See: soundbay/data.py::UnitNormalize
+    The original (soundbay/data.py::UnitNormalize) uses sample.mean()/sample.std()
+    which reduces ALL dims. That's fine because it runs per-sample inside __getitem__
+    (no batch dim). Here we reduce all dims EXCEPT batch so that each sample in a
+    batch is normalized independently — matching the original's per-sample semantics
+    even when Raven sends batch_size > 1.
     """
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return (x - x.mean()) / (x.std() + 1e-8)
+        dims = list(range(1, x.dim()))
+        x_mean = x.mean(dim=dims, keepdim=True)
+        x_std = x.std(dim=dims, keepdim=True)
+        return (x - x_mean) / (x_std + 1e-8)
 
 
 class LibrosaPcenModule(nn.Module):
