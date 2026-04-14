@@ -168,15 +168,28 @@ def _get_model_class(model_target: str):
     return MODEL_REGISTRY[model_target]
 
 
+# NOTE ON NORMALIZATION AND BATCH DIMENSIONS:
+#
+# The original PeakNormalize and UnitNormalize in soundbay/data.py use global
+# reductions (sample.min(), sample.mean(), etc.) that reduce ALL dimensions.
+# This works correctly during training because they run per-sample inside
+# __getitem__ — there is no batch dimension at that point.
+#
+# In the exported model, Raven Intelligence may send batches with batch_size > 1.
+# Using global reduction on a batch would normalize across samples (wrong — one
+# loud sample would affect the normalization of a quiet one). Instead, we reduce
+# all dims EXCEPT the batch dim, so each sample is normalized independently —
+# exactly as the original would process them one at a time.
+#
+# The code LOOKS different from the original (amin over explicit dims vs .min()),
+# but the semantics are identical: per-sample normalization.
+
+
 class PeakNormalizeModule(nn.Module):
     """
     nn.Module version of PeakNormalize for TorchScript export compatibility.
-
-    The original (soundbay/data.py::PeakNormalize) uses sample.min()/sample.max()
-    which reduces ALL dims. That's fine because it runs per-sample inside __getitem__
-    (no batch dim). Here we reduce all dims EXCEPT batch so that each sample in a
-    batch is normalized independently — matching the original's per-sample semantics
-    even when Raven sends batch_size > 1.
+    See note above on batch dimension handling.
+    See: soundbay/data.py::PeakNormalize
     """
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -189,12 +202,8 @@ class PeakNormalizeModule(nn.Module):
 class UnitNormalizeModule(nn.Module):
     """
     nn.Module version of UnitNormalize for TorchScript export compatibility.
-
-    The original (soundbay/data.py::UnitNormalize) uses sample.mean()/sample.std()
-    which reduces ALL dims. That's fine because it runs per-sample inside __getitem__
-    (no batch dim). Here we reduce all dims EXCEPT batch so that each sample in a
-    batch is normalized independently — matching the original's per-sample semantics
-    even when Raven sends batch_size > 1.
+    See note above PeakNormalizeModule on batch dimension handling.
+    See: soundbay/data.py::UnitNormalize
     """
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
