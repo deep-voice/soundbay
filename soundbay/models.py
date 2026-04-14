@@ -664,3 +664,61 @@ class CNNRNN(nn.Module):
         # Classifier
         x = self.fc(x)
         return x
+    
+
+########################## Detection model: ##########################################
+import torch
+import torch.nn as nn
+
+class FlexibleTinyDetector(nn.Module):
+    def __init__(self, max_boxes=3):
+        super(FlexibleTinyDetector, self).__init__()
+        self.max_boxes = max_boxes
+        
+        # Encoder: Works on any image size
+        self.features = nn.Sequential(
+            # Layer 1
+            nn.Conv2d(1, 16, kernel_size=3, padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            nn.MaxPool2d(2), 
+            
+            # Layer 2
+            nn.Conv2d(16, 32, kernel_size=3, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.MaxPool2d(2),
+            
+            # Layer 3
+            nn.Conv2d(32, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(),
+        )
+        
+        # The "Bridge": Squashes any spatial size to a fixed 1x4 representation
+        self.adaptive_pool = nn.AdaptiveAvgPool2d((1, 4))
+        
+        # Regression Head: 5 outputs per box [x, y, w, h, conf]
+        self.fc = nn.Sequential(
+            nn.Linear(64 * 1 * 4, 128),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            nn.Linear(128, max_boxes * 5)
+        )
+
+    def forward(self, x):
+        # x shape: [Batch, 1, H, W]
+        x = self.features(x)
+        x = self.adaptive_pool(x)
+        x = torch.flatten(x, 1) # Shape: [Batch, 256]
+        x = self.fc(x)
+        
+        # Reshape to [Batch, Max_Boxes, 5]
+        return x.view(-1, self.max_boxes, 5)
+
+if __name__ == "__main__":
+    # Example usage:
+    model = FlexibleTinyDetector(max_boxes=3)
+    img = torch.randn(32, 1, 21, 65) # Batch of 32, Grayscale, 21 height, 65 width
+    output = model(img) # Output shape: [32, 3, 5]
+    print(output.shape)

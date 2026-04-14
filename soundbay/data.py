@@ -4,8 +4,10 @@ from itertools import starmap, repeat
 from pathlib import Path
 from typing import Union
 
+import librosa
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import soundfile as sf
 import torch
 import torchaudio
@@ -646,3 +648,226 @@ class InferenceDataset(Dataset):
 
     def __len__(self):
         return len(self.metadata)
+
+
+####### Detection dataset with mulit calls possible
+
+class MultiCallDetectionDataset(BaseDataset): ## Maybe create the dataset before hand and only load it as it takes a lot of time...
+    """
+    This class return a audio segment as x and a list of for detection in boundary box format for y. 
+    y vector is: Batch X MAX_LABELS X [x, y, w, h, class, confidence]
+    """
+    def __init__(self, data_path: Path, metadata_path: Path, augmentations, augmentations_p,
+                 preprocessors, seq_length=1.0, orig_sample_rate=44100, wanted_sample_rate=44100, max_overlap_labels=5, margin_ratio=0.0, file_name_col='filename', begin_time_col='begin_time', end_time_col='end_time', low_freq_col='low_freq', high_freq_col='high_freq', label_col='label', channel_col='channel', add_random_margin=True):
+        
+        self.data_path = Path(data_path)
+        self.metadata_path = Path(metadata_path)
+        self.max_overlap_labels = max_overlap_labels
+
+        self.file_name_col = file_name_col
+        self.begin_time_col = begin_time_col
+        self.end_time_col = end_time_col
+        self.low_freq_col = low_freq_col
+        self.high_freq_col = high_freq_col
+        self.label_col = label_col
+        self.channel_col = channel_col
+        
+        self.seq_length = seq_length
+        self.orig_sample_rate = orig_sample_rate
+        self.wanted_sample_rate = wanted_sample_rate
+        assert (0 <= margin_ratio) and (1 >= margin_ratio)
+        self.margin_ratio = margin_ratio
+
+        # self.metadata = pd.DataFrame()
+        self.metadata = pd.read_csv(self.metadata_path)
+        self.preprocessor = ClassifierDataset.set_preprocessor(preprocessors)
+        
+        self.segments_df = self._create_segments(add_random_margin=add_random_margin)
+        self._set_augmentations(augmentations, augmentations_p)
+        self.resampler = torchaudio.transforms.Resample(orig_freq=orig_sample_rate, new_freq=wanted_sample_rate)
+
+    @staticmethod
+    def find_annotated_segments(file_df: pd.DataFrame, shpil_sec: float = 1.0):
+        sorted_df = file_df.sort_values(by='begin_time')
+        segments = []
+        current_segment_start = sorted_df.iloc[0]['begin_time']
+        current_segment_end = sorted_df.iloc[0]['end_time']
+        for _, row in sorted_df.iterrows():
+            if row['begin_time'] <= current_segment_end + shpil_sec:
+                current_segment_end = max(current_segment_end, row['end_time'])
+            else:
+                segments.append((current_segment_start, current_segment_end)) # TODO: add metadata needed
+                current_segment_start = row['begin_time']
+                current_segment_end = row['end_time']
+        segments.append((current_segment_start, current_segment_end))
+        return segments
+        
+    @staticmethod
+    def cut_segment_into_chunks(segment_start: float, segment_end: float, 
+                                chunk_size: float = 1.0, hop_size: float = 0.5) -> pd.DataFrame:
+        chunks = []
+        current_start = segment_start
+        while current_start + chunk_size <= segment_end:
+            current_end = current_start + chunk_size
+            chunks.append((current_start, current_end))
+            current_start += hop_size
+        
+        if current_start < segment_end:
+            chunks.append((segment_end - chunk_size, segment_end))
+
+        return pd.DataFrame(chunks, columns=['begin_time', 'end_time'])
+
+    def _create_segments(self, add_random_margin=True):
+        """
+        function that calcualte the metadata of the dataset.
+        """
+        df = pd.read_csv(self.metadata_path)
+        # remove duplications
+        df = df.drop_duplicates()
+        segments_list = []
+        for file in df[self.file_name_col].unique():
+            file_df = df[df[self.file_name_col] == file]
+            segments = self.find_annotated_segments(file_df)
+            for segment_start, segment_end in segments:
+                if segment_start < 0:
+                    print(f'seems like some tags in file {file} have negative begin_time, setting it to 0\nbegin time:{segment_start}')
+                    continue
+                if add_random_margin:
+                    segment_start -= max(0, np.random.uniform(0, self.margin_ratio) * self.seq_length)
+                    segment_end += max(0, np.random.uniform(0, self.margin_ratio) * self.seq_length)
+
+                segment_df = self.cut_segment_into_chunks(segment_start, segment_end, 
+                                                          chunk_size=self.seq_length, 
+                                                          hop_size=self.seq_length * (1 - self.margin_ratio))
+                segment_df[self.file_name_col] = file
+                segments_list.append(segment_df)
+
+        segments_df = pd.concat(segments_list, ignore_index=True)
+        return segments_df            
+
+    def _set_augmentations(self, augmentations_dict, augmentations_p):
+        """
+        get augmentations list and instantiate - TBD
+        """
+        if augmentations_dict is not None:
+            augmentations_list = [instantiate(args) for args in augmentations_dict.values()]
+        else:
+            augmentations_list = []
+        self._augmenter = Compose(augmentations_list, p=augmentations_p, shuffle=True)
+
+    def __len__(self):
+        return len(self.segments_df)
+    
+    @staticmethod
+    def find_annotations_in_segment(file_df: pd.DataFrame, segment_start: float, segment_end: float):
+        return file_df[(file_df['begin_time'] < segment_end) & (file_df['end_time'] > segment_start)]
+
+    def _get_labels(self, idx):
+        file_name = self.segments_df['filename'][idx]
+        begin_time = self.segments_df['begin_time'][idx]
+        end_time = self.segments_df['end_time'][idx]
+
+        file_df = self.metadata[self.metadata[self.file_name_col] == file_name]
+        annotations_in_segment = self.find_annotations_in_segment(file_df, begin_time, end_time)
+
+        # transform to bounding box format: [x, y, w, h, class, confidence]
+        annotations_in_segment = annotations_in_segment.sort_values(by='begin_time').head(self.max_overlap_labels)
+        labels = torch.zeros((self.max_overlap_labels, 6), dtype=torch.float)
+
+        for i, (_, row) in enumerate(annotations_in_segment.iterrows()):
+            if i >= self.max_overlap_labels:
+                break
+            x = max(0, row['begin_time'] - begin_time) / self.seq_length
+            y = max(0, row['low_freq'])
+            w = min(end_time, row['end_time']) - max(begin_time, row['begin_time'])
+            w = w / self.seq_length
+            h = (row['high_freq'] - row['low_freq'])
+            cls = row[self.label_col]
+            conf = 1.0
+            labels[i] = torch.tensor([x, y, w, h, cls, conf], dtype=torch.float)
+
+        return labels
+    
+    def _get_audio(self, idx):
+        file_name = self.segments_df['filename'][idx]
+        begin_time = self.segments_df['begin_time'][idx]
+        
+        if '.wav' not in str(file_name):
+            file_name = str(file_name) + '.wav'
+        audio, _ = torchaudio.load(self.data_path / file_name,
+                                   frame_offset=int(begin_time * self.orig_sample_rate),
+                                   num_frames=int(self.seq_length * self.orig_sample_rate))
+     
+        return audio
+    
+    def augment(self, x):
+        return torch.tensor(self._augmenter(x.numpy(), self.wanted_sample_rate), dtype=torch.float32)
+    
+    def plot_labels(self, idx, fft_len=1.0, hop_len=0.25):
+        audio, labels = self[idx]
+        plt.figure(figsize=(10, 4))
+
+        S = librosa.stft(audio.squeeze().numpy(),
+                         n_fft=int(self.wanted_sample_rate * fft_len), 
+                         hop_length=int(self.wanted_sample_rate * hop_len))
+        S_dB = librosa.amplitude_to_db(np.abs(S), ref=np.max)
+        plt.imshow(S_dB, aspect='auto', origin='lower', extent=[0, self.seq_length, 0, self.wanted_sample_rate / 2])
+        for label in labels:
+            x, y, w, h, cls, conf = label
+            plt.gca().add_patch(
+                plt.Rectangle(
+                    (x * self.seq_length, y), 
+                    w * self.seq_length, h, edgecolor='red', facecolor='none'))
+        plt.title(f"Labels for segment {idx}")
+        plt.xlabel("Time (s)")
+        plt.ylabel("Frequency (Hz)")
+        plt.show()
+            
+    def __getitem__(self, idx):
+        # get audio
+        audio_raw = self._get_audio(idx)
+        audio_raw = self.resampler(audio_raw)
+        audio_raw = self.augment(audio_raw)
+        audio = self.preprocessor(audio_raw)
+
+        # get labels
+        label = self._get_labels(idx)
+        return audio, label
+        
+
+if __name__ == "__main__":
+    # Example usage
+    print("Creating dataset...")
+    dataset = MultiCallDetectionDataset(
+        data_path=Path("datasets/fannie_project"),
+        metadata_path=Path("datasets/fannie_project/train_updated.csv"),
+        augmentations=None,
+        augmentations_p=0.5,
+        preprocessors=[],
+        seq_length=7.0,
+        orig_sample_rate=1_000,
+        wanted_sample_rate=128,
+        max_overlap_labels=4,
+        margin_ratio=0.1,
+        add_random_margin=False
+    )
+    print(f"Dataset length: {len(dataset)}")
+    audio, labels = dataset[0]
+    print(f"Audio shape: {audio.shape}, Labels shape: {labels.shape}")
+    print(f"Labels: {labels}")
+    # dataset.plot_labels(0, fft_len=2.0, hop_len=0.25)
+    # dataset.plot_labels(1000, fft_len=2.0, hop_len=0.25)
+
+    # find max boxes:
+    from tqdm import tqdm
+    max_boxes = 0
+    try:
+        for i in tqdm(range(len(dataset))):
+                _, labels = dataset[i]
+                num_boxes = (labels[:, 4] > 0).sum().item()
+                max_boxes = max(max_boxes, num_boxes)
+    except Exception as e:
+        print(max_boxes)
+        print(f"Error occurred while processing dataset: {e}")
+    print(f"Max boxes in any segment: {max_boxes}")
+

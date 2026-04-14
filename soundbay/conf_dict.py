@@ -4,8 +4,9 @@ Configuration dicts
 These dicts describe the allowed values of the soundbay framework
 '''
 
-from soundbay.models import ResNet1Channel, GoogleResNet50withPCEN, ChristophCNN, ResNet182D, Squeezenet2D, EfficientNet2D, WAV2VEC2, AST, CNNRNN
-from soundbay.data import ClassifierDataset, InferenceDataset, NoBackGroundDataset
+from soundbay.models import ResNet1Channel, GoogleResNet50withPCEN, ChristophCNN, ResNet182D, Squeezenet2D, EfficientNet2D, WAV2VEC2, AST, CNNRNN, FlexibleTinyDetector
+from soundbay.data import ClassifierDataset, InferenceDataset, NoBackGroundDataset, MultiCallDetectionDataset
+from soundbay.losses import DetectionLoss
 import torch
 from audiomentations import PitchShift, BandStopFilter, TimeMask, TimeStretch
 
@@ -17,12 +18,14 @@ models_dict = {'models.ResNet1Channel': ResNet1Channel,
                'models.EfficientNet2D': EfficientNet2D, 
                'models.WAV2VEC2': WAV2VEC2,
                'models.AST': AST,
-               'models.CNNRNN': CNNRNN  
+               'models.CNNRNN': CNNRNN,
+               'models.FlexibleTinyDetector': FlexibleTinyDetector
                }
 
 datasets_dict = {'soundbay.data.ClassifierDataset': ClassifierDataset,
                  'soundbay.data.NoBackGroundDataset': NoBackGroundDataset,
-                 'soundbay.data.InferenceDataset': InferenceDataset}
+                 'soundbay.data.InferenceDataset': InferenceDataset,
+                 'soundbay.data.MultiCallDetectionDataset': MultiCallDetectionDataset}
 
 optim_dict = {'torch.optim.Adam': torch.optim.Adam, 'torch.optim.SGD': torch.optim.SGD}
 
@@ -33,9 +36,10 @@ scheduler_dict = {
 
 criterion_dict = {'torch.nn.CrossEntropyLoss': torch.nn.CrossEntropyLoss(),
                   'torch.nn.MSELoss': torch.nn.MSELoss(),
-                  'torch.nn.BCEWithLogitsLoss': torch.nn.BCEWithLogitsLoss(),}
+                  'torch.nn.BCEWithLogitsLoss': torch.nn.BCEWithLogitsLoss(),
+                  'detection_loss': DetectionLoss()}
 
 augmentations_dict = {'freq_shift': PitchShift,
                       'frequency_masking': BandStopFilter,
                       'time_masking': TimeMask,
-                      'time_stretce': TimeStretch}
+                      'time_stretch': TimeStretch}

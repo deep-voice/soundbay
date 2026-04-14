@@ -19,7 +19,7 @@ def post_process_predictions(preds: torch.Tensor, label_type: str, th: float = 0
 
 def merge_start_end_predictions(preds_list: list, crop_length: int,
                                 overlap: float, threshold: float = 0.98,
-                                min_time_sec: float=5.0) -> tuple:
+                                min_time_sec: float=5.0) -> list:
     """
     Merge the predictions from multiple crops
     @param

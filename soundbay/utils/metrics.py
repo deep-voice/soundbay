@@ -136,3 +136,66 @@ class MetricsCalculator:
         self.calc_global_metrics()
         self.calc_class_metrics()
         return self.metrics_dict
+    
+from sklearn.metrics import average_precision_score, f1_score, precision_score, recall_score, roc_auc_score
+
+class MetricsCalculator2Detection:
+    """ 
+    class for 2d detection metrics calculation.
+    calculating: mAP, Object Count, RMSE of centroid, f1 score
+    """
+    def __init__(self, target_boxes: np.ndarray, pred_boxes: np.ndarray, 
+                 iou_threshold: float = 0.5, n_classes: int = 2):
+        """
+        Initialize the base metrics calculator.
+        Args:
+                target_boxes: [N, 6] -> (x, y, w, h, class_id, conf)
+                pred_boxes: [N, 6] -> (x, y, w, h, class_id, conf)
+                iou_threshold: threshold to consider a prediction as true positive
+        """
+        self.target_boxes = target_boxes
+        self.pred_boxes = pred_boxes
+        self.iou_threshold = iou_threshold
+
+        self.num_classes = n_classes
+        self.metrics_dict = {
+            'global': {},
+            'calls': {}
+        }
+
+    def _get_class_masks(self, class_id: int) -> tuple:
+        """Get masks for specific class."""
+        target_mask = self.target_boxes[:, 4] == class_id
+        pred_mask = self.pred_boxes[:, 4] == class_id
+        return target_mask, pred_mask
+    
+    def _calc_box_count(self, target_boxes: np.ndarray, pred_boxes: np.ndarray) -> float:
+        """Return 1 if the number of predicted boxes matches the number of target boxes, else return 0."""
+        correct_count = []
+        for i in range(len(target_boxes)):
+            n_target_boxes = np.sum(target_boxes[i, :, 5] > 0)
+            n_pred_boxes = np.sum(pred_boxes[i, :, 5] > 0)
+            correct_count.extend(n_target_boxes == n_pred_boxes)
+        return np.mean(np.array(correct_count, dtype=np.int8))
+    
+    def _calc_base_metrics(self, target_boxes: np.ndarray, pred_boxes: np.ndarray) -> Dict:
+        raise NotImplementedError("Base metrics calculation is not implemented yet")
+
+    def _calc_global_metrics(self) -> None:
+        raise NotImplementedError("Global metrics calculation is not implemented yet")
+    
+    def _calc_class_metrics(self) -> None:
+        for class_id in range(1, self.num_classes):
+            target_mask, pred_mask = self._get_class_masks(class_id)
+            target_boxes_class = self.target_boxes[target_mask]
+            pred_boxes_class = self.pred_boxes[pred_mask]
+            self.metrics_dict['calls'][class_id] = self._calc_base_metrics(
+                target_boxes_class, 
+                pred_boxes_class
+                )
+    
+    def calc_all_metrics(self) -> Dict:
+        """Calculate all metrics at once."""
+        self._calc_global_metrics()
+        self._calc_class_metrics()
+        return self.metrics_dict
