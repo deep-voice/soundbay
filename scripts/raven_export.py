@@ -172,40 +172,28 @@ class PeakNormalizeModule(nn.Module):
     """
     nn.Module version of PeakNormalize for TorchScript export compatibility.
 
-    This is a re-implementation of soundbay.data.PeakNormalize as an nn.Module.
-    The original class uses __call__ which doesn't trace properly for TorchScript.
+    The original class is not an nn.Module so it can't be traced by TorchScript.
+    This wrapper preserves the exact same logic (global min/max across all dims).
 
     See: soundbay/data.py::PeakNormalize
-
-    IMPORTANT: Logic must match the original exactly to ensure consistent inference.
     """
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Per-sample normalization: reduce all dims except batch, keepdim for broadcasting
-        dims = list(range(1, x.dim()))
-        x_min = x.amin(dim=dims, keepdim=True)
-        x_max = x.amax(dim=dims, keepdim=True)
-        return (x - x_min) / (x_max - x_min + 1e-8)
+        return (x - x.min()) / (x.max() - x.min() + 1e-8)
 
 
 class UnitNormalizeModule(nn.Module):
     """
     nn.Module version of UnitNormalize for TorchScript export compatibility.
 
-    This is a re-implementation of soundbay.data.UnitNormalize as an nn.Module.
-    The original class uses __call__ which doesn't trace properly for TorchScript.
+    The original class is not an nn.Module so it can't be traced by TorchScript.
+    This wrapper preserves the exact same logic (global mean/std across all dims).
 
     See: soundbay/data.py::UnitNormalize
-
-    IMPORTANT: Logic must match the original exactly to ensure consistent inference.
     """
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        # Per-sample normalization: reduce all dims except batch, keepdim for broadcasting
-        dims = list(range(1, x.dim()))
-        x_mean = x.mean(dim=dims, keepdim=True)
-        x_std = x.std(dim=dims, keepdim=True)
-        return (x - x_mean) / (x_std + 1e-8)
+        return (x - x.mean()) / (x.std() + 1e-8)
 
 
 class LibrosaPcenModule(nn.Module):
@@ -367,11 +355,16 @@ class PreprocessingPipeline(nn.Module):
                 pcen_module = LibrosaPcenModule(sr=sr, hop_length=hop_length)
                 processors.append(torch.jit.script(pcen_module))
             elif 'MinFreqFiltering' in target:
-                # MinFreqFiltering is a no-op when the channel dim is 1:
-                # min_bin = int(floor(size(dim=1) * min_freq / (sr/2))) = 0
-                # So sample[:, 0:, :] returns the full tensor.
-                # Replace with Identity to avoid numpy dependency.
+                # MinFreqFiltering uses numpy so can't be traced. It's a no-op
+                # when min_freq_filtering=0 (slices sample[:, 0:, :] = full tensor).
                 # See: soundbay/data.py::MinFreqFiltering
+                min_freq = config.get('min_freq_filtering', 0)
+                if min_freq != 0:
+                    raise ValueError(
+                        f"MinFreqFiltering with min_freq_filtering={min_freq} is not "
+                        f"supported for TorchScript export. Only min_freq_filtering=0 "
+                        f"(no-op) is supported."
+                    )
                 processors.append(nn.Identity())
             elif 'PeakNormalize' in target:
                 # Use nn.Module version for TorchScript compatibility
