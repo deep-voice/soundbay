@@ -53,3 +53,7 @@ def inference_data_loader():
 @pytest.fixture
 def criterion():
     return torch.nn.CrossEntropyLoss()
+
+@pytest.fixture
+def label_type():
+    return 'single_label'

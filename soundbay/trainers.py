@@ -5,6 +5,8 @@ from tqdm import tqdm
 from pathlib import Path
 from soundbay.utils.app import app
 from soundbay.utils.logging import Logger
+from soundbay.utils.post_process import post_process_predictions
+import wandb
 
 
 class Trainer:
@@ -32,6 +34,7 @@ class Trainer:
                  train_as_val_dataloader: Generator[Tuple[torch.tensor, torch.tensor], None, None],
                  optimizer: torch.optim,
                  criterion,
+                 label_type: str,
                  epochs: int,
                  logger: Logger,
                  output_path: Union[str, Path],
@@ -41,7 +44,8 @@ class Trainer:
                  load_optimizer_state: bool = False,
                  label_names: List[str] = None,
                  debug: bool = False,
-                 train_as_val_interval: int = 20):
+                 train_as_val_interval: int = 20,
+                 proba_threshold: Union[float,None] = None):
 
         # set parameters for stft loss
         self.model = model
@@ -61,6 +65,8 @@ class Trainer:
         self.train_as_val_interval = train_as_val_interval
         self.output_path = output_path
         self.label_names = list(label_names) if label_names else None
+        self.label_type = label_type
+        self.proba_threshold = proba_threshold
 
         # load checkpoint
         if checkpoint:
@@ -68,6 +74,7 @@ class Trainer:
 
     def train(self):
         best_loss = float('inf')
+        best_macro_f1 = 0
         # Run training script
         iterator = tqdm(range(self.epochs_trained, self.epochs),
                         desc='Running Epochs', leave=True, disable=not self.verbose)
@@ -80,9 +87,13 @@ class Trainer:
                 self.eval_epoch(epoch, 'train_as_val')
             # save checkpoint
             loss = self.logger.loss_meter_val['loss'].summarize_epoch()
+            macro_f1 = self.logger.metrics_dict['global']['call_f1_macro']
             if loss < best_loss:
                 best_loss = loss
                 self._save_checkpoint("best.pth")
+            if macro_f1 > best_macro_f1:
+                best_macro_f1 = macro_f1
+                self._save_checkpoint("best_macro_f1.pth")
             self._save_checkpoint("last.pth")
             if self.verbose:  # show batch metrics in progress bar
                 s = 'epoch: ' + str(epoch) + ', ' + str(self.logger.metrics_dict)
@@ -98,26 +109,31 @@ class Trainer:
                 break
 
             self.model.zero_grad()
-            audio, label, raw_wav, idx = batch
-            audio, label  = audio.to(self.device), label.to(self.device)
+            audio, label, raw_wav, meta = batch
+            audio, label = audio.to(self.device), label.to(self.device)
 
             if (it == 0) and (not self.debug) and ((epoch % 5) == 0):
-                self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag='train')
+                self.logger.upload_artifacts(audio, label, raw_wav, meta, sample_rate=self.train_dataloader.dataset.sample_rate,
+                                             flag='train', data_sample_rate=self.train_dataloader.dataset.data_sample_rate)
 
             # estimate and calc losses
             estimated_label = self.model(audio)
+            if self.label_type == 'multi_label':
+                label = label.type_as(estimated_label)
             loss = self.criterion(estimated_label, label)
             loss.backward()
             self.optimizer.step()
 
+            # process the logit predictions:
+            predicted_proba, predicted_label = post_process_predictions(estimated_label.detach(), self.label_type, self.proba_threshold)
+
             # update losses and log batch
 
             self.logger.update_losses(loss.detach(), flag='train')
-            self.logger.update_predictions((estimated_label, label))
+            self.logger.update_predictions(predicted_label, predicted_proba, label.cpu().numpy())
 
         # logging
-        if not app.args.experiment.debug:
-            self.logger.calc_metrics(epoch, 'train', self.label_names)
+        self.logger.calc_metrics(epoch, self.label_type,'train', self.label_names)
 
         self.logger.log(epoch, 'train')
         if self.scheduler is not None:
@@ -137,22 +153,28 @@ class Trainer:
             for it, batch in tqdm(enumerate(dataloader), desc=datatset_name):
                 if it == 3 and self.debug:
                     break
-                audio, label, raw_wav, idx = batch
+                audio, label, raw_wav, meta = batch
                 audio, label = audio.to(self.device), label.to(self.device)
                 if (it == 0) and (not self.debug) and ((epoch % 5) == 0):
-                    self.logger.upload_artifacts(audio, label, raw_wav, idx, sample_rate=self.train_dataloader.dataset.sample_rate, flag=datatset_name)
+                    self.logger.upload_artifacts(audio, label, raw_wav, meta, sample_rate=self.train_dataloader.dataset.sample_rate,
+                                                 flag=datatset_name, data_sample_rate=self.train_dataloader.dataset.data_sample_rate)
 
                 # estimate and calc losses
                 estimated_label = self.model(audio)
+                if self.label_type == 'multi_label':
+                    label = label.type_as(estimated_label)
                 loss = self.criterion(estimated_label, label)
+
+                # process the logit predictions:
+                predicted_proba, predicted_label = post_process_predictions(estimated_label.detach(), self.label_type, self.proba_threshold)
 
                 # update losses
                 self.logger.update_losses(loss.detach(), flag=datatset_name)
-                self.logger.update_predictions((estimated_label, label))
+                self.logger.update_predictions(predicted_label, predicted_proba, label.cpu().numpy())
 
             # logging
             if not app.args.experiment.debug:
-                self.logger.calc_metrics(epoch, datatset_name, self.label_names)
+                self.logger.calc_metrics(epoch, self.label_type, datatset_name, self.label_names)
             self.logger.log(epoch, datatset_name)
 
 
@@ -167,6 +189,7 @@ class Trainer:
                       "scheduler": self.scheduler.state_dict() if self.scheduler is not None else None,
                       "epochs": self.epochs_trained,
                       "model": self.model.state_dict(),
+                      "wandb_experiment_id": wandb.run.id if not app.args.experiment.debug else None,
                       "args": app.args
                       }
 
@@ -180,7 +203,7 @@ class Trainer:
         if checkpoint_path is None:
             return
         print('Loading checkpoint')
-        state_dict = torch.load(checkpoint_path, map_location='cpu')
+        state_dict = torch.load(checkpoint_path, map_location='cpu', weights_only=False)
         self.model.load_state_dict(state_dict["model"])
         if load_optimizer_state:
             self.epochs_trained = state_dict["epochs"]

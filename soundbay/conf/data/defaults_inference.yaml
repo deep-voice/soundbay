@@ -3,9 +3,11 @@ data:
   batch_size: 64
   num_workers: 10
   data_sample_rate: 44100
+  proba_norm_func: 'softmax'
   test_dataset:
     _target_: soundbay.data.ClassifierDataset
     data_path: './tests/assets/data'
+    path_hierarchy: 0
     mode: test
     metadata_path: './tests/assets/annotations/sample_annotations.csv'
     augmentations_p: 0

@@ -3,7 +3,17 @@ Configuration dicts
 -------
 These dicts describe the allowed values of the soundbay framework
 '''
-from soundbay.models import ResNet1Channel, GoogleResNet50withPCEN, ChristophCNN, GoogLeNet_2classes, ResNet182D, Squeezenet2D
+from soundbay.models import (
+    AST,
+    ChristophCNN,
+    EfficientNet2D,
+    GoogleResNet50withPCEN,
+    GoogLeNet_2classes,
+    ResNet182D,
+    ResNet1Channel,
+    Squeezenet2D,
+    WAV2VEC2,
+)
 from soundbay.data import ClassifierDataset, InferenceDataset, NoBackGroundDataset
 import torch
 from audiomentations import PitchShift, BandStopFilter, TimeMask, TimeStretch
@@ -13,7 +23,10 @@ models_dict = {'models.ResNet1Channel': ResNet1Channel,
                'models.ResNet182D': ResNet182D,
                'models.Squeezenet2D': Squeezenet2D,
                'models.GoogLeNet_2classes': GoogLeNet_2classes,
-               'models.ChristophCNN': ChristophCNN}
+               'models.ChristophCNN': ChristophCNN,
+               'models.EfficientNet2D': EfficientNet2D, 
+               'models.WAV2VEC2': WAV2VEC2,
+               'models.AST': AST}
 
 datasets_dict = {'soundbay.data.ClassifierDataset': ClassifierDataset,
                  'soundbay.data.NoBackGroundDataset': NoBackGroundDataset,
@@ -21,10 +34,14 @@ datasets_dict = {'soundbay.data.ClassifierDataset': ClassifierDataset,
 
 optim_dict = {'torch.optim.Adam': torch.optim.Adam, 'torch.optim.SGD': torch.optim.SGD}
 
-scheduler_dict = {'torch.optim.lr_scheduler.ExponentialLR': torch.optim.lr_scheduler.ExponentialLR}
+scheduler_dict = {
+    'torch.optim.lr_scheduler.ExponentialLR': torch.optim.lr_scheduler.ExponentialLR,
+    'torch.optim.lr_scheduler.CosineAnnealingWarmRestarts' : torch.optim.lr_scheduler.CosineAnnealingWarmRestarts
+    }
 
 criterion_dict = {'torch.nn.CrossEntropyLoss': torch.nn.CrossEntropyLoss(),
-                  'torch.nn.MSELoss': torch.nn.MSELoss()}
+                  'torch.nn.MSELoss': torch.nn.MSELoss(),
+                  'torch.nn.BCEWithLogitsLoss': torch.nn.BCEWithLogitsLoss(),}
 
 augmentations_dict = {'freq_shift': PitchShift,
                       'frequency_masking': BandStopFilter,

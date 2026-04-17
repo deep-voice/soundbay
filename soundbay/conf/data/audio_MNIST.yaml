@@ -4,7 +4,6 @@ data:
   num_workers: 10
   sample_rate: 8000
   data_sample_rate: 8000
-  max_freq: 4000
   min_freq_filtering: 0
   n_fft: 256
   hop_length: 64
@@ -30,7 +29,7 @@ data:
     augmentations_p: 0
     augmentations: null
     preprocessors: ${_preprocessors}
-    seq_length: 0.139
+    seq_length: ${data.train_dataset.seq_length}
     len_buffer: 0
     margin_ratio: 0
     data_sample_rate: ${data.data_sample_rate}

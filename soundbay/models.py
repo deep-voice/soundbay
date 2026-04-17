@@ -1,12 +1,18 @@
 import importlib
+from typing import Union
+
 import torch
+import torchaudio
 import torch.nn as nn
 from torch import Tensor
 from torchvision.models.resnet import ResNet, BasicBlock, conv3x3, Bottleneck
 from torchvision.models.vgg import VGG
-from torchvision.models import squeezenet, GoogLeNet
 from torch.hub import load_state_dict_from_url
+from torchvision.models import GoogLeNet, ResNet18_Weights, squeezenet
 import torchvision.models as models
+
+from soundbay.utils.files_handler import load_config
+from transformers import AutoProcessor, ASTModel
 
 
 class ResNet1Channel(ResNet):
@@ -41,6 +47,48 @@ class ResNet1Channel(ResNet):
             param.requires_grad = True
         for param in self.layer4.parameters():
             param.requires_grad = True
+
+
+
+class ASTPreprocessorWrapper():
+    def __init__(self, sample_rate, huggingface_path):
+        self.sample_rate = sample_rate
+        self.processor = AutoProcessor.from_pretrained(huggingface_path, max_length=1024, sampling_rate=self.sample_rate)
+
+    def __call__(self, orig_wav):
+        mel_spectogram = self.processor(orig_wav.numpy(), sampling_rate=self.sample_rate, return_tensors="pt")
+
+        return mel_spectogram['input_values'].squeeze()
+
+class AST(nn.Module):
+    def __init__(self, weight_path=None, num_classes=1, huggingface_path="MIT/ast-finetuned-audioset-10-10-0.4593"):
+        super(AST, self).__init__()
+
+        self.model = ASTModel.from_pretrained(huggingface_path)
+        if weight_path != None:
+            state_dict = torch.load(weight_path, weights_only=False)
+            self.model.load_state_dict(state_dict)
+
+        self.num_classes = num_classes
+
+        self.fc = nn.Linear(self.model.config.hidden_size, self.num_classes)
+
+    def forward(self, x):
+        embedding  = self.model(input_values=x)
+
+        output = self.fc(embedding.pooler_output)
+
+        return output
+
+    def extract_embedding(self, x):
+        embedding  = self.model(input_values=x)
+        
+        return embedding
+
+    
+    def freeze_layers(self, ):
+        self.model.requires_grad_(False)
+
 
 
 class SqueezeNet1D(squeezenet.SqueezeNet):
@@ -379,7 +427,7 @@ class ResNet182D(nn.Module):
         super(ResNet182D, self).__init__()
 
         # Load a pre-trained ResNet-18
-        resnet = models.resnet18(pretrained=pretrained)
+        resnet = models.resnet18(weights=ResNet18_Weights.DEFAULT) if pretrained else models.resnet18(weights=None)
 
         num_features = resnet.fc.in_features
         resnet.fc = nn.Sequential(
@@ -393,3 +441,103 @@ class ResNet182D(nn.Module):
     def forward(self, x):
         x = x.repeat(1, 3, 1, 1)
         return self.resnet(x)
+    
+    def freeze_layers(self):
+        for param in self.resnet.parameters():
+            param.requires_grad = False
+
+        for param in self.resnet.fc.parameters():
+            param.requires_grad = True
+
+
+
+class EfficientNet2D(nn.Module):
+    """EfficientNet model for 3 channel ("RGB") input."""
+
+    def __init__(
+        self,
+        num_classes=2,
+        pretrained=True,
+        dropout=0.5,
+        hidden_dim=256,
+        version="b7",
+    ):
+        super(EfficientNet2D, self).__init__()
+
+        # Map version to corresponding model and weights
+        model_map = {
+            "b0": (models.efficientnet_b0, models.EfficientNet_B0_Weights.DEFAULT),
+            "b1": (models.efficientnet_b1, models.EfficientNet_B1_Weights.DEFAULT),
+            "b2": (models.efficientnet_b2, models.EfficientNet_B2_Weights.DEFAULT),
+            "b3": (models.efficientnet_b3, models.EfficientNet_B3_Weights.DEFAULT),
+            "b4": (models.efficientnet_b4, models.EfficientNet_B4_Weights.DEFAULT),
+            "b5": (models.efficientnet_b5, models.EfficientNet_B5_Weights.DEFAULT),
+            "b6": (models.efficientnet_b6, models.EfficientNet_B6_Weights.DEFAULT),
+            "b7": (models.efficientnet_b7, models.EfficientNet_B7_Weights.DEFAULT),
+        }
+
+        assert version in model_map, f"Unknown EfficientNet version: {version}, expected one of {list(model_map.keys())}"
+
+        model_fn, weights = model_map[version]
+        self.efficientnet = model_fn(weights=weights) if pretrained else model_fn(weights=None)
+
+        # Replace the classification head to output the desired number of classes
+        in_features = self.efficientnet.classifier[1].in_features
+        self.efficientnet.classifier = nn.Sequential(
+            nn.Linear(in_features, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden_dim, num_classes),
+        )
+
+    def forward(self, x):
+        # Repeat channel to convert 1-channel to 3-channel input
+        x = x.repeat(1, 3, 1, 1)
+        return self.efficientnet(x)
+ 
+
+class WAV2VEC2(nn.Module):
+    def __init__(
+            self,
+            num_classes: int = 2,
+            config: Union[str, dict] = torchaudio.pipelines.WAV2VEC2_BASE._params,
+            path: str = f'https://download.pytorch.org/torchaudio/models/{torchaudio.pipelines.WAV2VEC2_BASE._path}',
+            pretrained: bool = True,
+            freeze_encoder: bool = False
+    ):
+        super(WAV2VEC2, self).__init__()
+        if isinstance(config, str):
+            config = load_config(config)
+        config['aux_num_out'] = config.get('aux_num_out', None)
+        embedding_dim = config['encoder_embed_dim']
+
+        self.freeze_encoder = freeze_encoder
+        self.wav2vec = torchaudio.models.wav2vec2_model(**config)
+        if pretrained:
+            # Load a pre-trained WAV2VEC2
+            self.wav2vec.load_state_dict(torch.hub.load_state_dict_from_url(path))
+        self.fc = nn.Linear(in_features=embedding_dim, out_features=num_classes)
+
+    def forward(self, x):
+        x = self.extract_features(x)
+        return self.fc(x)
+
+    def extract_features(self, x):
+        # this is separated from forward to allow feature extraction.
+        # sometimes for a batch of samples our raw input is [batch, 1, time]
+        if len(x.shape) > 2:
+            x = torch.squeeze(x, dim=1)
+        x = self.wav2vec.extract_features(x)[0]
+        # mean pooling over the layers and time: [layers, batch, time, features] -> [batch, features]
+        x = torch.stack(x, dim=0).mean(dim=(0,2))
+        return x
+
+
+    def freeze_layers(self, ):
+        # to avoid overfitting the feature extractor is frozen
+        self.wav2vec.feature_extractor.requires_grad_(False)
+        # it is possible to freeze the encoder as well
+        # note that extract_features is using the encoder
+        if self.freeze_encoder:
+            for param in self.wav2vec.encoder.parameters():
+                param.requires_grad = False

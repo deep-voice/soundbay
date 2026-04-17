@@ -3,7 +3,7 @@ import os
 import torch
 import wandb
 from soundbay.utils.logging import Logger
-from soundbay.inference import predict
+from soundbay.inference import predict_proba
 from soundbay.trainers import Trainer
 from pathlib import Path
 from soundbay.utils.app import App
@@ -34,7 +34,7 @@ def check_variable_change(model_before, model_after, vars_change=True, device=to
             )
 
 
-def test_trainer(model, optimizer, scheduler, train_data_loader, criterion):
+def test_trainer(model, optimizer, scheduler, train_data_loader, criterion, label_type):
 
     wandb.init(project=None, mode='disabled')
     args = DictConfig({'experiment': {'debug': False}})
@@ -55,7 +55,8 @@ def test_trainer(model, optimizer, scheduler, train_data_loader, criterion):
         logger=logger,
         debug=True,
         criterion=criterion,
-        output_path=output_dirpath
+        output_path=output_dirpath,
+        label_type=label_type
     )
     trainer.train()
     check_variable_change(pre_training_model, model)
@@ -75,7 +76,8 @@ def test_trainer(model, optimizer, scheduler, train_data_loader, criterion):
         debug=True,
         criterion=criterion,
         checkpoint='last.pth',
-        output_path=output_dirpath
+        output_path=output_dirpath,
+        label_type=label_type
     )
     trainer.train()
     os.remove('last.pth')
@@ -85,6 +87,6 @@ def test_trainer(model, optimizer, scheduler, train_data_loader, criterion):
 
 
 def test_inference(model, inference_data_loader):
-    y = predict(model, inference_data_loader)
+    y = predict_proba(model, inference_data_loader)
     assert y.sum() != 0
-    predict(model, inference_data_loader, threshold=0.7, selected_class_idx=1)
+    predict_proba(model, inference_data_loader, selected_class_idx=1)

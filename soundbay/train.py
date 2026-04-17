@@ -47,7 +47,8 @@ def modeling(
     model_args,
     logger,
     freeze_layers_for_finetune,
-    equalize_data
+    equalize_data,
+    label_type
 ):
     """
     modeling function takes all the variables and parameters defined in the main script
@@ -70,35 +71,53 @@ def modeling(
     """
     # Set paths and create dataset
 
-    train_dataset = datasets_dict[train_dataset_args['_target_']](data_path = train_dataset_args['data_path'],
-    metadata_path=train_dataset_args['metadata_path'], augmentations=train_dataset_args['augmentations'],
-    augmentations_p=train_dataset_args['augmentations_p'],
-    preprocessors=train_dataset_args['preprocessors'],
-    seq_length=train_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
-    sample_rate=train_dataset_args['sample_rate'], margin_ratio=train_dataset_args['margin_ratio'],
-    slice_flag=train_dataset_args['slice_flag'], mode=train_dataset_args['mode'],
-    path_hierarchy=train_dataset_args['path_hierarchy']
+    train_dataset = datasets_dict[train_dataset_args['_target_']](
+        data_path = train_dataset_args['data_path'],
+        metadata_path=train_dataset_args['metadata_path'], 
+        augmentations=train_dataset_args['augmentations'],
+        augmentations_p=train_dataset_args['augmentations_p'],
+        preprocessors=train_dataset_args['preprocessors'],
+        seq_length=train_dataset_args['seq_length'], 
+        data_sample_rate=train_dataset_args['data_sample_rate'],
+        sample_rate=train_dataset_args['sample_rate'], 
+        margin_ratio=train_dataset_args['margin_ratio'],
+        slice_flag=train_dataset_args['slice_flag'], 
+        mode=train_dataset_args['mode'],
+        path_hierarchy=train_dataset_args['path_hierarchy'],
+        label_type=label_type
     )
 
     # train data which is handled as validation data
-    train_as_val_dataset = datasets_dict[train_dataset_args['_target_']](data_path=train_dataset_args['data_path'],
-    metadata_path=train_dataset_args['metadata_path'], augmentations=val_dataset_args['augmentations'],
-    augmentations_p=val_dataset_args['augmentations_p'],
-    preprocessors=val_dataset_args['preprocessors'],
-    seq_length=val_dataset_args['seq_length'], data_sample_rate=train_dataset_args['data_sample_rate'],
-    sample_rate=train_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
-    slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode'],
-    path_hierarchy=val_dataset_args['path_hierarchy']
+    train_as_val_dataset = datasets_dict[train_dataset_args['_target_']](
+        data_path=train_dataset_args['data_path'],
+        metadata_path=train_dataset_args['metadata_path'], 
+        augmentations=val_dataset_args['augmentations'],
+        augmentations_p=val_dataset_args['augmentations_p'],
+        preprocessors=val_dataset_args['preprocessors'],
+        seq_length=val_dataset_args['seq_length'], 
+        data_sample_rate=train_dataset_args['data_sample_rate'],
+        sample_rate=train_dataset_args['sample_rate'], 
+        margin_ratio=val_dataset_args['margin_ratio'],
+        slice_flag=val_dataset_args['slice_flag'], 
+        mode=val_dataset_args['mode'],
+        path_hierarchy=val_dataset_args['path_hierarchy'],
+        label_type=label_type
     )
 
-    val_dataset = datasets_dict[val_dataset_args['_target_']](data_path = val_dataset_args['data_path'],
-    metadata_path=val_dataset_args['metadata_path'], augmentations=val_dataset_args['augmentations'],
-    augmentations_p=val_dataset_args['augmentations_p'],
-    preprocessors=val_dataset_args['preprocessors'],
-    seq_length=val_dataset_args['seq_length'], data_sample_rate=val_dataset_args['data_sample_rate'],
-    sample_rate=val_dataset_args['sample_rate'], margin_ratio=val_dataset_args['margin_ratio'],
-    slice_flag=val_dataset_args['slice_flag'], mode=val_dataset_args['mode'],
-    path_hierarchy=train_dataset_args['path_hierarchy']
+    val_dataset = datasets_dict[val_dataset_args['_target_']](
+        data_path = val_dataset_args['data_path'],
+        metadata_path=val_dataset_args['metadata_path'], 
+        augmentations=val_dataset_args['augmentations'],
+        augmentations_p=val_dataset_args['augmentations_p'],
+        preprocessors=val_dataset_args['preprocessors'],
+        seq_length=val_dataset_args['seq_length'], 
+        data_sample_rate=val_dataset_args['data_sample_rate'],
+        sample_rate=val_dataset_args['sample_rate'], 
+        margin_ratio=val_dataset_args['margin_ratio'],
+        slice_flag=val_dataset_args['slice_flag'], 
+        mode=val_dataset_args['mode'],
+        path_hierarchy=train_dataset_args['path_hierarchy'],
+        label_type=label_type
     )
 
     # Define model and device for training
@@ -110,7 +129,7 @@ def modeling(
     model.to(device)
 
     # Assert number of labels in the dataset and the number of labels in the model
-    assert model_args['num_classes'] == len(train_dataset.items_per_classes) == len(val_dataset.items_per_classes), \
+    assert model_args['num_classes'] == train_dataset.num_classes == val_dataset.num_classes, \
     "Num of classes in model and the datasets must be equal, check your configs and your dataset labels!!"
 
     # Add model watch to WANDB
@@ -148,7 +167,8 @@ def modeling(
     optimizer_args = dict(optimizer_args)
     optimizer = optim_dict[optimizer_args.pop('_target_')](model.parameters(), **optimizer_args)
 
-    scheduler = scheduler_dict[scheduler_args._target_](optimizer, gamma=scheduler_args['gamma'])
+    scheduler_args = dict(scheduler_args)
+    scheduler = scheduler_dict[scheduler_args.pop('_target_')](optimizer, **scheduler_args)
 
     # Add the rest of the parameters to trainer instance
     _trainer = trainer(
@@ -175,7 +195,7 @@ def modeling(
 # TODO check how to use hydra without path override
 @hydra.main(config_name="/runs/main", config_path="conf", version_base='1.2')
 def main(validate_args) -> None:
-    
+
     args = deepcopy(validate_args)
     OmegaConf.resolve(validate_args)
     Config(**validate_args)
@@ -187,8 +207,13 @@ def main(validate_args) -> None:
         _logger = wandb
 
     experiment_name = get_experiment_name(args)
-    _logger.init(project="finding_willy", name=experiment_name, group=args.experiment.group_name,
-                 id=args.experiment.run_id, resume=args.experiment.checkpoint.resume)
+    _logger.init(
+        project=args.experiment.project, 
+        name=experiment_name,
+        group=args.experiment.group_name,
+        id=args.experiment.run_id, 
+        resume=args.experiment.checkpoint.resume
+    )
 
     # Set device
     if not torch.cuda.is_available():
@@ -222,26 +247,26 @@ def main(validate_args) -> None:
 
     # Define criterion
     # criterion = instantiate(args.model.criterion)
-    if args.model.criterion._target_ == 'torch.nn.CrossEntropyLoss':
+    if args.model.criterion._target_ in ['torch.nn.CrossEntropyLoss', 'torch.nn.BCEWithLogitsLoss']:
         criterion = criterion_dict[args.model.criterion._target_]
     
-        # criterion = torch.nn.CrossEntropyLoss()
-
     # Seed script
     if args.experiment.manual_seed is None:
         args.experiment.manual_seed = random.randint(1, 10000)
     random.seed(args.experiment.manual_seed)
     torch.manual_seed(args.experiment.manual_seed)
 
-
-    # extra asserts
-    assert args.data.max_freq == args.data.sample_rate // 2, "max_freq must be equal to sample_rate // 2"
-
     # Finetune
     if args.optim.freeze_layers_for_finetune is None:
         args.optim.freeze_layers_for_finetune = False
     if args.optim.freeze_layers_for_finetune:
         print('The model is in finetune mode!')
+
+    # proba threshold (for multi-label classification, using "get" for backward compatibility)
+    classification_proba_threshold = args.data.get('proba_threshold', 0.5)
+
+    # label type, using "get" for backward compatibility
+    label_type = args.data.get('label_type', 'single_label')
 
     # instantiate Trainer class with parameters "meta" parameters
     trainer_partial = partial(
@@ -254,6 +279,8 @@ def main(validate_args) -> None:
         output_path=output_dirpath,
         load_optimizer_state=args.experiment.checkpoint.load_optimizer_state,
         label_names=args.data.label_names,
+        label_type=label_type,
+        proba_threshold=classification_proba_threshold,
     )
     # modeling function for training
     modeling(
@@ -268,7 +295,8 @@ def main(validate_args) -> None:
         model_args=args.model.model,
         logger=logger,
         freeze_layers_for_finetune=args.optim.freeze_layers_for_finetune,
-        equalize_data=args.experiment.equalize_data
+        equalize_data=args.experiment.equalize_data,
+        label_type=label_type
     )
 
     if args.experiment.bucket_name and not args.experiment.debug:

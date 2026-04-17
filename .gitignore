@@ -9,6 +9,7 @@ datasets/*
 # common env and venv
 venv/
 env/
+.pywhale/*
 .env
 .venv
 
@@ -47,3 +48,8 @@ Untitled.ipynb
 
 # Model weights / results (keep local)
 *.pth
+# datasets
+datasets/fannie_project
+
+# wandb
+wandb/*

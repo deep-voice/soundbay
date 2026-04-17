@@ -1,8 +1,8 @@
+import ast
 import random
 from itertools import starmap, repeat
 from pathlib import Path
 from typing import Union
-from decimal import Decimal
 
 import numpy as np
 import pandas as pd
@@ -21,7 +21,7 @@ class BaseDataset(Dataset):
     """
     class for storing and loading data.
     """
-    def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors,
+    def __init__(self, data_path, metadata_path, augmentations, augmentations_p, preprocessors, label_type,
                  seq_length=1, data_sample_rate=44100, sample_rate=44100, mode="train",
                  slice_flag=False, margin_ratio=0, split_metadata_by_label=False, path_hierarchy: int = 0):
         """
@@ -59,6 +59,7 @@ class BaseDataset(Dataset):
         self.audio_dict = self._create_audio_dict(Path(data_path), path_hierarchy=path_hierarchy)
         self.metadata_path = metadata_path
         self.dtype_dict = {'filename': 'str'}
+        self.label_type = label_type
         metadata = pd.read_csv(self.metadata_path, dtype=self.dtype_dict)
         self.metadata = self._update_metadata_by_mode(metadata, mode, split_metadata_by_label)
         self.mode = mode
@@ -71,9 +72,8 @@ class BaseDataset(Dataset):
         self.preprocessor = self.set_preprocessor(preprocessors)
         assert (0 <= margin_ratio) and (1 >= margin_ratio)
         self.margin_ratio = margin_ratio
-        self.items_per_classes = np.unique(self.metadata['label'], return_counts=True)[1]
-        weights = 1 / self.items_per_classes
-        self.samples_weight = np.array([weights[t] for t in self.metadata['label'] ])
+        self.num_classes = self._get_num_classes()
+        self.samples_weight = self._get_samples_weight()
 
     @staticmethod
     def _update_metadata_by_mode(metadata, mode, split_metadata_by_label):
@@ -108,13 +108,12 @@ class BaseDataset(Dataset):
         Output:
             ClassifierDataset object with self.metadata dataframe after applying the condition
         """
+        self.metadata['label'] = self._preprocess_target()
+        is_noise = self.metadata['label'].apply(self._is_noise)
 
         # All calls are worthy (because we can later create a bigger slice contain them that is still a call in
         # _get_audio) but only long enough background sections will do.
-        self.metadata = self.metadata[
-            ((self.metadata['call_length'] >= self.seq_length) & (self.metadata['label'] == 0)) |
-            (self.metadata['label'] > 0)
-            ]
+        self.metadata = self.metadata[((self.metadata['call_length'] >= self.seq_length) & is_noise) | (~is_noise)]
 
         # sometimes the bbox's end time exceeds the file's length
         for name, sub_df in self.metadata.groupby('filename'):
@@ -127,6 +126,28 @@ class BaseDataset(Dataset):
             self._slice_sequence()
 
         self.metadata.reset_index(drop=True, inplace=True)
+
+    def _preprocess_target(self) -> pd.Series:
+        """
+        Preprocesses the label column in the metadata. If the label is a string, it is evaluated and converted to an
+        integer or a list of integers.
+        """
+        if pd.api.types.is_string_dtype(self.metadata['label']):
+            assert self.metadata['label'].str.match(r'^(\[|\()?(\d+)(\s*,\s*\d+)*(\]|\))?$').all(), \
+                "label should be a string that could be evaluated as a list of integers or integers."
+            self.metadata['label'] = self.metadata['label'].apply(ast.literal_eval)
+            if self.metadata['label'].apply(lambda x: isinstance(x, (list, tuple))).all():
+                self.metadata['label'] = self.metadata['label'].apply(np.array, dtype=int)
+        return self.metadata['label']
+
+
+    @staticmethod
+    def _is_noise(value: Union[int, np.ndarray]) -> bool:
+        """
+        Checks if the value is a noise, i.e., if it is equal to 0.
+        """
+        assert (isinstance(value, (int, np.integer)) | isinstance(value, np.ndarray)), "value should be either int or np.ndarray"
+        return np.sum(value) == 0
 
     def _grab_fields(self, idx):
         """
@@ -159,10 +180,10 @@ class BaseDataset(Dataset):
         self.metadata sliced according to buffers
         """
         self.metadata = self.metadata.reset_index(drop=True)
-        count_values_before = self.metadata.value_counts('label', sort=False) # for validating that the following code doesn't lose samples
+        count_values_before = self.metadata.astype({'label': str}).value_counts('label', sort=False) # for validating that the following code doesn't lose samples
         sliced_times = list(starmap(np.arange, zip(self.metadata['begin_time'], self.metadata['end_time'], repeat(self.seq_length))))
         # add the last sequence at the end of this list for calls only (only if it does not exceed the file)
-        sliced_times = list([np.append(s, self.metadata.loc[i, 'end_time']) if self.metadata.loc[i, 'label'] != 0
+        sliced_times = list([np.append(s, self.metadata.loc[i, 'end_time']) if (not self._is_noise(self.metadata.loc[i, 'label']))
                              else s for i, s in enumerate(sliced_times)])
         new_begin_time = list(x[:-1] for x in sliced_times)
         duplicate_size_vector = [len(list_elem) for list_elem in new_begin_time] # vector to duplicate original dataframe
@@ -172,8 +193,10 @@ class BaseDataset(Dataset):
         self.metadata['begin_time'] = new_begin_time
         self.metadata['end_time'] = new_end_time
         self.metadata['call_length'] = np.shape(self.metadata)[0] * [self.seq_length]
-        if not all(self.metadata.value_counts('label', sort=False) >= count_values_before):
-            print(f'Note: seems like _slice_sequence erases data.\nbefore:{count_values_before}\nafter:{self.metadata.value_counts("label", sort=False)}')
+        count_values_after = self.metadata.astype({'label': str}).value_counts('label', sort=False)
+        if not all(count_values_after >= count_values_before):
+            print(f'Note: seems like _slice_sequence erases data.\nbefore:{count_values_before}\n'
+                  f'after:{count_values_after}')
         return
 
     def _get_audio(self, path_to_file, begin_time, end_time, label, channel=None):
@@ -215,6 +238,34 @@ class BaseDataset(Dataset):
             preprocessor = torch.nn.Identity()
         return preprocessor
 
+    def _get_num_classes(self) -> int:
+        """
+        Returns the number of classes in the metadata.
+        """
+        if self.label_type == 'multi_label':
+            label_lengths = self.metadata['label'].apply(len)
+            assert label_lengths.nunique() == 1, "All labels should have the same length"
+            return label_lengths.iloc[0]
+        else:
+            return self.metadata['label'].nunique()
+
+    def _get_samples_weight(self) -> np.ndarray:
+        """
+        Returns the weight of each sample in the dataset:
+            - if the label is integer, the weight is the inverse of the class count.
+            - if the label is a list, the weight is the inverse of the minimum class count.
+        """
+        if self.label_type == 'multi_label':
+            noise_counts = self.metadata['label'].apply(self._is_noise).sum()
+            class_counts = np.sum(self.metadata['label'])
+            per_sample_min_class_count = (self.metadata['label'].apply(
+                lambda x: class_counts[x.astype(bool)].min() if not self._is_noise(x) else noise_counts))
+            return (1 / per_sample_min_class_count).values
+        else:
+            weights = 1 / np.unique(self.metadata['label'], return_counts=True)[1]
+            return np.array([weights[t] for t in self.metadata['label']])
+
+
     def __getitem__(self, idx):
         '''
         __getitem__ method loads item according to idx from the metadata
@@ -239,7 +290,7 @@ class BaseDataset(Dataset):
 
         if self.mode == "train" or self.mode == "val":
             label = self.metadata["label"][idx]
-            return audio_processed, label, audio_raw, idx
+            return audio_processed, label, audio_raw, {"idx": idx, "begin_time": begin_time, "org_file": Path(path_to_file).stem}
 
         elif self.mode == "test":
             return audio_processed
@@ -276,7 +327,7 @@ class ClassifierDataset(BaseDataset):
         if self.mode == "train":
             if seg_length >= requested_seq_length:
                 # Only for calls we can safely add sections out of the call and label it as call
-                if (self.margin_ratio != 0) and (label > 0):
+                if (self.margin_ratio != 0) and (not self._is_noise(label)):
                     # self.margin_ratio ranges from 0 to 1 - indicates the relative part from seq_len to exceed call_length
                     margin_len_begin = int(requested_seq_length * self.margin_ratio)
                     margin_len_end = int(requested_seq_length * (1 - self.margin_ratio))
@@ -491,7 +542,7 @@ class InferenceDataset(Dataset):
                  seq_length: float = 1,
                  data_sample_rate: int = 44100,
                  sample_rate: int = 44100,
-                 channel: int = None):
+                 overlap: float = 0):
         """
         __init__ method initiates InferenceDataset instance:
         Input:
@@ -499,17 +550,44 @@ class InferenceDataset(Dataset):
         Output:
         InferenceDataset Object - inherits from Dataset object in PyTorch package
         """
-        self.file_path = file_path
+        assert  0 <= overlap < 1, f'overlap should be between 0 and 1, got {overlap}'
+
+        self.file_path = Path(file_path)
         self.metadata_path = self.file_path  # alias to support inference pipeline
         self.seq_length = seq_length
         self.sample_rate = sample_rate
         self.data_sample_rate = data_sample_rate
+        self.overlap = overlap
         self.sampler = torchaudio.transforms.Resample(orig_freq=data_sample_rate, new_freq=sample_rate)
         self.preprocessor = ClassifierDataset.set_preprocessor(preprocessors)
-        self.channel = channel
-        self._create_start_times()
+        self.metadata = self._create_inference_metadata()
 
-    def _create_start_times(self):
+    def _create_inference_metadata(self) -> pd.DataFrame:
+        """
+        create metadata to be used in the inference dataset
+        in case we have a directory, we will iterate over all files in the directory
+        and create metadata for each file and merge it together
+        For a single file, we will create metadata for that file
+        """
+        all_data_frames = []
+        if self.file_path.is_dir():
+            all_files = [self.file_path / x for x in self.file_path.iterdir()]
+        else:
+            all_files = [self.file_path]
+        for file in all_files:
+            if file.suffix not in ['.wav', '.WAV']:
+                raise ValueError(f'InferenceDataset only supports .wav files, got {file.suffix}')
+            file_start_time = self._create_start_times(file)
+            for channel_num in range(sf.info(file).channels):
+                metadata = pd.DataFrame({'filename': [file] * len(file_start_time),
+                                         'channel': [channel_num] * len(file_start_time),
+                                         'begin_time': file_start_time,
+                                         'end_time': file_start_time + self.seq_length})
+                all_data_frames.append(metadata)
+        metadata = pd.concat(all_data_frames, ignore_index=True)
+        return metadata
+
+    def _create_start_times(self, filepath: Path) -> np.ndarray:
         """
             create reference dict to extract audio files from metadata annotation
             Input:
@@ -517,12 +595,16 @@ class InferenceDataset(Dataset):
             Output:
             audio_dict contains references to audio paths given name from metadata
         """
-        audio_len = sf.info(self.file_path).duration
-        decimal_place = abs(Decimal(str(self.seq_length)).as_tuple().exponent)
-        self._start_times = np.arange(0, round(audio_len//self.seq_length * self.seq_length, decimal_place),
-                                      self.seq_length)
+        audio_len = sf.info(filepath).duration
+        step = self.seq_length * (1-self.overlap)
+        start_times =  np.arange(0, audio_len, step)
+        filtered_start_times = start_times[np.where(start_times <= audio_len - self.seq_length)]
+        # if (duration - seq_length) is not a multiple of the step size, add the last segment
+        if filtered_start_times[-1] < audio_len - self.seq_length:
+            filtered_start_times = np.append(filtered_start_times, audio_len - self.seq_length)
+        return filtered_start_times
 
-    def _get_audio(self, begin_time):
+    def _get_audio(self, filepath: Path, channel: int, begin_time: float) -> torch.Tensor:
         """
         _get_audio gets a path_to_file from _grab_fields method and also begin_time and end_time
         and returns the audio segment in a torch.tensor
@@ -535,35 +617,33 @@ class InferenceDataset(Dataset):
         output:
         audio - pytorch tensor (1-D array)
         """
-        duration = sf.info(self.file_path).duration
+        duration = sf.info(filepath).duration
+        begin_time = int(begin_time * self.data_sample_rate)
         stop_time = begin_time + int(self.seq_length * self.data_sample_rate)
         assert duration * self.data_sample_rate >= stop_time, f"trying to load audio from {begin_time} to {stop_time} but audio is only {duration} long"
-        data, orig_sample_rate = sf.read(self.file_path, start=begin_time, stop=stop_time)
-        num_channels = sf.info(self.file_path).channels
-        if (self.channel is not None) and (num_channels > 1):
-            data = data[:, self.channel]
+        data, orig_sample_rate = sf.read(filepath, start=begin_time, stop=stop_time, always_2d=True)
+        data = data[:, channel]
         assert orig_sample_rate == self.data_sample_rate, \
             f'sample rate is {orig_sample_rate}, should be {self.data_sample_rate}'
         audio = torch.tensor(data, dtype=torch.float).unsqueeze(0)
         return audio
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int):
         '''
-        __getitem__ method loads item according to idx from the metadata
+        __getitem__ method loads item according to idx from the metadata.
 
         input:
         idx - int
 
         output:
-        audio, label - torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
-        , int (if mode="train" only)
+        audio -  torch tensor (1-d if no spectrogram is applied/ 2-d if applied a spectrogram
         '''
-        begin_time = int(self._start_times[idx] * self.data_sample_rate)
-        audio = self._get_audio(begin_time)
+        filepath, channel, begin_time = self.metadata.loc[idx, ['filename', 'channel', 'begin_time']]
+        audio = self._get_audio(filepath=filepath, channel=channel, begin_time=begin_time)
         audio = self.sampler(audio)
         audio = self.preprocessor(audio)
 
         return audio
 
     def __len__(self):
-        return len(self._start_times)
+        return len(self.metadata)

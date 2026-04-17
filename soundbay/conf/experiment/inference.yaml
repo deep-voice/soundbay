@@ -5,6 +5,7 @@ experiment:
     load_optimizer_state: False
   save_raven: False
   threshold: 0.5
+  raven_max_freq: null
 hydra:
   run:
     dir: .null
