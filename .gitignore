@@ -36,3 +36,18 @@ outputs/
 /soundbay/wandb/
 
 datasets/.DS_Store
+
+# Local-only manatee experiment artifacts (do not commit/push)
+ManateesList3.txt
+placencia_coverage_by_date.csv
+notebooks/*_by_date_summary.csv
+notebooks/*_file_summary.csv
+notebooks/placencia_annotations_5files.csv
+notebooks/Inference_results_analysis_*.ipynb
+notebooks/manatee_evaluation_inference.ipynb
+notebooks/manatees_placencia_evaluation*.ipynb
+Untitled.ipynb
+notebooks/Model Exploration-Copy1.ipynb
+
+# Model weights / results (keep local)
+*.pth
