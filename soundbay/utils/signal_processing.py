@@ -61,8 +61,9 @@ class LibrosaPcen:
 
         if isinstance(sample, torch.Tensor):
             sample = sample.numpy()
+        sample = np.squeeze(sample)  # remove leading singleton dims for librosa compatibility
         pcen_librosa = librosa.pcen(sample, sr=self.sr, hop_length=self.hop_length, gain=gain, bias=bias, power=power, time_constant=time_constant, eps=eps)
-        pcen_librosa = np.expand_dims(pcen_librosa, 0)  # expand dims to greyscale
+        pcen_librosa = np.expand_dims(pcen_librosa, 0)  # add channel dim -> (1, n_freq, n_time)
 
 
         return torch.from_numpy(pcen_librosa).float()
