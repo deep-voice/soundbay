@@ -48,21 +48,24 @@ class LibrosaPcen:
          pcen: per-channel energy normalized version of signal - torch tensor
     """
 
-    def __init__(self, sr, n_mels, fmin):
+    def __init__(self, sr, hop_length=None, n_mels=None, fmin=0):
         self.sr = sr
-        self.n_mels = n_mels
-        self.slice_len = 1
-        self.hop_length = int(self.sr / (self.n_mels / self.slice_len))
+        if hop_length is not None:
+            self.hop_length = hop_length
+        elif n_mels is not None:
+            self.hop_length = int(sr / n_mels)
+        else:
+            raise ValueError("Either hop_length or n_mels must be provided")
         self.fmin = fmin
         self.fmax = sr//2
 
-    # sample,
-
     def __call__(self,  sample, gain=0.6, bias=0.1, power=0.2, time_constant=0.4, eps=1e-9):
-        hop_length = int(self.sr / (self.n_mels / self.slice_len))
-        pcen_librosa = librosa.core.pcen(sample, sr=self.sr, hop_length=self.hop_length, gain=gain, bias=bias, power=power,
-                                         time_constant=time_constant, eps=eps)
-        pcen_librosa = np.expand_dims(pcen_librosa, 0)  # expand dims to greyscale
+        if isinstance(sample, torch.Tensor):
+            sample = sample.numpy()
+        sample = np.squeeze(sample)  # remove leading singleton dims for librosa compatibility
+        pcen_librosa = librosa.pcen(sample, sr=self.sr, hop_length=self.hop_length, gain=gain, bias=bias, power=power,
+                                    time_constant=time_constant, eps=eps)
+        pcen_librosa = np.expand_dims(pcen_librosa, 0)  # add channel dim -> (1, n_freq, n_time)
 
 
         return torch.from_numpy(pcen_librosa).float()

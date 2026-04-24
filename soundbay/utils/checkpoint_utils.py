@@ -69,6 +69,7 @@ def merge_with_checkpoint(run_args, checkpoint_args):
     if min_freq is None:
         min_freq = checkpoint_args.data.min_freq_filtering
     run_args.data.min_freq = min_freq
+    run_args.data.max_freq = checkpoint_args.data.get('max_freq', checkpoint_args.data.sample_rate // 2)
     run_args.data.label_names = checkpoint_args.data.label_names
     OmegaConf.set_struct(run_args, True)
     return run_args
