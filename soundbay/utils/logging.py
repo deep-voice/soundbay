@@ -48,12 +48,10 @@ class LossMeter(object):
     def sum(self):
         return sum(self.losses)
 
-
-class Logger:
+class LoggerBase:
     """
     A class for computing performance metrics, logging them and displaying them throughout the train
     """
-
     def __init__(self,
                  log_writer=Mock(),
                  debug_mode=False,
@@ -87,7 +85,7 @@ class Logger:
             elif flag == 'train_as_val':
                 self.log_writer.log({f"Losses/{key}_train_as_val": self.loss_meter_train_as_val[key].summarize_epoch()},
                                     step=log_num)
-
+                
     def init_losses_meter(self):
         for key in self.loss_meter_keys:
             self.loss_meter_train[key] = LossMeter(key)
@@ -99,7 +97,6 @@ class Logger:
             self.loss_meter_train[key].reset()
             self.loss_meter_val[key].reset()
             self.loss_meter_train_as_val[key].reset()
-
 
     def update_losses(self, loss, flag):
         losses = [loss]
@@ -120,6 +117,18 @@ class Logger:
         self.pred_proba_list.append(proba)
         self.label_list += label.tolist()
 
+    def get_experiment_name(args) -> Union[str, None]:
+        if args.experiment.name:
+            experiment_name = args.experiment.name
+        elif args.experiment.run_id and args.experiment.group_name:
+            experiment_name = f'{args.experiment.group_name}-{args.experiment.run_id}'
+        elif args.experiment.group_name:
+            experiment_name = f'{args.experiment.group_name}-{wandb.util.generate_id()}'
+        else:
+            experiment_name = None
+        return experiment_name
+
+class Logger(LoggerBase):
     def calc_metrics(self, epoch: int, label_type: str, mode: str = 'train', label_names: Optional[List[str]] = None):
         """calculates metrics, saves to tensorboard log & flush prediction list"""
         self.metrics_dict = MetricsCalculator(
@@ -196,16 +205,21 @@ class Logger:
         # Upload WAVs to W&B
         wandb.log(log_wavs, commit=False)
 
-def get_experiment_name(args) -> Union[str, None]:
-    if args.experiment.name:
-        experiment_name = args.experiment.name
-    elif args.experiment.run_id and args.experiment.group_name:
-        experiment_name = f'{args.experiment.group_name}-{args.experiment.run_id}'
-    elif args.experiment.group_name:
-        experiment_name = f'{args.experiment.group_name}-{wandb.util.generate_id()}'
-    else:
-        experiment_name = None
-    return experiment_name
+class Logger2D(LoggerBase):
+    def calc_metrics(self, epoch: int, label_type: str, mode: str = 'train', label_names: Optional[List[str]] = None):
+        """ calculates metrics, saves to tensorboard log & flush prediction list """
+        self.metrics_dict = MetricsCalculator(
+            label_list=self.label_list,
+            pred_list=self.pred_list,
+            pred_proba_list=self.pred_proba_list,
+            label_type=label_type).calc_all_metrics()
+
+        pred_proba_array = np.concatenate(self.pred_proba_list)
+        for metric, value in self.metrics_dict['global'].items():
+            self.log_writer.log({f'Global Metrics {mode}/{metric}': value}, step=epoch)
+
+        if label_names is None:
+            label_names = [f'Class_{i}' for i in range(len(self.metrics_dict['per_class']))]
 
 
 def flatten(d, parent_key='', sep='.'):

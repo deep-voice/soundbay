@@ -2,6 +2,8 @@ import numpy as np
 from sklearn import metrics
 from typing import Dict
 
+import torch
+
 
 class MetricsCalculator:
     """class for metrics calculators."""
@@ -137,7 +139,43 @@ class MetricsCalculator:
         self.calc_class_metrics()
         return self.metrics_dict
     
-from sklearn.metrics import average_precision_score, f1_score, precision_score, recall_score, roc_auc_score
+# from sklearn.metrics import average_precision_score, f1_score, precision_score, recall_score, roc_auc_score
+
+def calculate_giou(pred_boxes, target_boxes):
+    """
+    pred_boxes/target_boxes: [N, 4] -> (x, y, w, h)
+    """
+    # 1. Get standard coordinates (x1, y1, x2, y2)
+    p_x1, p_y1 = pred_boxes[:, 0] - pred_boxes[:, 2]/2, pred_boxes[:, 1] - pred_boxes[:, 3]/2
+    p_x2, p_y2 = pred_boxes[:, 0] + pred_boxes[:, 2]/2, pred_boxes[:, 1] + pred_boxes[:, 3]/2
+    t_x1, t_y1 = target_boxes[:, 0] - target_boxes[:, 2]/2, target_boxes[:, 1] - target_boxes[:, 3]/2
+    t_x2, t_y2 = target_boxes[:, 0] + target_boxes[:, 2]/2, target_boxes[:, 1] + target_boxes[:, 3]/2
+
+    # 2. Standard Intersection and Union
+    inter_x1 = torch.max(p_x1, t_x1)
+    inter_y1 = torch.max(p_y1, t_y1)
+    inter_x2 = torch.min(p_x2, t_x2)
+    inter_y2 = torch.min(p_y2, t_y2)
+    
+    inter_area = torch.clamp(inter_x2 - inter_x1, min=0) * torch.clamp(inter_y2 - inter_y1, min=0)
+    p_area = (p_x2 - p_x1) * (p_y2 - p_y1)
+    t_area = (t_x2 - t_x1) * (t_y2 - t_y1)
+    union_area = p_area + t_area - inter_area + 1e-7
+    iou = inter_area / union_area
+
+    # 3. GIoU: Find the smallest enclosing box (C)
+    c_x1 = torch.min(p_x1, t_x1)
+    c_y1 = torch.min(p_y1, t_y1)
+    c_x2 = torch.max(p_x2, t_x2)
+    c_y2 = torch.max(p_y2, t_y2)
+    
+    # Area of the enclosing box
+    c_area = (c_x2 - c_x1) * (c_y2 - c_y1) + 1e-7
+    
+    # GIoU calculation
+    giou = iou - (c_area - union_area) / c_area
+    
+    return giou # Returns values between -1 and 1
 
 class MetricsCalculator2Detection:
     """ 
@@ -169,21 +207,156 @@ class MetricsCalculator2Detection:
         pred_mask = self.pred_boxes[:, 4] == class_id
         return target_mask, pred_mask
     
-    def _calc_box_count(self, target_boxes: np.ndarray, pred_boxes: np.ndarray) -> float:
+    def _get_box_mask(self, boxes: np.ndarray) -> np.ndarray:
+        return torch.sum(boxes[:, -1] > confidence_threshold, dim=0)
+    
+    def _get_n_boxes(self, boxes: np.ndarray) -> int:
+        """Get the number of boxes in the given array."""
+        return np.sum(boxes[:, -1] > self.iou_threshold)
+    
+    def _calc_box_count(self, target_boxes: np.ndarray, pred_boxes: np.ndarray, threshold = 0.5) -> float:
         """Return 1 if the number of predicted boxes matches the number of target boxes, else return 0."""
         correct_count = []
         for i in range(len(target_boxes)):
-            n_target_boxes = np.sum(target_boxes[i, :, 5] > 0)
-            n_pred_boxes = np.sum(pred_boxes[i, :, 5] > 0)
-            correct_count.extend(n_target_boxes == n_pred_boxes)
+                # check the number of boxes with confidence > threshold:
+                n_target_boxes = self._get_n_boxes(target_boxes[i], threshold)
+                n_pred_boxes = self._get_n_boxes(pred_boxes[i], threshold)
+                correct_count.append(n_target_boxes == n_pred_boxes)
         return np.mean(np.array(correct_count, dtype=np.int8))
     
-    def _calc_base_metrics(self, target_boxes: np.ndarray, pred_boxes: np.ndarray) -> Dict:
-        raise NotImplementedError("Base metrics calculation is not implemented yet")
-
-    def _calc_global_metrics(self) -> None:
-        raise NotImplementedError("Global metrics calculation is not implemented yet")
+    def _get_giou(self, pred_boxes: np.ndarray, target_boxes: np.ndarray, confidence_threshold: float = 0.5) -> np.ndarray:
+        batch_size = pred_boxes.shape[0]
+        giou_scores = []
+        
+        for i in range(batch_size):
+            # Get mask for valid boxes
+            pred_mask = self._get_box_mask(pred_boxes[i], confidence_threshold)
+            target_mask = self._get_box_mask(target_boxes[i], confidence_threshold)
+            
+            # Get valid boxes
+            valid_pred_boxes = pred_boxes[i][pred_mask][:, :4]  # (x, y, w, h)
+            valid_target_boxes = target_boxes[i][target_mask][:, :4]  # (x, y, w, h)
+            
+            if valid_pred_boxes.shape[0] == 0 or valid_target_boxes.shape[0] == 0:
+                giou_scores.append(torch.tensor(0.0))  # No valid boxes, GIoU is 0
+                continue
+            
+            # Calculate GIoU for each pair of valid boxes and take the mean
+            giou_sum = 0.0
+            count = 0
+            for p_box in valid_pred_boxes:
+                for t_box in valid_target_boxes:
+                    giou_sum += calculate_giou(p_box.unsqueeze(0), t_box.unsqueeze(0)).item()
+                    count += 1
+            
+            avg_giou = giou_sum / count if count > 0 else 0.0
+            giou_scores.append(torch.tensor(avg_giou))
+        
+        return torch.stack(giou_scores)
     
+    def _calc_avg_giou(self, target_boxes: np.ndarray, pred_boxes: np.ndarray) -> float:
+        """Calculate average GIoU across the batch."""
+        giou_scores = self._get_giou(pred_boxes, target_boxes)
+        return giou_scores.mean().item()
+    
+    def _calc_rmse_of_centroids(self, target_boxes: np.ndarray, pred_boxes: np.ndarray, confidence_threshold: float = 0.5) -> float:
+        batch_size = pred_boxes.shape[0]
+        rmse_sum = 0.0
+        count = 0
+        
+        for i in range(batch_size):
+            # Get valid boxes based on confidence threshold
+            pred_mask = self._get_box_mask(pred_boxes[i], confidence_threshold)
+            target_mask = self._get_box_mask(target_boxes[i], confidence_threshold)
+            
+            valid_pred_boxes = pred_boxes[i][pred_mask][:, :4]  # (x, y, w, h)
+            valid_target_boxes = target_boxes[i][target_mask][:, :4]  # (x, y, w, h)
+            
+            if valid_pred_boxes.shape[0] == 0 or valid_target_boxes.shape[0] == 0:
+                continue
+            
+            for p_box in valid_pred_boxes:
+                for t_box in valid_target_boxes:
+                    rmse_sum += torch.sqrt(torch.mean((p_box[:2] + p_box[2:4] / 2 - t_box[:2] - t_box[2:4] / 2) ** 2)).item()
+                    count += 1
+        
+        rmse = rmse_sum / count if count > 0 else 0.0
+        return rmse
+    
+    def _calc_precision_recall_f1(self, target_boxes: np.ndarray, pred_boxes: np.ndarray, 
+                                  confidence_threshold: float = 0.5, giou_threshold: float = 0.5) -> Dict:
+        batch_size = pred_boxes.shape[0]
+        true_positives = 0
+        false_positives = 0
+        
+        for i in range(batch_size):
+            # Get valid boxes based on confidence threshold
+            pred_mask = self._get_box_mask(pred_boxes[i], confidence_threshold)
+            target_mask = self._get_box_mask(target_boxes[i], confidence_threshold)
+            
+            valid_pred_boxes = pred_boxes[i][pred_mask][:, :4]  # (x, y, w, h)
+            valid_target_boxes = target_boxes[i][target_mask][:, :4]  # (x, y, w, h)
+            
+            if valid_pred_boxes.shape[0] == 0:
+                continue
+            
+            for p_box in valid_pred_boxes:
+                matched = False
+                for t_box in valid_target_boxes:
+                    giou_score = calculate_giou(p_box.unsqueeze(0), t_box.unsqueeze(0)).item()
+                    if giou_score >= giou_threshold:
+                        true_positives += 1
+                        matched = True
+                        break
+                if not matched:
+                    false_positives += 1
+        
+        precision = true_positives / (true_positives + false_positives + 1e-7)
+        recall = true_positives / (true_positives + false_positives + 1e-7)
+        f1 = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0.0
+        return {'precision': precision, 'recall': recall, 'f1': f1}
+
+    def _calc_base_metrics(self, target_boxes: np.ndarray, pred_boxes: np.ndarray, 
+                           confidence_threshold: float = 0.5, giou_threshold: float = 0.5) -> Dict:
+        f1_group = self._calc_precision_recall_f1(target_boxes, pred_boxes, confidence_threshold, giou_threshold)
+        return {
+            'precision': f1_group['precision'],
+            'recall': f1_group['recall'],
+            'f1': f1_group['f1'],
+            'avg_giou': self._calc_avg_giou(target_boxes, pred_boxes, confidence_threshold),
+            'rmse_centroid': self._calc_rmse_of_centroids(target_boxes, pred_boxes, confidence_threshold),
+            'box_count_accuracy': self._calc_box_count(target_boxes, pred_boxes, confidence_threshold)
+        }
+
+    def _calc_global_metrics(self, confidence_threshold: float = 0.5, giou_threshold: float = 0.5) -> None:
+        precision_all = []
+        recall_all = []
+        f1_all = []
+        giou_all = []
+        rmse_all = []
+        box_count_all = []
+        for i in range(1, self.num_classes):
+            target_mask, pred_mask = self._get_class_masks(i)
+            target_boxes_class = self.target_boxes[target_mask]
+            pred_boxes_class = self.pred_boxes[pred_mask]
+            class_metrics = self._calc_base_metrics(target_boxes_class, 
+                                                    pred_boxes_class, 
+                                                    confidence_threshold, 
+                                                    giou_threshold)
+            precision_all.append(class_metrics['precision'])
+            recall_all.append(class_metrics['recall'])
+            f1_all.append(class_metrics['f1'])
+            giou_all.append(class_metrics['avg_giou'])
+            rmse_all.append(class_metrics['rmse_centroid'])
+            box_count_all.append(class_metrics['box_count_accuracy'])
+        
+        self.metrics_dict['global']['call_precision_macro'] = np.nanmean(precision_all)
+        self.metrics_dict['global']['call_recall_macro'] = np.nanmean(recall_all)
+        self.metrics_dict['global']['call_f1_macro'] = np.nanmean(f1_all)
+        self.metrics_dict['global']['call_avg_giou_macro'] = np.nanmean(giou_all)
+        self.metrics_dict['global']['call_rmse_centroid_macro'] = np.nanmean(rmse_all)
+        self.metrics_dict['global']['call_box_count_accuracy_macro'] = np.nanmean(box_count_all)
+                                                    
     def _calc_class_metrics(self) -> None:
         for class_id in range(1, self.num_classes):
             target_mask, pred_mask = self._get_class_masks(class_id)
