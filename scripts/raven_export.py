@@ -12,7 +12,7 @@ uses DJL (Deep Java Library) to run ML models for automated sound detection.
 USAGE EXAMPLES
 =========================================================================================
 
-1. COMMAND LINE - Export a soundbay checkpoint to Raven format:
+1. COMMAND LINE - Export a soundbay checkpoint to Raven format (RECOMMENDED):
    -------------------------------------------------------------------------
    python scripts/raven_export.py /path/to/checkpoint/best.pth \\
        --output-dir ~/Raven\ Workbench/Raven\ Intelligence/Models/ \\
@@ -24,15 +24,14 @@ USAGE EXAMPLES
      --name                      Model name (default: checkpoint directory name)
      --format                    Export format: 'torchscript' (default) or 'onnx'
      --no-softmax                Do not apply softmax to outputs (raw logits)
-     --compensate-for-sigmoid    Apply softmax + inverse-sigmoid (recommended, see below)
+     --compensate-for-sigmoid    Apply softmax + inverse-sigmoid (legacy workaround, see below)
 
    This requires args.yaml to be in the same directory as the checkpoint.
 
-2. COMMAND LINE - Export with Raven sigmoid compensation (RECOMMENDED):
+2. COMMAND LINE - Legacy sigmoid compensation (older Raven versions only):
    -------------------------------------------------------------------------
-   Raven Intelligence applies sigmoid independently to each model output.
-   Use --compensate-for-sigmoid so that Raven's sigmoid recovers correct
-   softmax probabilities (scores sum to 1.0 with proper calibration):
+   Use --compensate-for-sigmoid when sigmoid cannot be disabled in Raven. See OUTPUT
+   POST-PROCESSING OPTIONS below for details.
 
    python scripts/raven_export.py /path/to/checkpoint/best.pth \\
        --output-dir ~/Raven\ Workbench/Raven\ Intelligence/Models/ \\
@@ -48,7 +47,6 @@ USAGE EXAMPLES
        output_dir='~/Raven Workbench/Raven Intelligence/Models/',
        model_name='My_Detector',
        export_format='torchscript',  # recommended; 'onnx' also available
-       compensate_for_sigmoid=True,  # recommended for Raven Intelligence
    )
 
 4. PYTHON API - Package an existing TorchScript model:
@@ -126,13 +124,13 @@ NOTES
 - Output tensor shape: (batch, num_classes)
 
 OUTPUT POST-PROCESSING OPTIONS:
-- --compensate-for-sigmoid (RECOMMENDED): outputs inverse-sigmoid of softmax probs.
-  Raven's sigmoid then recovers exact softmax probabilities (sum to 1.0).
-  This is the correct option for calibrated scores in both binary and multiclass models.
-- --no-softmax: outputs raw logits. Raven's sigmoid gives usable but uncalibrated
-  scores that do not sum to 1.0. May suffice for binary models with threshold tuning.
-- (default): outputs softmax probabilities directly. NOT recommended for Raven, as
-  Raven's sigmoid will double-transform the scores into a compressed range.
+- (default, RECOMMENDED): outputs softmax probabilities directly. Use this with sigmoid
+  disabled in Raven Intelligence settings (available in current Raven releases).
+- --no-softmax: outputs raw logits. Use when Raven's sigmoid is enabled — gives usable
+  but uncalibrated scores that do not sum to 1.0.
+- --compensate-for-sigmoid (LEGACY): outputs inverse-sigmoid of softmax probs, so that
+  Raven's sigmoid recovers exact softmax probabilities (sum to 1.0). Workaround for
+  older Raven versions that had no option to disable sigmoid.
 
 =========================================================================================
 """
@@ -950,7 +948,10 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser(
-        description='Export soundbay model to Raven Intelligence format'
+        description=(
+            'Export soundbay model to Raven Intelligence format. '
+            'Default (recommended): softmax output — disable sigmoid in Raven Intelligence settings.'
+        )
     )
     parser.add_argument(
         'checkpoint',
@@ -977,7 +978,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--compensate-for-sigmoid',
         action='store_true',
-        help='Apply softmax then inverse-sigmoid so Raven\'s sigmoid recovers correct softmax probabilities'
+        help='Legacy: apply softmax then inverse-sigmoid for older Raven versions without a sigmoid disable option'
     )
     parser.add_argument(
         '--format',
