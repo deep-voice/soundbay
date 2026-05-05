@@ -1,0 +1,8 @@
+# @package _global_
+defaults:
+  - _self_
+  - ../data: inference_file_manatees
+  - ../experiment: inference
+
+experiment:
+  save_raven: true
