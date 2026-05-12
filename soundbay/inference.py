@@ -44,9 +44,13 @@ def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
     """
     assert proba_norm_func in ['softmax', 'sigmoid'], 'proba_norm_func must be softmax or sigmoid'
     all_predictions = []
+    all_labels = []
     with torch.no_grad():
         model.eval()
         for audio in tqdm(data_loader):
+            if isinstance(audio, list) or isinstance(audio, tuple):
+                audio = audio[0]
+                all_labels.append(audio[1])
             audio = audio.to(device)
 
             predicted_probability = model(audio).cpu().numpy()
@@ -63,6 +67,9 @@ def predict_proba(model: torch.nn.Module, data_loader: DataLoader,
             proba = expit(all_predictions)
         else:
             raise ValueError('proba_norm_func must be softmax or sigmoid')
+        # if all_labels:
+            # return proba, all_labels
+        # else:
         return proba
 
 
@@ -126,8 +133,15 @@ def infer_with_metadata(
     if hasattr(test_dataset, 'metadata'):
         concat_dataset = pandas.concat([test_dataset.metadata, results_df],
                                        axis=1)  # TODO: make sure metadata column order matches the prediction df order
+        # save concated dataset with predictions and labels (if exist) to csv and calculate metrics if labels exist
+        concat_dataset.to_csv(index=False, path_or_buf=output_path / f"inference_results-{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}-{model_name}-{Path(test_dataset.metadata_path).stem}_results.csv")
+
+        labels = concat_dataset["label"].values.tolist()
+        # if labels[0].shape == 3 and predict_prob.shape[1] == 2:
+            # if the labels have noise label and the prediction doesn't renove the noise label from the labels for the metrics calculation
+            # labels = [label[1:] for label in labels]
         metrics_dict = MetricsCalculator(
-                label_list=concat_dataset["label"].values.tolist(),
+                label_list=labels,
                 pred_list=np.argmax(predict_prob, axis=1).tolist(),
                 pred_proba_list=predict_prob,
                 label_type=label_type).calc_all_metrics()
@@ -503,6 +517,8 @@ def inference_main(args) -> None:
         device = torch.device("cpu")
     else:
         device = torch.device("cuda")
+
+    device = torch.device("cpu")
 
     working_dirpath = Path(hydra.utils.get_original_cwd())
     os.chdir(working_dirpath)
