@@ -1,0 +1,63 @@
+data:
+  label_names:
+    - "ant_blue"
+    - "mad_blue"
+  batch_size: 128
+  wanted_sample_rate: 128
+  data_sample_rate: 1000
+  n_fft: 256
+  hop_length: 16 #32 # 0.75 overlap
+  label_type: "2D"
+  max_overlap_labels: 3 # max boxes in stft
+  num_workers: 4
+  equalize_data: true
+  seq_length: 10.0 # seconds
+  train_dataset:
+    data_path: '/mnt/d/DeepVoice/soundbay/datasets/fannie_project/'
+    mode: "train"
+    metadata_path: '/mnt/d/DeepVoice/soundbay/datasets/fannie_project/train_updated.csv'
+    margin_ratio: 0.5
+  val_dataset:
+    data_path: '/mnt/d/DeepVoice/soundbay/datasets/fannie_project/'
+    mode: "val"
+    metadata_path: '/mnt/d/DeepVoice/soundbay/datasets/fannie_project/val_updated.csv'
+    margin_ratio: 0.2
+
+model:
+  model_name: "tiny_detector"
+  num_classes: 2
+  criterion:
+    name: "detection_loss"
+    lambda_coord: 20.0
+    lambda_obj: 5.0
+    lambda_noobj: 1.0
+    lambda_class: 1.0
+    pooling_size: (4, 8) # (time_bins, freq_bins) for the adaptive pooling layer in the model
+
+learning:
+  epochs: 200
+  optimizer:
+    name: "adamw"
+    learning_rate: 5.0e-4
+    weight_decay: 0.01
+  scheduler:
+    name: "step_lr"
+    step_size: 1000
+    gamma: 0.5
+
+experiment:
+  project_name: "bbox_project"
+  run_name: "fourth_2d_run"
+  run_id: "test_run_id"
+  group_name: "finding_whille"
+  checkpoint_dir: "/mnt/d/DeepVoice/bbox_project/Checkpoints/fourth_2d_run"
+  resume: false
+  debug: true
+  seed: 42
+  log_interval: 100
+  logger:
+    name: "tensorboard"
+    log_dir: "/mnt/d/DeepVoice/bbox_project/Logs/fourth_2d_run"
+    confidence_threshold: 0.5
+    iou_threshold: 0.3
+    artifacts_upload_limit: 100
