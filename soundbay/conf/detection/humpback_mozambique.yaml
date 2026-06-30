@@ -1,0 +1,9 @@
+# YOLO dataset configuration for humpback whale call detection
+path: /data/humpback_yolo
+train: images/train
+val: images/val
+
+names:
+  0: humpback_call
+
+nc: 1

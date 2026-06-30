@@ -1,0 +1,34 @@
+# Training hyperparameters adapted from biodcase-2026 champion
+model: yolo11m.pt
+imgsz: 640
+batch: 16
+
+optimizer: AdamW
+lr0: 0.001
+lrf: 0.01
+weight_decay: 0.0005
+warmup_epochs: 2
+
+epochs: 50
+patience: 15
+seed: 42
+
+hsv_h: 0.0
+hsv_s: 0.0
+hsv_v: 0.3
+translate: 0.05
+scale: 0.1
+erasing: 0.2
+flipud: 0.0
+fliplr: 0.0
+mosaic: 0.0
+mixup: 0.0
+degrees: 0.0
+perspective: 0.0
+shear: 0.0
+
+iou: 0.4
+conf: 0.25
+
+project: humpback_detection
+name: mozambique_yolo11m
