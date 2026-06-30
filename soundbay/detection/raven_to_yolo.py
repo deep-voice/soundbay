@@ -5,7 +5,7 @@ from typing import List, Dict
 
 def parse_raven_file(filepath: str) -> List[Dict]:
     """Parse a Raven selection table (.txt) into a list of annotation dicts."""
-    df = pd.read_csv(filepath, sep="\t")
+    df = pd.read_csv(filepath, sep="\t", encoding_errors="replace")
     col_map = {
         "Begin Time (s)": "begin_time",
         "End Time (s)": "end_time",
