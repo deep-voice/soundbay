@@ -2,6 +2,7 @@ from soundbay.detection.postprocess import (
     compute_time_overlap_ratio,
     compute_iomin,
     suppress_overlapping,
+    suppress_harmonics,
 )
 
 
@@ -91,3 +92,41 @@ def test_suppress_overlapping_tie_break_by_confidence():
 
 def test_suppress_overlapping_empty():
     assert suppress_overlapping([]) == []
+
+
+def test_suppress_harmonics_drops_higher_band():
+    # fundamental 100-500Hz, harmonic 550-1000Hz, both 0-3s (full time overlap)
+    fundamental = _det(0.0, 3.0, 100, 500, conf=0.6)
+    harmonic = _det(0.0, 3.0, 550, 1000, conf=0.8)
+    kept = suppress_harmonics([fundamental, harmonic])
+    assert len(kept) == 1
+    assert kept[0]["low_freq"] == 100  # fundamental kept even though lower conf
+
+
+def test_suppress_harmonics_keeps_when_time_disjoint():
+    # stacked in freq but not overlapping in time -> not a harmonic pair
+    low = _det(0.0, 1.0, 100, 500)
+    high = _det(5.0, 6.0, 550, 1000)
+    kept = suppress_harmonics([low, high])
+    assert len(kept) == 2
+
+
+def test_suppress_harmonics_keeps_freq_overlapping_pair():
+    # bands overlap heavily (not "entirely above") -> left to overlap merge, not harmonics
+    a = _det(0.0, 3.0, 100, 500)
+    b = _det(0.0, 3.0, 400, 800)  # 400 < 500 - 50 -> not above by margin
+    kept = suppress_harmonics([a, b], freq_margin=50.0)
+    assert len(kept) == 2
+
+
+def test_suppress_harmonics_margin_tolerates_fuzzy_edge():
+    # harmonic starts 30Hz below fundamental's top, within 50Hz margin -> still a harmonic
+    fundamental = _det(0.0, 3.0, 100, 500)
+    harmonic = _det(0.0, 3.0, 470, 900)  # 470 >= 500 - 50
+    kept = suppress_harmonics([fundamental, harmonic], freq_margin=50.0)
+    assert len(kept) == 1
+    assert kept[0]["low_freq"] == 100
+
+
+def test_suppress_harmonics_empty():
+    assert suppress_harmonics([]) == []

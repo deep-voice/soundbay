@@ -78,6 +78,37 @@ def suppress_overlapping(
     return kept
 
 
+def suppress_harmonics(
+    detections: List[Dict],
+    time_overlap_threshold: float = 0.6,
+    freq_margin: float = 50.0,
+) -> List[Dict]:
+    """Suppress the higher-frequency box of a time-overlapping stacked pair.
+
+    When two boxes overlap in time by >= time_overlap_threshold and one sits
+    entirely above the other in frequency (its low_freq is at or above the
+    lower box's high_freq minus freq_margin, tolerating fuzzy box edges), the
+    higher box is treated as a harmonic and dropped; the lower (fundamental)
+    is kept regardless of confidence.
+    """
+    if not detections:
+        return []
+
+    suppressed = set()  # indices marked as harmonics
+    for i, di in enumerate(detections):
+        for j, dj in enumerate(detections):
+            if i == j or i in suppressed or j in suppressed:
+                continue
+            if compute_time_overlap_ratio(di, dj) < time_overlap_threshold:
+                continue
+            # Identify which box is higher in frequency.
+            lower, higher, higher_idx = (di, dj, j) if di["low_freq"] <= dj["low_freq"] else (dj, di, i)
+            if higher["low_freq"] >= lower["high_freq"] - freq_margin:
+                suppressed.add(higher_idx)
+
+    return [d for k, d in enumerate(detections) if k not in suppressed]
+
+
 def merge_detections(
     detections: List[Dict],
     iou_threshold: float = 0.3,
