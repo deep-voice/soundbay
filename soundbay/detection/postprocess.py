@@ -51,6 +51,33 @@ def compute_iomin(det_a: Dict, det_b: Dict) -> float:
     return intersection / smaller
 
 
+def suppress_overlapping(
+    detections: List[Dict],
+    iomin_threshold: float = 0.6,
+) -> List[Dict]:
+    """Collapse boxes overlapping in both time and frequency (same call).
+
+    Two boxes whose intersection-over-minimum-area >= iomin_threshold are
+    treated as the same call. The longer-duration box survives (tie-break:
+    higher confidence). Catches nested / half-call boxes that plain IoU misses.
+    """
+    if not detections:
+        return []
+
+    def _duration(d):
+        return d["end_time"] - d["begin_time"]
+
+    # Process longest-first (tie-break: higher confidence) so survivors are
+    # the boxes we want to keep.
+    ordered = sorted(detections, key=lambda d: (_duration(d), d["confidence"]), reverse=True)
+    kept = []
+    for det in ordered:
+        if any(compute_iomin(det, k) >= iomin_threshold for k in kept):
+            continue
+        kept.append(det)
+    return kept
+
+
 def merge_detections(
     detections: List[Dict],
     iou_threshold: float = 0.3,
