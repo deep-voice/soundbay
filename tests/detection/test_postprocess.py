@@ -3,6 +3,7 @@ from soundbay.detection.postprocess import (
     compute_iomin,
     suppress_overlapping,
     suppress_harmonics,
+    apply_postprocessing,
 )
 
 
@@ -130,3 +131,23 @@ def test_suppress_harmonics_margin_tolerates_fuzzy_edge():
 
 def test_suppress_harmonics_empty():
     assert suppress_harmonics([]) == []
+
+
+def test_apply_postprocessing_order_overlap_then_harmonics_then_nms():
+    # A: full call (4s, 100-500Hz)
+    # B: half-call box inside A (2s, 100-500Hz) -> removed by overlap merge
+    # C: harmonic above A (4s, 600-1000Hz) -> removed by harmonic suppression
+    # D: distinct later call (5-7s, 100-500Hz) -> kept
+    A = _det(0.0, 4.0, 100, 500, conf=0.6)
+    B = _det(0.0, 2.0, 100, 500, conf=0.9)
+    C = _det(0.0, 4.0, 600, 1000, conf=0.8)
+    D = _det(5.0, 7.0, 100, 500, conf=0.7)
+    kept = apply_postprocessing(
+        [A, B, C, D],
+        overlap_iomin=0.6,
+        harmonic_time_overlap=0.6,
+        harmonic_freq_margin=50.0,
+        merge_iou=0.3,
+    )
+    begins = sorted(d["begin_time"] for d in kept)
+    assert begins == [0.0, 5.0]  # only A and D remain

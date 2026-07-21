@@ -6,7 +6,7 @@ from pathlib import Path
 from ultralytics import YOLO
 
 from soundbay.detection.spectrogram_generator import generate_spectrograms, get_chunk_start_from_filename
-from soundbay.detection.postprocess import merge_detections, export_to_raven
+from soundbay.detection.postprocess import apply_postprocessing, export_to_raven
 
 
 DEFAULT_PARAMS = {
@@ -25,8 +25,11 @@ def infer_audio(
     model_path: str,
     wav_path: str,
     output_dir: str,
-    conf_threshold: float = 0.25,
+    conf_threshold: float = 0.45,
     iou_threshold: float = 0.4,
+    overlap_iomin: float = 0.6,
+    harmonic_time_overlap: float = 0.6,
+    harmonic_freq_margin: float = 50.0,
     params: dict = None,
 ):
     """Run detection on a single audio file."""
@@ -63,7 +66,13 @@ def infer_audio(
                     "class": "humpback_call",
                 })
 
-    merged = merge_detections(raw_detections, iou_threshold=0.3)
+    merged = apply_postprocessing(
+        raw_detections,
+        overlap_iomin=overlap_iomin,
+        harmonic_time_overlap=harmonic_time_overlap,
+        harmonic_freq_margin=harmonic_freq_margin,
+        merge_iou=0.3,
+    )
 
     stem = Path(wav_path).stem
     raven_path = os.path.join(output_dir, f"{stem}_detections.txt")
@@ -78,18 +87,28 @@ def main():
     parser.add_argument("--model", required=True, help="Path to trained .pt model")
     parser.add_argument("--input", required=True, help="WAV file or directory of WAVs")
     parser.add_argument("--output-dir", required=True, help="Output directory")
-    parser.add_argument("--conf", type=float, default=0.25)
+    parser.add_argument("--conf", type=float, default=0.45)
     parser.add_argument("--iou", type=float, default=0.4)
+    parser.add_argument("--overlap-iomin", type=float, default=0.6)
+    parser.add_argument("--harmonic-time-overlap", type=float, default=0.6)
+    parser.add_argument("--harmonic-freq-margin", type=float, default=50.0)
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
 
+    common = dict(
+        conf_threshold=args.conf,
+        iou_threshold=args.iou,
+        overlap_iomin=args.overlap_iomin,
+        harmonic_time_overlap=args.harmonic_time_overlap,
+        harmonic_freq_margin=args.harmonic_freq_margin,
+    )
     if os.path.isfile(args.input):
-        infer_audio(args.model, args.input, args.output_dir, args.conf, args.iou)
+        infer_audio(args.model, args.input, args.output_dir, **common)
     else:
         for f in sorted(os.listdir(args.input)):
             if f.lower().endswith(".wav"):
-                infer_audio(args.model, os.path.join(args.input, f), args.output_dir, args.conf, args.iou)
+                infer_audio(args.model, os.path.join(args.input, f), args.output_dir, **common)
 
 
 if __name__ == "__main__":

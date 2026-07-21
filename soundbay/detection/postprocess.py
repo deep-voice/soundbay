@@ -109,6 +109,24 @@ def suppress_harmonics(
     return [d for k, d in enumerate(detections) if k not in suppressed]
 
 
+def apply_postprocessing(
+    detections: List[Dict],
+    overlap_iomin: float = 0.6,
+    harmonic_time_overlap: float = 0.6,
+    harmonic_freq_margin: float = 50.0,
+    merge_iou: float = 0.3,
+) -> List[Dict]:
+    """Full post-processing chain: overlap merge -> harmonics -> IoU-NMS."""
+    result = suppress_overlapping(detections, iomin_threshold=overlap_iomin)
+    result = suppress_harmonics(
+        result,
+        time_overlap_threshold=harmonic_time_overlap,
+        freq_margin=harmonic_freq_margin,
+    )
+    result = merge_detections(result, iou_threshold=merge_iou)
+    return result
+
+
 def merge_detections(
     detections: List[Dict],
     iou_threshold: float = 0.3,
