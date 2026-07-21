@@ -90,6 +90,11 @@ def suppress_harmonics(
     lower box's high_freq minus freq_margin, tolerating fuzzy box edges), the
     higher box is treated as a harmonic and dropped; the lower (fundamental)
     is kept regardless of confidence.
+
+    Known limitation: A genuine simultaneous call in a higher frequency band
+    that overlaps in time will be indistinguishable from a harmonic by this
+    geometric heuristic and will be suppressed. This is an accepted
+    precision-over-recall trade-off.
     """
     if not detections:
         return []
@@ -123,6 +128,8 @@ def apply_postprocessing(
         time_overlap_threshold=harmonic_time_overlap,
         freq_margin=harmonic_freq_margin,
     )
+    # Note: "longest-duration wins" from suppress_overlapping holds strictly only
+    # for IoMin >= overlap_iomin; final IoU-NMS may pick higher-confidence box for moderate overlaps.
     result = merge_detections(result, iou_threshold=merge_iou)
     return result
 

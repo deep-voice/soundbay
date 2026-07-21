@@ -151,3 +151,14 @@ def test_apply_postprocessing_order_overlap_then_harmonics_then_nms():
     )
     begins = sorted(d["begin_time"] for d in kept)
     assert begins == [0.0, 5.0]  # only A and D remain
+
+
+def test_suppress_harmonics_also_drops_genuine_simultaneous_stacked_call():
+    """KNOWN LIMITATION: two distinct calls stacked in frequency and overlapping
+    in time are indistinguishable from fundamental+harmonic by geometry alone,
+    so the upper one is suppressed. This test documents that accepted trade-off."""
+    lower = _det(0.0, 3.0, 100, 500, conf=0.9)
+    upper = _det(0.0, 3.0, 600, 1000, conf=0.9)
+    kept = suppress_harmonics([lower, upper])
+    assert len(kept) == 1
+    assert kept[0]["low_freq"] == 100
