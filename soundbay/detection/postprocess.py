@@ -23,6 +23,34 @@ def compute_iou_tf(det_a: Dict, det_b: Dict) -> float:
     return intersection / union
 
 
+def compute_time_overlap_ratio(det_a: Dict, det_b: Dict) -> float:
+    """Time-intersection divided by the shorter box's duration."""
+    inter_start = max(det_a["begin_time"], det_b["begin_time"])
+    inter_end = min(det_a["end_time"], det_b["end_time"])
+    overlap = max(0.0, inter_end - inter_start)
+    dur_a = det_a["end_time"] - det_a["begin_time"]
+    dur_b = det_b["end_time"] - det_b["begin_time"]
+    shorter = min(dur_a, dur_b)
+    if shorter <= 0:
+        return 0.0
+    return overlap / shorter
+
+
+def compute_iomin(det_a: Dict, det_b: Dict) -> float:
+    """2D time-frequency intersection over the smaller box's area."""
+    t_overlap = max(0.0, min(det_a["end_time"], det_b["end_time"])
+                    - max(det_a["begin_time"], det_b["begin_time"]))
+    f_overlap = max(0.0, min(det_a["high_freq"], det_b["high_freq"])
+                    - max(det_a["low_freq"], det_b["low_freq"]))
+    intersection = t_overlap * f_overlap
+    area_a = (det_a["end_time"] - det_a["begin_time"]) * (det_a["high_freq"] - det_a["low_freq"])
+    area_b = (det_b["end_time"] - det_b["begin_time"]) * (det_b["high_freq"] - det_b["low_freq"])
+    smaller = min(area_a, area_b)
+    if smaller <= 0:
+        return 0.0
+    return intersection / smaller
+
+
 def merge_detections(
     detections: List[Dict],
     iou_threshold: float = 0.3,
