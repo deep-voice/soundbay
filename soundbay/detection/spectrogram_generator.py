@@ -1,10 +1,59 @@
 """Generate spectrogram PNG images from WAV files for YOLO training."""
+import json
 import os
-from typing import List
+from typing import Dict, List
 
 import librosa
 import numpy as np
 from PIL import Image
+
+
+# Spectrogram geometry must match between dataset preparation and inference:
+# a model trained on 5s/3000Hz chunks scores poorly when fed 15s/4000Hz ones.
+DEFAULT_PARAMS = {
+    "chunk_duration": 15.0,
+    "overlap": 0.5,
+    "target_sr": 8000,
+    "n_fft": 1024,
+    "hop_length": 128,
+    "freq_min": 50.0,
+    "freq_max": 4000.0,
+    "img_size": 640,
+}
+
+PARAM_KEYS = tuple(DEFAULT_PARAMS)
+
+SIDECAR_SUFFIX = ".spectrogram.json"
+
+
+def sidecar_path_for_model(model_path: str) -> str:
+    """Path of the spectrogram-params sidecar that belongs next to a checkpoint."""
+    return os.path.splitext(model_path)[0] + SIDECAR_SUFFIX
+
+
+def load_params_sidecar(model_path: str) -> Dict:
+    """Read the spectrogram params recorded beside a checkpoint, if any."""
+    path = sidecar_path_for_model(model_path)
+    if not os.path.isfile(path):
+        return {}
+    with open(path) as f:
+        return json.load(f)
+
+
+def resolve_params(sidecar: Dict = None, overrides: Dict = None) -> Dict:
+    """Merge spectrogram params: defaults < sidecar < explicit overrides.
+
+    ``None`` values in ``overrides`` mean "not supplied" (argparse default) and
+    are ignored so they cannot wipe a sidecar value.
+    """
+    resolved = dict(DEFAULT_PARAMS)
+    for source in (sidecar or {}, overrides or {}):
+        for key, value in source.items():
+            if key not in DEFAULT_PARAMS:
+                raise ValueError(f"unknown spectrogram param: {key!r}")
+            if value is not None:
+                resolved[key] = value
+    return resolved
 
 
 def generate_spectrograms(

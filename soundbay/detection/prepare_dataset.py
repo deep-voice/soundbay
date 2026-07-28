@@ -1,24 +1,17 @@
 """End-to-end dataset preparation: WAV + Raven -> YOLO images + labels."""
 import argparse
+import json
 import os
 import random
 from pathlib import Path
 from typing import List
 
-from soundbay.detection.spectrogram_generator import generate_spectrograms, get_chunk_start_from_filename
+from soundbay.detection.spectrogram_generator import (
+    DEFAULT_PARAMS,
+    generate_spectrograms,
+    get_chunk_start_from_filename,
+)
 from soundbay.detection.raven_to_yolo import parse_raven_file, convert_raven_to_yolo
-
-
-DEFAULT_PARAMS = {
-    "chunk_duration": 15.0,
-    "overlap": 0.5,
-    "target_sr": 8000,
-    "n_fft": 1024,
-    "hop_length": 128,
-    "freq_min": 50.0,
-    "freq_max": 4000.0,
-    "img_size": 640,
-}
 
 
 def find_annotation_file(wav_path: str, annotations_dir: str) -> str | None:
@@ -124,7 +117,14 @@ def prepare_dataset(
         status = "annotated" if ann_path else "no annotations"
         print(f"  [{split}] {os.path.basename(wav_path)} -> {n_chunks} chunks ({status})")
 
+    # Record the geometry so inference can reproduce it (copy next to the checkpoint
+    # as <weights>.spectrogram.json).
+    params_path = os.path.join(output_dir, "spectrogram_params.json")
+    with open(params_path, "w") as f:
+        json.dump(params, f, indent=2)
+
     print(f"\nDataset ready: {total_train} train + {total_val} val chunks in {output_dir}")
+    print(f"Spectrogram params written to {params_path}")
 
 
 def main():

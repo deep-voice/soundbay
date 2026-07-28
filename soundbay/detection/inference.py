@@ -5,35 +5,36 @@ from pathlib import Path
 
 from ultralytics import YOLO
 
-from soundbay.detection.spectrogram_generator import generate_spectrograms, get_chunk_start_from_filename
+from soundbay.detection.spectrogram_generator import (
+    DEFAULT_PARAMS,
+    PARAM_KEYS,
+    generate_spectrograms,
+    get_chunk_start_from_filename,
+    load_params_sidecar,
+    resolve_params,
+)
 from soundbay.detection.postprocess import apply_postprocessing, export_to_raven
-
-
-DEFAULT_PARAMS = {
-    "chunk_duration": 15.0,
-    "overlap": 0.5,
-    "target_sr": 8000,
-    "n_fft": 1024,
-    "hop_length": 128,
-    "freq_min": 50.0,
-    "freq_max": 4000.0,
-    "img_size": 640,
-}
 
 
 def infer_audio(
     model_path: str,
     wav_path: str,
     output_dir: str,
-    conf_threshold: float = 0.45,
+    conf_threshold: float = 0.15,
     iou_threshold: float = 0.4,
     overlap_iomin: float = 0.6,
     harmonic_time_overlap: float = 0.6,
     harmonic_freq_margin: float = 50.0,
     params: dict = None,
 ):
-    """Run detection on a single audio file."""
-    params = params or DEFAULT_PARAMS
+    """Run detection on a single audio file.
+
+    ``params`` are the spectrogram geometry settings; when omitted they are read
+    from the checkpoint's sidecar (see ``load_params_sidecar``) falling back to
+    ``DEFAULT_PARAMS``. These MUST match the settings the model was trained on.
+    """
+    if params is None:
+        params = resolve_params(sidecar=load_params_sidecar(model_path))
     model = YOLO(model_path)
 
     temp_img_dir = os.path.join(output_dir, "temp_spectrograms")
@@ -87,14 +88,37 @@ def main():
     parser.add_argument("--model", required=True, help="Path to trained .pt model")
     parser.add_argument("--input", required=True, help="WAV file or directory of WAVs")
     parser.add_argument("--output-dir", required=True, help="Output directory")
-    parser.add_argument("--conf", type=float, default=0.45)
+    parser.add_argument("--conf", type=float, default=0.15)
     parser.add_argument("--iou", type=float, default=0.4)
     parser.add_argument("--overlap-iomin", type=float, default=0.6)
     parser.add_argument("--harmonic-time-overlap", type=float, default=0.6)
     parser.add_argument("--harmonic-freq-margin", type=float, default=50.0)
+
+    # Spectrogram geometry. Defaults come from the checkpoint sidecar when present,
+    # else DEFAULT_PARAMS; these flags override either. Must match training.
+    spec = parser.add_argument_group("spectrogram params (must match training)")
+    spec.add_argument("--chunk-duration", type=float, default=None)
+    spec.add_argument("--overlap", type=float, default=None)
+    spec.add_argument("--target-sr", type=int, default=None)
+    spec.add_argument("--n-fft", type=int, default=None)
+    spec.add_argument("--hop-length", type=int, default=None)
+    spec.add_argument("--freq-min", type=float, default=None)
+    spec.add_argument("--freq-max", type=float, default=None)
+    spec.add_argument("--img-size", type=int, default=None)
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
+
+    sidecar = load_params_sidecar(args.model)
+    overrides = {key: getattr(args, key) for key in PARAM_KEYS}
+    params = resolve_params(sidecar=sidecar, overrides=overrides)
+    source = f"sidecar {sorted(sidecar)}" if sidecar else "defaults"
+    print(f"Spectrogram params ({source} + CLI overrides): {params}")
+    if params == DEFAULT_PARAMS and not sidecar:
+        print(
+            "  WARNING: using DEFAULT_PARAMS with no sidecar for this checkpoint. "
+            "If it was trained on different spectrogram geometry, detections will be wrong."
+        )
 
     common = dict(
         conf_threshold=args.conf,
@@ -102,6 +126,7 @@ def main():
         overlap_iomin=args.overlap_iomin,
         harmonic_time_overlap=args.harmonic_time_overlap,
         harmonic_freq_margin=args.harmonic_freq_margin,
+        params=params,
     )
     if os.path.isfile(args.input):
         infer_audio(args.model, args.input, args.output_dir, **common)
