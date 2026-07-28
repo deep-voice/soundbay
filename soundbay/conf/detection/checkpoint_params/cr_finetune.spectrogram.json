@@ -1,0 +1,10 @@
+{
+  "chunk_duration": 5.0,
+  "overlap": 0.5,
+  "target_sr": 8000,
+  "n_fft": 1024,
+  "hop_length": 128,
+  "freq_min": 50.0,
+  "freq_max": 3000.0,
+  "img_size": 640
+}
